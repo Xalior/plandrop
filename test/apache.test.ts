@@ -1,8 +1,8 @@
 import { describe, expect, inject, it } from 'vitest';
 import { httpRequest } from './helpers/http';
 
-const apache = inject('apache');
-const { port, domain, tenantA, tenantB } = apache;
+const stack = inject('stack');
+const { apachePort: port, domain, tenantA, tenantB } = stack;
 const hostA = `${tenantA.label}.${domain}`;
 const authA = { user: tenantA.label, pass: tenantA.pass };
 const authB = { user: tenantB.label, pass: tenantB.pass };

@@ -3,16 +3,18 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
+import { hashSync } from 'bcryptjs';
 import type { TestProject } from 'vitest/node';
 
 // public/ — the compose file lives here, and bind paths resolve relative to it.
 const pkgRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 const DOMAIN = 'plandrop.test';
-const PORT = 8788;
-const PROJECT = 'plandrop-apache-test';
+const APACHE_PORT = 8788;
+const CONTROL_PORT = 8789;
+const PROJECT = 'plandrop-stack-test';
 const TENANT_A = { label: 'tenanta', pass: 'passphraseaaaa' };
 const TENANT_B = { label: 'tenantb', pass: 'passphrasebbbb' };
 
@@ -21,27 +23,21 @@ export interface Tenant {
   pass: string;
 }
 
-export interface ApacheFixture {
-  port: number;
+export interface Stack {
+  apachePort: number;
+  controlPort: number;
   domain: string;
+  dataDir: string;
+  authFile: string;
+  /** Pre-seeded fixture tenants for the Apache matrix. */
   tenantA: Tenant;
   tenantB: Tenant;
 }
 
 declare module 'vitest' {
   export interface ProvidedContext {
-    apache: ApacheFixture;
+    stack: Stack;
   }
-}
-
-/** Generate a bcrypt htpasswd line using the image's own htpasswd tool. */
-function htpasswdLine(tenant: Tenant): string {
-  const out = execFileSync(
-    'docker',
-    ['run', '--rm', 'httpd:2.4', 'htpasswd', '-nbB', tenant.label, tenant.pass],
-    { encoding: 'utf8' },
-  );
-  return out.trim();
 }
 
 function compose(args: string[], env: NodeJS.ProcessEnv): void {
@@ -52,10 +48,10 @@ function compose(args: string[], env: NodeJS.ProcessEnv): void {
   });
 }
 
-function get(path: string, hostHeader: string): Promise<number> {
+function probe(port: number, path: string, hostHeader: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const req = http.request(
-      { host: '127.0.0.1', port: PORT, method: 'GET', path, headers: { Host: hostHeader } },
+      { host: '127.0.0.1', port, method: 'GET', path, headers: { Host: hostHeader } },
       (res) => {
         res.resume();
         resolve(res.statusCode ?? 0);
@@ -66,28 +62,32 @@ function get(path: string, hostHeader: string): Promise<number> {
   });
 }
 
-async function waitForReady(hostHeader: string, timeoutMs: number): Promise<void> {
+async function waitFor(
+  label: string,
+  check: () => Promise<boolean>,
+  timeoutMs: number,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     try {
-      const status = await get('/index.html', hostHeader);
-      if (status === 200) {
+      if (await check()) {
         return;
       }
     } catch {
-      // container not accepting connections yet
+      // service not accepting connections yet
     }
     if (Date.now() > deadline) {
-      throw new Error('apache container did not become ready in time');
+      throw new Error(`${label} did not become ready in time`);
     }
     await sleep(500);
   }
 }
 
 export default async function setup(project: TestProject): Promise<() => void> {
-  const dataDir = mkdtempSync(join(tmpdir(), 'plandrop-apache-'));
+  const dataDir = mkdtempSync(join(tmpdir(), 'plandrop-stack-'));
   const hostsDir = join(dataDir, 'hosts');
   const authDir = join(dataDir, 'auth');
+  const authFile = join(authDir, 'htpasswd');
 
   for (const tenant of [TENANT_A, TENANT_B]) {
     const www = join(hostsDir, tenant.label, 'www');
@@ -95,27 +95,42 @@ export default async function setup(project: TestProject): Promise<() => void> {
     writeFileSync(join(www, 'index.html'), `<h1>${tenant.label}</h1>\n`);
   }
   mkdirSync(authDir, { recursive: true });
-  const htpasswd = [TENANT_A, TENANT_B].map(htpasswdLine).join('\n') + '\n';
-  writeFileSync(join(authDir, 'htpasswd'), htpasswd);
+  // bcryptjs $2b$ hashes authenticate directly against Apache mod_authn_file.
+  const htpasswd =
+    [TENANT_A, TENANT_B].map((t) => `${t.label}:${hashSync(t.pass, 10)}`).join('\n') + '\n';
+  writeFileSync(authFile, htpasswd);
 
-  // Run the container as this host user so DAV writes land as an owner of the
-  // (host-created) data tree — no world-writable hack needed.
+  // Run the containers as this host user so writes land as an owner of the
+  // host-created data tree.
   const uid = process.getuid?.() ?? 1000;
   const gid = process.getgid?.() ?? 1000;
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PLANDROP_DATA: dataDir,
-    PLANDROP_APACHE_PORT: String(PORT),
+    PLANDROP_APACHE_PORT: String(APACHE_PORT),
+    PLANDROP_CONTROL_PORT: String(CONTROL_PORT),
     PLANDROP_UID: String(uid),
     PLANDROP_GID: String(gid),
   };
 
-  compose(['up', '-d', 'apache'], env);
-  await waitForReady(`${TENANT_A.label}.${DOMAIN}`, 30_000);
+  // dist/server.js must exist for the control image build.
+  execFileSync('pnpm', ['run', 'build'], { cwd: pkgRoot, stdio: 'pipe' });
+  compose(['up', '-d', '--build', 'apache', 'control'], env);
 
-  project.provide('apache', {
-    port: PORT,
+  await waitFor(
+    'apache',
+    async () => (await probe(APACHE_PORT, '/index.html', `${TENANT_A.label}.${DOMAIN}`)) === 200,
+    60_000,
+  );
+  // Any HTTP response means the control plane is listening (GET / -> 404).
+  await waitFor('control', async () => (await probe(CONTROL_PORT, '/', DOMAIN)) > 0, 60_000);
+
+  project.provide('stack', {
+    apachePort: APACHE_PORT,
+    controlPort: CONTROL_PORT,
     domain: DOMAIN,
+    dataDir,
+    authFile,
     tenantA: TENANT_A,
     tenantB: TENANT_B,
   });
