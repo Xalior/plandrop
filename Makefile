@@ -1,21 +1,21 @@
 .PHONY: build lint typecheck test check pack clean
 
 build:
-	npm run build
+	pnpm run build
 
 lint:
-	npm run lint
+	pnpm run lint
 
 typecheck:
-	npm run typecheck
+	pnpm run typecheck
 
 test:
-	npm run test
+	pnpm run test
 
 check: typecheck lint test
 
 pack: build
-	npm pack
+	pnpm pack
 
 clean:
 	rm -rf dist

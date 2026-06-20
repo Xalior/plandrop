@@ -19,9 +19,9 @@ let packDir: string;
 let tarball: string;
 
 beforeAll(() => {
-  execFileSync('npm', ['run', 'build'], { cwd: pkgRoot, stdio: 'pipe' });
+  execFileSync('pnpm', ['run', 'build'], { cwd: pkgRoot, stdio: 'pipe' });
   packDir = mkdtempSync(join(tmpdir(), 'plandrop-pack-'));
-  execFileSync('npm', ['pack', '--pack-destination', packDir], {
+  execFileSync('pnpm', ['pack', '--pack-destination', packDir], {
     cwd: pkgRoot,
     stdio: 'pipe',
   });
