@@ -6,15 +6,20 @@ services:
   apache:
     image: httpd:2.4
     restart: unless-stopped
+    # Run as the configured non-root user so DAV writes land as PLANDROP_UID,
+    # matching the host-side ownership of the data tree (shared with the
+    # control plane). Requires the unprivileged listen port below.
+    user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
+    environment:
+      # Apache interpolates ${PLANDROP_APACHE_PORT} in httpd.conf (Listen + vhost).
+      PLANDROP_APACHE_PORT: "${PLANDROP_APACHE_PORT:-8080}"
     ports:
-      # Plain HTTP, loopback only — TLS/ingress terminate in front.
-      - "127.0.0.1:${PLANDROP_APACHE_PORT:-8088}:80"
+      # Plain HTTP, loopback only — TLS/ingress terminate in front. Host and
+      # container share the configured port.
+      - "127.0.0.1:${PLANDROP_APACHE_PORT:-8080}:${PLANDROP_APACHE_PORT:-8080}"
     volumes:
       - "./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro"
       # Per-tenant content; DAV writes land here (read-write).
       - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
       # Shared auth; read-only for Apache (the control plane writes it).
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
-    # No `user:` override: binding port 80 in-container requires starting as
-    # root and dropping to the `daemon` user (per httpd.conf). Host-side data
-    # ownership is governed by PLANDROP_UID/PLANDROP_GID (see .env.example).

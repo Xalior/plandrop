@@ -98,14 +98,16 @@ export default async function setup(project: TestProject): Promise<() => void> {
   const htpasswd = [TENANT_A, TENANT_B].map(htpasswdLine).join('\n') + '\n';
   writeFileSync(join(authDir, 'htpasswd'), htpasswd);
 
-  // The in-container daemon user (not the host user) performs DAV writes; make
-  // the throwaway content tree writable by it.
-  execFileSync('chmod', ['-R', '0777', hostsDir]);
-
+  // Run the container as this host user so DAV writes land as an owner of the
+  // (host-created) data tree — no world-writable hack needed.
+  const uid = process.getuid?.() ?? 1000;
+  const gid = process.getgid?.() ?? 1000;
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PLANDROP_DATA: dataDir,
     PLANDROP_APACHE_PORT: String(PORT),
+    PLANDROP_UID: String(uid),
+    PLANDROP_GID: String(gid),
   };
 
   compose(['up', '-d', 'apache'], env);
