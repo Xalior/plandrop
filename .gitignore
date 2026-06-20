@@ -2,3 +2,7 @@ node_modules/
 dist/
 plandrop-*.tgz
 *.log
+
+# Local env + runtime data (per-tenant content, shared htpasswd) — never committed.
+.env
+/data/

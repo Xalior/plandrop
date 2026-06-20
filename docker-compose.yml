@@ -1,0 +1,20 @@
+# plandrop stack. The Apache mod_dav host serves *.<domain> read-only and
+# accepts per-tenant authed WebDAV writes. The Phase 3 control plane service is
+# added later. Ingress/TLS is out of scope and reused (NPM or any SSL/HTTP
+# ingress in front); these services speak plain HTTP behind it.
+services:
+  apache:
+    image: httpd:2.4
+    restart: unless-stopped
+    ports:
+      # Plain HTTP, loopback only — TLS/ingress terminate in front.
+      - "127.0.0.1:${PLANDROP_APACHE_PORT:-8088}:80"
+    volumes:
+      - "./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro"
+      # Per-tenant content; DAV writes land here (read-write).
+      - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
+      # Shared auth; read-only for Apache (the control plane writes it).
+      - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
+    # No `user:` override: binding port 80 in-container requires starting as
+    # root and dropping to the `daemon` user (per httpd.conf). Host-side data
+    # ownership is governed by PLANDROP_UID/PLANDROP_GID (see .env.example).
