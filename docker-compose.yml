@@ -23,3 +23,24 @@ services:
       - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
       # Shared auth; read-only for Apache (the control plane writes it).
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
+
+  control:
+    build:
+      context: .
+      dockerfile: Dockerfile.control
+    restart: unless-stopped
+    # Privileged writer of the shared volume — runs as the configured user so
+    # the files it creates are owned consistently with Apache's reads.
+    user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
+    environment:
+      PLANDROP_CONTROL_PORT: "${PLANDROP_CONTROL_PORT:-8081}"
+      PLANDROP_HOSTS_DIR: /srv/hosts
+      PLANDROP_AUTH_FILE: /srv/auth/htpasswd
+    ports:
+      # Reverse proxy routes the parent domain here, *.domain to apache
+      # (ingress out of scope). Loopback plain HTTP only.
+      - "127.0.0.1:${PLANDROP_CONTROL_PORT:-8081}:${PLANDROP_CONTROL_PORT:-8081}"
+    volumes:
+      # Read-write: the control plane creates host dirs and writes htpasswd.
+      - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
+      - "${PLANDROP_DATA:-./data}/auth:/srv/auth"

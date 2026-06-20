@@ -1,4 +1,4 @@
-.PHONY: build lint typecheck test check pack clean apache-pull apache-up apache-down
+.PHONY: build lint typecheck test check pack clean apache-pull apache-up apache-down control-build control-up control-down
 
 build:
 	pnpm run build
@@ -30,4 +30,14 @@ apache-up:
 	docker compose up -d apache
 
 apache-down:
+	docker compose down -v
+
+# Control plane service helpers. Build depends on dist/server.js (make build).
+control-build: build
+	docker compose build control
+
+control-up: build
+	docker compose up -d --build control
+
+control-down:
 	docker compose down -v

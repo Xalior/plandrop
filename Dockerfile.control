@@ -1,0 +1,8 @@
+# The control plane: runtime deps are bundled into dist/server.js by tsup, so
+# the image is just Node + one file. Build dist/server.js first (make build).
+FROM node:24-slim
+WORKDIR /app
+COPY dist/server.js ./server.js
+# Runs as the non-root user/UID chosen in docker-compose (the writer of the
+# shared hosts/ and auth/ volume).
+CMD ["node", "server.js"]
