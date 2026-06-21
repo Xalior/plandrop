@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Push a static HTML document to a unique, secure hostname on your network and share the link.",
   "type": "module",
-  "license": "Apache-2.0",
+  "license": "LGPL-3.0-only",
   "packageManager": "pnpm@10.18.1",
   "bin": {
     "plandrop": "dist/cli.js"
