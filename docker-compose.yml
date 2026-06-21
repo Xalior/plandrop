@@ -5,6 +5,38 @@
 # (PLANDROP_BIND in .env): 127.0.0.1 for local dev, the docker-bridge or tailnet
 # IP where a front proxy can reach it in deployment.
 services:
+  # The only publicly-reachable control entrypoint. Bundles the built-in
+  # templates, seeds the shared theme volume fresh on boot, serves /.plandrop/*
+  # statically, and reverse-proxies /api/* to the control plane. Coupled to and
+  # versioned with the control plane as one managed unit.
+  ingress:
+    build:
+      context: .
+      dockerfile: Dockerfile.ingress
+    restart: unless-stopped
+    environment:
+      PLANDROP_INGRESS_PORT: "${PLANDROP_INGRESS_PORT:-8082}"
+      PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_CONTROL_HOST: control
+      PLANDROP_CONTROL_PORT: "${PLANDROP_CONTROL_PORT:-8081}"
+    ports:
+      # Plain HTTP — TLS/ingress terminate in front. The CLI targets this port.
+      - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_INGRESS_PORT:-8082}:${PLANDROP_INGRESS_PORT:-8082}"
+    volumes:
+      # Read-write: the entrypoint seeds the built-in templates here on boot.
+      - "plandrop-templates:/srv/templates"
+    depends_on:
+      - control
+    healthcheck:
+      # The volume is seeded once the assembled starter exists.
+      test:
+        - CMD-SHELL
+        - "test -f /srv/templates/bootstrap5/template.html"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   apache:
     image: httpd:2.4
     restart: unless-stopped
@@ -25,6 +57,11 @@ services:
       - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
       # Shared auth; read-only for Apache (the control plane writes it).
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
+      # Shared template assets, read-only; served per-tenant under /.plandrop/.
+      - "plandrop-templates:/srv/templates:ro"
+    depends_on:
+      ingress:
+        condition: service_healthy
 
   control:
     build:
@@ -38,14 +75,17 @@ services:
       PLANDROP_CONTROL_PORT: "${PLANDROP_CONTROL_PORT:-8081}"
       PLANDROP_HOSTS_DIR: /srv/hosts
       PLANDROP_AUTH_FILE: /srv/auth/htpasswd
-    ports:
-      # Reverse proxy routes the parent domain here, *.domain to apache
-      # (ingress out of scope). Bind address is host-specific (see .env).
-      - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_CONTROL_PORT:-8081}:${PLANDROP_CONTROL_PORT:-8081}"
+      PLANDROP_THEME_DIR: /srv/templates
+    # No published port: the control plane is internal-only, reachable only via
+    # the ingress on the Docker network. It is never exposed to the public again.
+    expose:
+      - "${PLANDROP_CONTROL_PORT:-8081}"
     volumes:
       # Read-write: the control plane creates host dirs and writes htpasswd.
       - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth"
+      # Shared template assets, read-only; enumerated for /api/templates.
+      - "plandrop-templates:/srv/templates:ro"
     healthcheck:
       # node:24 ships a global fetch; any HTTP response means it is listening.
       test:
@@ -57,3 +97,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+volumes:
+  # Built-in template assets, re-seeded fresh from the ingress image on every
+  # boot. Ephemeral seed state, not operator data — operator templates are a
+  # separate mount (a later phase) that the fresh seed never wipes.
+  plandrop-templates:
