@@ -32,4 +32,4 @@ clean clone with no host toolchain, on x86-64 or arm64.
 
 ## License
 
-Apache-2.0.
+LGPL-3.0-only.
