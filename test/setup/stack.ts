@@ -14,6 +14,7 @@ const pkgRoot = fileURLToPath(new URL('../../', import.meta.url));
 const DOMAIN = 'plandrop.test';
 const APACHE_PORT = 8788;
 const CONTROL_PORT = 8789;
+const PROXY_PORT = 8790;
 const PROJECT = 'plandrop-stack-test';
 const TENANT_A = { label: 'tenanta', pass: 'passphraseaaaa' };
 const TENANT_B = { label: 'tenantb', pass: 'passphrasebbbb' };
@@ -29,9 +30,37 @@ export interface Stack {
   domain: string;
   dataDir: string;
   authFile: string;
+  /** Base URI of the in-process ingress proxy: localhost -> control, *.localhost -> apache. */
+  proxyBase: string;
   /** Pre-seeded fixture tenants for the Apache matrix. */
   tenantA: Tenant;
   tenantB: Tenant;
+}
+
+/**
+ * A stand-in for the production ingress: route by Host — `localhost` to the
+ * control plane, `<label>.localhost` to Apache — preserving the Host header so
+ * Apache's vhost resolves the docroot. Bound to ::1 (where *.localhost resolves).
+ */
+function startProxy(): http.Server {
+  const proxy = http.createServer((req, res) => {
+    const hostname = (req.headers.host ?? '').split(':')[0] ?? '';
+    const port = hostname === 'localhost' ? CONTROL_PORT : APACHE_PORT;
+    const upstream = http.request(
+      { host: '127.0.0.1', port, method: req.method, path: req.url, headers: req.headers },
+      (upstreamRes) => {
+        res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
+        upstreamRes.pipe(res);
+      },
+    );
+    upstream.on('error', () => {
+      res.writeHead(502);
+      res.end('proxy error');
+    });
+    req.pipe(upstream);
+  });
+  proxy.listen(PROXY_PORT, '::1');
+  return proxy;
 }
 
 declare module 'vitest' {
@@ -48,10 +77,10 @@ function compose(args: string[], env: NodeJS.ProcessEnv): void {
   });
 }
 
-function probe(port: number, path: string, hostHeader: string): Promise<number> {
+function probe(port: number, path: string, hostHeader: string, host = '127.0.0.1'): Promise<number> {
   return new Promise((resolve, reject) => {
     const req = http.request(
-      { host: '127.0.0.1', port, method: 'GET', path, headers: { Host: hostHeader } },
+      { host, port, method: 'GET', path, headers: { Host: hostHeader } },
       (res) => {
         res.resume();
         resolve(res.statusCode ?? 0);
@@ -125,17 +154,22 @@ export default async function setup(project: TestProject): Promise<() => void> {
   // Any HTTP response means the control plane is listening (GET / -> 404).
   await waitFor('control', async () => (await probe(CONTROL_PORT, '/', DOMAIN)) > 0, 60_000);
 
+  const proxy = startProxy();
+  await waitFor('proxy', async () => (await probe(PROXY_PORT, '/', 'localhost', '::1')) > 0, 10_000);
+
   project.provide('stack', {
     apachePort: APACHE_PORT,
     controlPort: CONTROL_PORT,
     domain: DOMAIN,
     dataDir,
     authFile,
+    proxyBase: `http://localhost:${PROXY_PORT}`,
     tenantA: TENANT_A,
     tenantB: TENANT_B,
   });
 
   return () => {
+    proxy.close();
     try {
       compose(['down', '-v'], env);
     } finally {
