@@ -15,6 +15,9 @@ const DOMAIN = 'plandrop.test';
 const APACHE_PORT = 8788;
 const CONTROL_PORT = 8789;
 const PROXY_PORT = 8790;
+// The ingress is the only published control entrypoint now: it serves the
+// template statics and reverse-proxies /api/* to the (unpublished) control plane.
+const INGRESS_PORT = 8791;
 const PROJECT = 'plandrop-stack-test';
 const TENANT_A = { label: 'tenanta', pass: 'passphraseaaaa' };
 const TENANT_B = { label: 'tenantb', pass: 'passphrasebbbb' };
@@ -26,11 +29,18 @@ export interface Tenant {
 
 export interface Stack {
   apachePort: number;
+  /**
+   * Port for direct control-plane API calls. The control plane no longer
+   * publishes a port; this is the ingress port, which proxies /api/* to it — so
+   * every existing control test exercises the real front door.
+   */
   controlPort: number;
+  /** The ingress published port (template statics + /api proxy). */
+  ingressPort: number;
   domain: string;
   dataDir: string;
   authFile: string;
-  /** Base URI of the in-process ingress proxy: localhost -> control, *.localhost -> apache. */
+  /** Base URI of the in-process host-router: localhost -> ingress, *.localhost -> apache. */
   proxyBase: string;
   /** Pre-seeded fixture tenants for the Apache matrix. */
   tenantA: Tenant;
@@ -38,14 +48,16 @@ export interface Stack {
 }
 
 /**
- * A stand-in for the production ingress: route by Host — `localhost` to the
- * control plane, `<label>.localhost` to Apache — preserving the Host header so
- * Apache's vhost resolves the docroot. Bound to ::1 (where *.localhost resolves).
+ * Host router for the CLI: route by Host — `localhost` to the real ingress
+ * container, `<label>.localhost` to Apache — preserving the Host header so
+ * Apache's vhost resolves the docroot. The control plane is no longer reachable
+ * directly; the localhost hop now goes through the ingress, so CLI traffic
+ * exercises the production front door. Bound to ::1 (where *.localhost resolves).
  */
 function startProxy(): http.Server {
   const proxy = http.createServer((req, res) => {
     const hostname = (req.headers.host ?? '').split(':')[0] ?? '';
-    const port = hostname === 'localhost' ? CONTROL_PORT : APACHE_PORT;
+    const port = hostname === 'localhost' ? INGRESS_PORT : APACHE_PORT;
     const upstream = http.request(
       { host: '127.0.0.1', port, method: req.method, path: req.url, headers: req.headers },
       (upstreamRes) => {
@@ -138,28 +150,44 @@ export default async function setup(project: TestProject): Promise<() => void> {
     PLANDROP_DATA: dataDir,
     PLANDROP_APACHE_PORT: String(APACHE_PORT),
     PLANDROP_CONTROL_PORT: String(CONTROL_PORT),
+    PLANDROP_INGRESS_PORT: String(INGRESS_PORT),
     PLANDROP_UID: String(uid),
     PLANDROP_GID: String(gid),
   };
 
   // dist/server.js must exist for the control image build.
   execFileSync('pnpm', ['run', 'build'], { cwd: pkgRoot, stdio: 'pipe' });
-  compose(['up', '-d', '--build', 'apache', 'control'], env);
+  // All three containers: ingress seeds the theme volume + proxies /api to the
+  // (unpublished) control plane; apache serves tenants + the shared /.plandrop.
+  compose(['up', '-d', '--build', 'ingress', 'apache', 'control'], env);
 
   await waitFor(
     'apache',
     async () => (await probe(APACHE_PORT, '/index.html', `${TENANT_A.label}.${DOMAIN}`)) === 200,
     60_000,
   );
-  // Any HTTP response means the control plane is listening (GET / -> 404).
-  await waitFor('control', async () => (await probe(CONTROL_PORT, '/', DOMAIN)) > 0, 60_000);
+  // Ingress serving the seeded starter means the theme volume is populated.
+  await waitFor(
+    'ingress',
+    async () => (await probe(INGRESS_PORT, '/.plandrop/bootstrap5/template.html', DOMAIN)) === 200,
+    60_000,
+  );
+  // The control plane is reachable only via the ingress proxy; a 200 from
+  // /api/templates proves both the proxy hop and the control plane are up.
+  await waitFor(
+    'control (via ingress)',
+    async () => (await probe(INGRESS_PORT, '/api/templates', DOMAIN)) === 200,
+    60_000,
+  );
 
   const proxy = startProxy();
   await waitFor('proxy', async () => (await probe(PROXY_PORT, '/', 'localhost', '::1')) > 0, 10_000);
 
   project.provide('stack', {
     apachePort: APACHE_PORT,
-    controlPort: CONTROL_PORT,
+    // Control API calls route through the ingress (control is unpublished).
+    controlPort: INGRESS_PORT,
+    ingressPort: INGRESS_PORT,
     domain: DOMAIN,
     dataDir,
     authFile,
