@@ -3,7 +3,9 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/**'] },
+  // dist/** is build output; templates/** is browser/seeded content (vendored
+  // CSS + browser JS assets), not application source.
+  { ignores: ['dist/**', 'templates/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

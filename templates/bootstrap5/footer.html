@@ -1,0 +1,23 @@
+  </main>
+  <footer class="container py-4 border-top text-body-secondary small">
+    <p class="mb-1">
+      Built with <a href="https://getbootstrap.com/" class="link-secondary">Bootstrap</a>
+      (MIT) and served by <a href="https://plandrop.dev/" class="link-secondary">plandrop</a>.
+    </p>
+  </footer>
+  <!-- Theme toggle. Delegated on the document so it survives the self-update
+       <body> swap; the chosen theme lives on <html>, which the swap never
+       touches. No external dependency beyond Bootstrap's data-bs-theme. -->
+  <script>
+    document.addEventListener('click', function (event) {
+      var trigger = event.target.closest('[data-bs-theme-toggle]');
+      if (!trigger) {
+        return;
+      }
+      var root = document.documentElement;
+      var next = root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-bs-theme', next);
+    });
+  </script>
+</body>
+</html>
