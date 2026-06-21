@@ -3,11 +3,12 @@ import { DomainError, resolveDomain } from '../domain';
 import { dotfileExists, writeDotfile } from '../dotfile';
 import { controlUrl, hostUrl } from '../endpoint';
 import { promptLine } from '../prompt';
+import { DEFAULT_ALIAS } from '../templates';
 import type { Dispatch } from '../dispatch';
 import type { CreateResponse } from '../types';
 
 export async function run(dispatch: Dispatch): Promise<number> {
-  const { force, domain: domainFlag } = parseFlags(dispatch.params);
+  const { force, domain: domainFlag, template } = parseFlags(dispatch.params);
   const cwd = process.cwd();
 
   if (dotfileExists(cwd) && !force) {
@@ -41,8 +42,15 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 1;
   }
 
-  // Only written on success, so a failed create never leaves a dotfile behind.
-  const path = writeDotfile(cwd, { domain, host: created.host, passphrase: created.passphrase });
+  // The template is stored as-is (the `default` alias when no flag is given) and
+  // resolved to a concrete name at `newdoc` time, so later default drift never
+  // breaks a doc. Only written on success, so a failed create leaves no dotfile.
+  const path = writeDotfile(cwd, {
+    domain,
+    host: created.host,
+    passphrase: created.passphrase,
+    template: template ?? DEFAULT_ALIAS,
+  });
   process.stdout.write(`created ${hostUrl(domain, created.host)}\n`);
   process.stdout.write(`wrote ${path} (mode 0600) — it holds your passphrase; don't commit it\n`);
   return 0;
@@ -60,9 +68,16 @@ async function createHost(base: string): Promise<CreateResponse> {
   return { host: body.host, passphrase: body.passphrase };
 }
 
-function parseFlags(params: readonly string[]): { force: boolean; domain: string | undefined } {
+interface CreateFlags {
+  force: boolean;
+  domain: string | undefined;
+  template: string | undefined;
+}
+
+function parseFlags(params: readonly string[]): CreateFlags {
   let force = false;
   let domain: string | undefined;
+  let template: string | undefined;
   for (let i = 0; i < params.length; i += 1) {
     const param = params[i];
     if (param === '--force') {
@@ -72,7 +87,12 @@ function parseFlags(params: readonly string[]): { force: boolean; domain: string
       i += 1;
     } else if (param?.startsWith('--domain=')) {
       domain = param.slice('--domain='.length);
+    } else if (param === '--template') {
+      template = params[i + 1];
+      i += 1;
+    } else if (param?.startsWith('--template=')) {
+      template = param.slice('--template='.length);
     }
   }
-  return { force, domain };
+  return { force, domain, template };
 }

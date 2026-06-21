@@ -30,6 +30,7 @@ interface Dotfile {
   domain: string;
   host: string;
   passphrase: string;
+  template?: string;
 }
 
 function readDotfile(): Dotfile {
@@ -87,5 +88,18 @@ describe('client create', () => {
     const closed = runCli(['create'], { cwd, env: env(), input: '' });
     expect(closed.status).not.toBe(0);
     expect(existsSync(join(cwd, '.plandrop'))).toBe(false);
+  });
+
+  it('stores the default alias in the dotfile when no --template flag', () => {
+    expect(runCli(['create', '--domain', controlAddr], { cwd, env: env() }).status).toBe(0);
+    expect(readDotfile().template).toBe('default');
+  });
+
+  it('stores the chosen template name with --template', () => {
+    expect(
+      runCli(['create', '--domain', controlAddr, '--template', 'darkly'], { cwd, env: env() })
+        .status,
+    ).toBe(0);
+    expect(readDotfile().template).toBe('darkly');
   });
 });
