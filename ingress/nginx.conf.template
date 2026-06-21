@@ -1,0 +1,44 @@
+# plandrop ingress — the only publicly-reachable control entrypoint. Serves the
+# template static files itself (the control plane serves zero static bytes) and
+# reverse-proxies the dynamic API to the control plane on the internal network.
+# Ships without auth in this phase (the future security chokepoint lives here).
+worker_processes auto;
+error_log /dev/stderr warn;
+pid /tmp/nginx.pid;
+
+events { worker_connections 1024; }
+
+http {
+  include       /etc/nginx/mime.types;
+  default_type  application/octet-stream;
+  access_log    /dev/stdout;
+
+  # Keep runtime state writable for a non-root run.
+  client_body_temp_path /tmp/client_body;
+  proxy_temp_path       /tmp/proxy;
+  fastcgi_temp_path     /tmp/fastcgi;
+  uwsgi_temp_path       /tmp/uwsgi;
+  scgi_temp_path        /tmp/scgi;
+
+  # The control plane address on the internal Docker network (set by the
+  # entrypoint env). nginx resolves it at startup.
+  server {
+    listen ${PLANDROP_INGRESS_PORT};
+    server_name _;
+
+    # Static template assets from the shared theme volume. A starter is fetched
+    # as /.plandrop/<name>/template.html; assets sit alongside.
+    location /.plandrop/ {
+      alias ${PLANDROP_THEME_DIR}/;
+      autoindex off;
+    }
+
+    # Dynamic API: proxied to the control plane (metadata only).
+    location /api/ {
+      proxy_pass http://${PLANDROP_CONTROL_HOST}:${PLANDROP_CONTROL_PORT};
+      proxy_set_header Host $host;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+  }
+}

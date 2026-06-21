@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1
+
+# The plandrop ingress: a thin nginx image that bundles the built-in templates,
+# seeds the shared theme volume fresh on boot, serves /.plandrop/* statically,
+# and reverse-proxies /api/* to the control plane. Coupled to and versioned with
+# the control plane as one managed unit.
+FROM nginx:alpine
+
+# envsubst (gettext) renders the config template at boot; it ships in the base.
+COPY ingress/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY ingress/seed.sh /usr/local/bin/seed.sh
+# Built-in templates baked in; the entrypoint seeds them to the theme volume.
+COPY templates/ /usr/share/plandrop/templates/
+
+RUN chmod +x /usr/local/bin/seed.sh
+
+# Seed the theme volume fresh, then exec nginx (static serving + reverse proxy).
+ENTRYPOINT ["/usr/local/bin/seed.sh"]
