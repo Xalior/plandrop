@@ -26,8 +26,8 @@ clean clone with no host toolchain, on x86-64 or arm64.
 
 ## Docs
 
-- [Using the client](docs/usage.html) — the `npx plandrop` CLI.
-- [Self-hosting the stack](docs/setup.html) — Docker Compose, configuration, and the
+- [Using the client](docs/usage.md) — the `npx plandrop` CLI.
+- [Self-hosting the stack](docs/setup.md) — Docker Compose, configuration, and the
   reverse-proxy / TLS / DNS it needs in front.
 
 ## License
