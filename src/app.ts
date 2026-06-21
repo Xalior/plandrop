@@ -1,4 +1,5 @@
 import { run as create } from './commands/create';
+import { run as newdoc } from './commands/newdoc';
 import { run as remove } from './commands/remove';
 import { run as rotate } from './commands/rotate';
 import { run as upload } from './commands/upload';
@@ -12,6 +13,7 @@ Usage:
 
 Commands:
   create    mint a new host (hostname + passphrase)
+  newdoc    scaffold a template-based HTML document locally
   upload    push a file or directory over authed WebDAV
   rotate    change the host passphrase
   remove    delete the host
@@ -21,6 +23,7 @@ type Handler = (dispatch: Dispatch) => number | Promise<number>;
 
 const HANDLERS: Record<CommandName, Handler> = {
   create,
+  newdoc,
   upload,
   rotate,
   remove,
