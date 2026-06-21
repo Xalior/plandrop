@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, parse } from 'node:path';
 
 export const DOTFILE_NAME = '.plandrop';
@@ -48,10 +48,12 @@ export function readDotfile(path: string): Dotfile {
   return { domain: parsed.domain, host: parsed.host, passphrase: parsed.passphrase };
 }
 
-/** Write `.plandrop` into `dir`, mode 0600 (enforced even when overwriting). */
+/** Write `.plandrop` into `dir`, mode 0600, atomically (temp file + rename). */
 export function writeDotfile(dir: string, data: Dotfile): string {
   const path = join(dir, DOTFILE_NAME);
-  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
-  chmodSync(path, 0o600);
+  const tmp = join(dir, `${DOTFILE_NAME}.tmp-${process.pid}`);
+  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+  chmodSync(tmp, 0o600);
+  renameSync(tmp, path);
   return path;
 }
