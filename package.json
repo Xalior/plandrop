@@ -4,6 +4,7 @@
   "description": "Push a static HTML document to a unique, secure hostname on your network and share the link.",
   "type": "module",
   "license": "Apache-2.0",
+  "packageManager": "pnpm@10.18.1",
   "bin": {
     "plandrop": "dist/cli.js"
   },

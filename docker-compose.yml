@@ -1,7 +1,9 @@
 # plandrop stack. The Apache mod_dav host serves *.<domain> read-only and
-# accepts per-tenant authed WebDAV writes. The Phase 3 control plane service is
-# added later. Ingress/TLS is out of scope and reused (NPM or any SSL/HTTP
-# ingress in front); these services speak plain HTTP behind it.
+# accepts per-tenant authed WebDAV writes; the control plane mints/manages hosts.
+# Ingress/TLS is out of scope and reused (NPM or any SSL/HTTP ingress in front);
+# these services speak plain HTTP behind it. The bind address is host-specific
+# (PLANDROP_BIND in .env): 127.0.0.1 for local dev, the docker-bridge or tailnet
+# IP where a front proxy can reach it in deployment.
 services:
   apache:
     image: httpd:2.4
@@ -14,9 +16,9 @@ services:
       # Apache interpolates ${PLANDROP_APACHE_PORT} in httpd.conf (Listen + vhost).
       PLANDROP_APACHE_PORT: "${PLANDROP_APACHE_PORT:-8080}"
     ports:
-      # Plain HTTP, loopback only — TLS/ingress terminate in front. Host and
-      # container share the configured port.
-      - "127.0.0.1:${PLANDROP_APACHE_PORT:-8080}:${PLANDROP_APACHE_PORT:-8080}"
+      # Plain HTTP — TLS/ingress terminate in front. Host and container share
+      # the configured port; the bind address is host-specific (see .env).
+      - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_APACHE_PORT:-8080}:${PLANDROP_APACHE_PORT:-8080}"
     volumes:
       - "./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro"
       # Per-tenant content; DAV writes land here (read-write).
@@ -38,9 +40,20 @@ services:
       PLANDROP_AUTH_FILE: /srv/auth/htpasswd
     ports:
       # Reverse proxy routes the parent domain here, *.domain to apache
-      # (ingress out of scope). Loopback plain HTTP only.
-      - "127.0.0.1:${PLANDROP_CONTROL_PORT:-8081}:${PLANDROP_CONTROL_PORT:-8081}"
+      # (ingress out of scope). Bind address is host-specific (see .env).
+      - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_CONTROL_PORT:-8081}:${PLANDROP_CONTROL_PORT:-8081}"
     volumes:
       # Read-write: the control plane creates host dirs and writes htpasswd.
       - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth"
+    healthcheck:
+      # node:24 ships a global fetch; any HTTP response means it is listening.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:'+process.env.PLANDROP_CONTROL_PORT).then(()=>process.exit(0),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
