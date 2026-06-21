@@ -20,8 +20,11 @@ http {
   uwsgi_temp_path       /tmp/uwsgi;
   scgi_temp_path        /tmp/scgi;
 
-  # The control plane address on the internal Docker network (set by the
-  # entrypoint env). nginx resolves it at startup.
+  # Docker's embedded DNS. Resolving the control upstream through it (with a
+  # variable proxy_pass below) defers name resolution to request time, so the
+  # ingress starts even if the control container is not yet registered in DNS.
+  resolver 127.0.0.11 ipv6=off valid=10s;
+
   server {
     listen ${PLANDROP_INGRESS_PORT};
     server_name _;
@@ -33,9 +36,12 @@ http {
       autoindex off;
     }
 
-    # Dynamic API: proxied to the control plane (metadata only).
+    # Dynamic API: proxied to the control plane (metadata only). The upstream is
+    # held in a variable so nginx resolves it per request (see resolver above),
+    # not at startup — the control container need not be up when nginx boots.
     location /api/ {
-      proxy_pass http://${PLANDROP_CONTROL_HOST}:${PLANDROP_CONTROL_PORT};
+      set $control "${PLANDROP_CONTROL_HOST}:${PLANDROP_CONTROL_PORT}";
+      proxy_pass http://$control;
       proxy_set_header Host $host;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_set_header X-Forwarded-Proto $scheme;
