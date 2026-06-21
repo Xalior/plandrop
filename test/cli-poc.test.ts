@@ -19,7 +19,8 @@ let packDir: string;
 let tarball: string;
 
 beforeAll(() => {
-  execFileSync('pnpm', ['run', 'build'], { cwd: pkgRoot, stdio: 'pipe' });
+  // dist/ is built once by the global setup; rebuilding here (tsup clean:true)
+  // would race other workers that spawn dist/cli.js.
   packDir = mkdtempSync(join(tmpdir(), 'plandrop-pack-'));
   execFileSync('pnpm', ['pack', '--pack-destination', packDir], {
     cwd: pkgRoot,
@@ -44,13 +45,14 @@ interface RunResult {
   stderr: string;
 }
 
-function runNpx(args: string[]): RunResult {
+function runNpx(args: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}): RunResult {
   // Install the packed tarball into npx's cache and run its `plandrop` bin.
   // The `-p <tarball> <bin>` form is required for an absolute tarball path; a
   // bare `npx <abs-path.tgz>` is misread as a command to exec, not a package.
   try {
     const stdout = execFileSync('npx', ['--yes', '-p', tarball, 'plandrop', ...args], {
-      cwd: pkgRoot,
+      cwd: opts.cwd ?? pkgRoot,
+      env: opts.env ?? process.env,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -79,23 +81,28 @@ describe('build output', () => {
 });
 
 describe('npx invocation', () => {
-  it('create prints the stub and exits 0', () => {
-    const result = runNpx(['create']);
-    expect(result.status).toBe(0);
-    expect(result.stdout).toMatch(/would create/i);
-    expect(result.stdout).toMatch(/hash source: dotfile/);
-  });
-
-  it('a >= 8-char hash before the command takes the override path', () => {
-    const result = runNpx(['abcdef123456', 'create']);
-    expect(result.status).toBe(0);
-    expect(result.stdout).toMatch(/hash source: override \(abcdef123456\)/);
-  });
-
   it('an unknown command exits non-zero with usage on stderr', () => {
     const result = runNpx(['frobnic']);
     expect(result.status).not.toBe(0);
     expect(result.stderr).toMatch(/Usage:/);
+  });
+
+  it('create with no domain and closed stdin fails cleanly', () => {
+    // Isolated config + cwd + closed stdin (stdio ignore) means no domain can
+    // be resolved — a network-free real error, not a stub.
+    const cwd = mkdtempSync(join(tmpdir(), 'plandrop-run-'));
+    const cfg = mkdtempSync(join(tmpdir(), 'plandrop-cfg-'));
+    try {
+      const result = runNpx(['create'], {
+        cwd,
+        env: { ...process.env, XDG_CONFIG_HOME: cfg, PLANDROP_DOMAIN: '' },
+      });
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toMatch(/domain/i);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+      rmSync(cfg, { recursive: true, force: true });
+    }
   });
 });
 

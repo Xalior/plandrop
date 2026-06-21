@@ -35,15 +35,16 @@ describe('parseArgs', () => {
 });
 
 describe('main', () => {
-  it.each([...COMMANDS])('runs %s and exits 0', (command) => {
+  // `create` is a live command (network); the still-stubbed commands stay here.
+  it.each(['upload', 'rotate', 'remove'] as const)('runs %s and exits 0', async (command) => {
     const out = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
-    expect(main([command])).toBe(0);
+    expect(await main([command])).toBe(0);
     out.mockRestore();
   });
 
-  it('exits non-zero with usage text on an unknown command', () => {
+  it('exits non-zero with usage text on an unknown command', async () => {
     const err = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
-    const code = main(['frobnic']);
+    const code = await main(['frobnic']);
     const written = err.mock.calls.map((call) => String(call[0])).join('');
     err.mockRestore();
     expect(code).toBe(2);
