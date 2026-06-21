@@ -41,41 +41,52 @@ function writeUserConfig(domain: string): string {
 }
 
 describe('resolveDomain precedence', () => {
-  it('prefers the flag over everything else', async () => {
+  it('prefers the flag over everything else (bare hostname -> https)', async () => {
     const domain = await resolveDomain(
       sources({
         flag: 'flag.example',
         env: { PLANDROP_DOMAIN: 'env.example' },
-        cwd: writeRepoDotfile('repo.example'),
-        configHome: writeUserConfig('user.example'),
+        cwd: writeRepoDotfile('https://repo.example'),
+        configHome: writeUserConfig('https://user.example'),
         prompt: () => Promise.resolve('prompt.example'),
       }),
     );
-    expect(domain).toBe('flag.example');
+    expect(domain).toBe('https://flag.example');
+  });
+
+  it('preserves an explicit http URI from the flag', async () => {
+    const domain = await resolveDomain(sources({ flag: 'http://localhost:8080' }));
+    expect(domain).toBe('http://localhost:8080');
   });
 
   it('falls to env when no flag', async () => {
     const domain = await resolveDomain(
-      sources({ env: { PLANDROP_DOMAIN: 'env.example' }, cwd: writeRepoDotfile('repo.example') }),
+      sources({
+        env: { PLANDROP_DOMAIN: 'env.example' },
+        cwd: writeRepoDotfile('https://repo.example'),
+      }),
     );
-    expect(domain).toBe('env.example');
+    expect(domain).toBe('https://env.example');
   });
 
   it('falls to the repo .plandrop over the user config', async () => {
     const domain = await resolveDomain(
-      sources({ cwd: writeRepoDotfile('repo.example'), configHome: writeUserConfig('user.example') }),
+      sources({
+        cwd: writeRepoDotfile('https://repo.example'),
+        configHome: writeUserConfig('https://user.example'),
+      }),
     );
-    expect(domain).toBe('repo.example');
+    expect(domain).toBe('https://repo.example');
   });
 
   it('falls to the user config when no flag/env/repo', async () => {
-    const domain = await resolveDomain(sources({ configHome: writeUserConfig('user.example') }));
-    expect(domain).toBe('user.example');
+    const domain = await resolveDomain(sources({ configHome: writeUserConfig('https://user.example') }));
+    expect(domain).toBe('https://user.example');
   });
 
   it('falls to the prompt as a last resort', async () => {
     const domain = await resolveDomain(sources({ prompt: () => Promise.resolve('prompt.example') }));
-    expect(domain).toBe('prompt.example');
+    expect(domain).toBe('https://prompt.example');
   });
 
   it('ignores a blank flag and an empty prompt, then errors', async () => {

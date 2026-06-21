@@ -1,6 +1,7 @@
 import { homedir } from 'node:os';
 import { DomainError, resolveDomain } from '../domain';
-import { dotfileExists, hostUrl, writeDotfile } from '../dotfile';
+import { dotfileExists, writeDotfile } from '../dotfile';
+import { controlUrl, hostUrl } from '../endpoint';
 import { promptLine } from '../prompt';
 import type { Dispatch } from '../dispatch';
 import type { CreateResponse } from '../types';
@@ -42,13 +43,13 @@ export async function run(dispatch: Dispatch): Promise<number> {
 
   // Only written on success, so a failed create never leaves a dotfile behind.
   const path = writeDotfile(cwd, { domain, host: created.host, passphrase: created.passphrase });
-  process.stdout.write(`created ${hostUrl(created.host, domain)}\n`);
+  process.stdout.write(`created ${hostUrl(domain, created.host)}\n`);
   process.stdout.write(`wrote ${path} (mode 0600) — it holds your passphrase; don't commit it\n`);
   return 0;
 }
 
-async function createHost(domain: string): Promise<CreateResponse> {
-  const res = await fetch(`http://${domain}/api/hosts`, { method: 'POST' });
+async function createHost(base: string): Promise<CreateResponse> {
+  const res = await fetch(controlUrl(base, '/api/hosts'), { method: 'POST' });
   if (!res.ok) {
     throw new Error(`control plane responded ${res.status}`);
   }

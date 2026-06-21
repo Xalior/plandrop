@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findDotfile, readDotfile } from './dotfile';
+import { normalizeBaseUri } from './endpoint';
 
 /** Thrown when no domain can be resolved and none can be prompted for. */
 export class DomainError extends Error {}
@@ -19,34 +20,29 @@ export interface DomainSources {
 }
 
 /**
- * Resolve the domain by precedence: --domain flag > PLANDROP_DOMAIN env >
- * repo config (nearest .plandrop) > per-user config (XDG) > prompt. With
+ * Resolve the base URI by precedence: --domain flag > PLANDROP_DOMAIN env >
+ * repo config (nearest .plandrop) > per-user config (XDG) > prompt. The result
+ * is normalized to a full base URI (bare hostnames default to https). With
  * nothing set and no input available, throws DomainError.
  */
 export async function resolveDomain(sources: DomainSources): Promise<string> {
-  const flag = clean(sources.flag);
-  if (flag !== undefined) {
-    return flag;
+  const raw =
+    clean(sources.flag) ??
+    clean(sources.env.PLANDROP_DOMAIN) ??
+    repoDomain(sources.cwd) ??
+    userDomain(sources.configHome, sources.home) ??
+    clean(await sources.prompt());
+
+  if (raw === undefined) {
+    throw new DomainError(
+      'no domain configured: pass --domain, set PLANDROP_DOMAIN, add it to a .plandrop or the user config, or provide it on stdin',
+    );
   }
-  const env = clean(sources.env.PLANDROP_DOMAIN);
-  if (env !== undefined) {
-    return env;
+  try {
+    return normalizeBaseUri(raw);
+  } catch {
+    throw new DomainError(`invalid domain or URI: ${raw}`);
   }
-  const repo = repoDomain(sources.cwd);
-  if (repo !== undefined) {
-    return repo;
-  }
-  const user = userDomain(sources.configHome, sources.home);
-  if (user !== undefined) {
-    return user;
-  }
-  const prompted = clean(await sources.prompt());
-  if (prompted !== undefined) {
-    return prompted;
-  }
-  throw new DomainError(
-    'no domain configured: pass --domain, set PLANDROP_DOMAIN, add it to a .plandrop or the user config, or provide it on stdin',
-  );
 }
 
 function repoDomain(cwd: string): string | undefined {

@@ -6,7 +6,7 @@ import { runCli } from './helpers/cli';
 import { httpRequest } from './helpers/http';
 
 const { controlPort, apachePort, domain } = inject('stack');
-const controlAddr = `127.0.0.1:${controlPort}`;
+const controlAddr = `http://127.0.0.1:${controlPort}`;
 
 let cwd: string;
 let configHome: string;
@@ -72,7 +72,7 @@ describe('client create', () => {
   });
 
   it('writes no dotfile when the control plane is unreachable', () => {
-    const result = runCli(['create', '--domain', '127.0.0.1:1'], { cwd, env: env() });
+    const result = runCli(['create', '--domain', 'http://127.0.0.1:1'], { cwd, env: env() });
     expect(result.status).not.toBe(0);
     expect(existsSync(join(cwd, '.plandrop'))).toBe(false);
   });

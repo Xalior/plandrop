@@ -4,8 +4,10 @@ import { dirname, join, parse } from 'node:path';
 export const DOTFILE_NAME = '.plandrop';
 
 /**
- * The per-location config + secret store. `host` is the bare label; the full
- * hostname is `host.domain`. Holds the passphrase, so it is written mode 0600.
+ * The per-location config + secret store. `domain` is the full base URI
+ * (scheme + host + optional port); `host` is the bare label (the served
+ * endpoint is `host` as a subdomain of the base). Holds the passphrase, so it
+ * is written mode 0600.
  */
 export interface Dotfile {
   domain: string;
@@ -52,9 +54,4 @@ export function writeDotfile(dir: string, data: Dotfile): string {
   writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
   chmodSync(path, 0o600);
   return path;
-}
-
-/** The shareable URL for a host served over plain HTTP behind the ingress. */
-export function hostUrl(host: string, domain: string): string {
-  return `http://${host}.${domain}/`;
 }

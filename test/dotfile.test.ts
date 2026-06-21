@@ -2,13 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  dotfileExists,
-  findDotfile,
-  hostUrl,
-  readDotfile,
-  writeDotfile,
-} from '../src/dotfile';
+import { dotfileExists, findDotfile, readDotfile, writeDotfile } from '../src/dotfile';
 
 let workdir: string;
 
@@ -20,7 +14,11 @@ afterEach(() => {
   rmSync(workdir, { recursive: true, force: true });
 });
 
-const sample = { domain: 'plandrop.test', host: 'abcdefghij234567', passphrase: 'pass1234pass1234pass12' };
+const sample = {
+  domain: 'https://plandrop.test',
+  host: 'abcdefghij234567',
+  passphrase: 'pass1234pass1234pass12',
+};
 
 describe('dotfile read/write', () => {
   it('writes mode 0600 with three fields and round-trips', () => {
@@ -54,11 +52,5 @@ describe('findDotfile walk-up', () => {
     const nested = join(workdir, 'a', 'b');
     mkdirSync(nested, { recursive: true });
     expect(findDotfile(nested)).toBeUndefined();
-  });
-});
-
-describe('hostUrl', () => {
-  it('formats the shareable URL as host.domain', () => {
-    expect(hostUrl('abc', 'plandrop.test')).toBe('http://abc.plandrop.test/');
   });
 });
