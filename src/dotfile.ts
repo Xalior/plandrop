@@ -13,6 +13,12 @@ export interface Dotfile {
   domain: string;
   host: string;
   passphrase: string;
+  /**
+   * The template this location defaults to, stored as-is (may be the `default`
+   * alias) and resolved to a concrete name at `newdoc` time. Optional — absent
+   * in dotfiles written before templates existed.
+   */
+  template?: string;
 }
 
 /** True if a `.plandrop` exists directly in `dir` (not walking up). */
@@ -41,11 +47,20 @@ export function readDotfile(path: string): Dotfile {
   if (
     typeof parsed.domain !== 'string' ||
     typeof parsed.host !== 'string' ||
-    typeof parsed.passphrase !== 'string'
+    typeof parsed.passphrase !== 'string' ||
+    (parsed.template !== undefined && typeof parsed.template !== 'string')
   ) {
     throw new Error(`malformed ${DOTFILE_NAME} at ${path}`);
   }
-  return { domain: parsed.domain, host: parsed.host, passphrase: parsed.passphrase };
+  const dotfile: Dotfile = {
+    domain: parsed.domain,
+    host: parsed.host,
+    passphrase: parsed.passphrase,
+  };
+  if (parsed.template !== undefined) {
+    dotfile.template = parsed.template;
+  }
+  return dotfile;
 }
 
 /** Write `.plandrop` into `dir`, mode 0600, atomically (temp file + rename). */

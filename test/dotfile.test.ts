@@ -38,6 +38,23 @@ describe('dotfile read/write', () => {
     writeFileSync(path, JSON.stringify({ domain: 'x' }));
     expect(() => readDotfile(path)).toThrow();
   });
+
+  it('round-trips the optional template field', () => {
+    const withTemplate = { ...sample, template: 'darkly' };
+    const path = writeDotfile(workdir, withTemplate);
+    expect(readDotfile(path)).toEqual(withTemplate);
+  });
+
+  it('reads a dotfile with no template field (backward compatible)', () => {
+    const path = writeDotfile(workdir, sample);
+    expect(readDotfile(path).template).toBeUndefined();
+  });
+
+  it('rejects a non-string template field', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ ...sample, template: 42 }));
+    expect(() => readDotfile(path)).toThrow();
+  });
 });
 
 describe('findDotfile walk-up', () => {
