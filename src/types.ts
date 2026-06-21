@@ -7,6 +7,11 @@ export interface CreateResponse {
   passphrase: string;
 }
 
+/** Response from the control plane's rotate endpoint: the new passphrase. */
+export interface RotateResponse {
+  passphrase: string;
+}
+
 /** Error payload shape returned by the control plane on failure. */
 export interface ApiError {
   error: string;
