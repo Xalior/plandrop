@@ -17,7 +17,9 @@ Commands:
   remove    delete the host
 `;
 
-const HANDLERS: Record<CommandName, (dispatch: Dispatch) => number> = {
+type Handler = (dispatch: Dispatch) => number | Promise<number>;
+
+const HANDLERS: Record<CommandName, Handler> = {
   create,
   upload,
   rotate,
@@ -25,7 +27,7 @@ const HANDLERS: Record<CommandName, (dispatch: Dispatch) => number> = {
 };
 
 /** Parse argv, route to the command handler, and return the process exit code. */
-export function main(argv: readonly string[]): number {
+export async function main(argv: readonly string[]): Promise<number> {
   let dispatch: Dispatch;
   try {
     dispatch = parseArgs(argv);
