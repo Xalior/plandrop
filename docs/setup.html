@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>plandrop — Self-hosting the stack</title>
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+  h1 { border-bottom: 2px solid #333; padding-bottom: .3rem; }
+  h2 { margin-top: 2rem; color: #333; }
+  h3 { margin-top: 1.4rem; color: #444; }
+  code { background: #f4f4f4; padding: .1rem .3rem; border-radius: .2rem; }
+  pre { background: #f4f4f4; padding: .8rem 1rem; border-radius: .4rem; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  a { color: #0366d6; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  th, td { border: 1px solid #ccc; padding: .4rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #f4f4f4; }
+  .note { background: #fff8e1; border-left: 4px solid #f0c000; padding: .6rem 1rem; border-radius: .3rem; margin-top: 1rem; }
+  .warn { background: #fdecea; border-left: 4px solid #d9534f; padding: .6rem 1rem; border-radius: .3rem; margin-top: 1rem; }
+  nav { font-size: .9rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<nav><a href="index.html">← plandrop docs</a> · <a href="usage.html">Using the client</a></nav>
+<h1>Self-hosting the plandrop stack</h1>
+
+<p>The stack is two containers sharing one data volume:</p>
+<table>
+  <tr><th>Service</th><th>Role</th></tr>
+  <tr><td><strong>apache</strong></td><td>A dockerised Apache <code>mod_dav</code> host. One dynamic vhost serves every subdomain: open reads, per-tenant authenticated WebDAV writes. Served content is purely static.</td></tr>
+  <tr><td><strong>control</strong></td><td>A small Node/Hono service: the only writer of the shared content tree and the credentials file. It mints hosts (<code>create</code>) and changes/removes them (<code>rotate</code>, <code>remove</code>).</td></tr>
+</table>
+
+<p>Both speak <strong>plain HTTP</strong>. TLS and routing are provided by a reverse proxy you put in front (see <a href="#ingress">Ingress</a>) — that part is deliberately out of scope and reusable.</p>
+
+<h2>Requirements</h2>
+<ul>
+  <li>Docker + Docker Compose. The control image builds entirely inside Docker (multistage), so <strong>no Node toolchain is needed on the host</strong> — it builds on x86-64 or arm64 alike.</li>
+  <li>A reverse proxy that terminates TLS and routes by hostname (e.g. Nginx Proxy Manager, Caddy, Traefik, plain nginx).</li>
+  <li>A domain you control, with a wildcard DNS record (see below).</li>
+</ul>
+
+<h2>Quick start</h2>
+<pre><code>git clone https://github.com/Xalior/plandrop.git
+cd plandrop
+cp .env.example .env       # then edit (see below)
+mkdir -p data/hosts data/auth
+docker compose up -d --build</code></pre>
+<p>This builds the control image, pulls Apache, and starts both services bound to the address in your <code>.env</code>.</p>
+
+<h2>Configuration (<code>.env</code>)</h2>
+<table>
+  <tr><th>Variable</th><th>Meaning</th><th>Example</th></tr>
+  <tr><td><code>PLANDROP_BIND</code></td><td>Host address the services bind on — the address your reverse proxy reaches them at. <code>127.0.0.1</code> for local; in a deployment, the docker-bridge gateway (<code>172.17.0.1</code>) or another proxy-reachable IP.</td><td><code>172.17.0.1</code></td></tr>
+  <tr><td><code>PLANDROP_APACHE_PORT</code></td><td>Plain-HTTP port for the static/WebDAV host (in-container and on the host, mapped 1:1). Unprivileged.</td><td><code>8080</code></td></tr>
+  <tr><td><code>PLANDROP_CONTROL_PORT</code></td><td>Plain-HTTP port for the control plane.</td><td><code>8081</code></td></tr>
+  <tr><td><code>PLANDROP_UID</code> / <code>PLANDROP_GID</code></td><td>The user/group the containers run as, and that the <code>data/</code> tree should be owned by. Writes land as this UID.</td><td><code>1000</code></td></tr>
+  <tr><td><code>PLANDROP_DATA</code></td><td>Host path to the data root (holds <code>hosts/</code> and <code>auth/</code>). Keep it out of version control.</td><td><code>./data</code></td></tr>
+</table>
+
+<h3>Data layout</h3>
+<pre><code>&lt;data&gt;/hosts/&lt;label&gt;/www/   per-tenant content (served docroot)
+&lt;data&gt;/auth/htpasswd          shared credentials (bcrypt, one line per host)</code></pre>
+<p>The control plane creates host directories and writes the credentials file; Apache reads the credentials and serves/accepts writes under <code>hosts/</code>. Both run as <code>PLANDROP_UID</code> so ownership is consistent.</p>
+
+<h2 id="ingress">Ingress (your reverse proxy)</h2>
+<p>Put a TLS-terminating reverse proxy in front and configure two routes against your domain — here <code>plandrop.example.com</code>:</p>
+<table>
+  <tr><th>Hostname</th><th>Proxy to</th><th>Purpose</th></tr>
+  <tr><td><code>plandrop.example.com</code> (apex)</td><td><code>http://&lt;PLANDROP_BIND&gt;:&lt;PLANDROP_CONTROL_PORT&gt;</code></td><td>control plane (create / rotate / remove)</td></tr>
+  <tr><td><code>*.plandrop.example.com</code></td><td><code>http://&lt;PLANDROP_BIND&gt;:&lt;PLANDROP_APACHE_PORT&gt;</code></td><td>static + WebDAV serving</td></tr>
+</table>
+<p>Three things the proxy must get right:</p>
+<ul>
+  <li><strong>Wildcard TLS certificate</strong> covering both <code>plandrop.example.com</code> and <code>*.plandrop.example.com</code>. A wildcard cert from Let's Encrypt requires the <strong>DNS-01</strong> challenge (HTTP-01 cannot issue wildcards).</li>
+  <li><strong>Wildcard DNS</strong>: <code>*.plandrop.example.com</code> must resolve to the proxy, so each minted host's subdomain is reachable.</li>
+  <li><strong>WebDAV methods + body size</strong>: the <code>*.</code> route must forward <code>PUT</code>, <code>MKCOL</code>, <code>PROPFIND</code>, and <code>DELETE</code> (not in a proxy's default method set), and allow a request body large enough for your documents (e.g. nginx <code>client_max_body_size</code>).</li>
+</ul>
+<p>The client connects to the apex for control calls and to <code>&lt;host&gt;.domain</code> for uploads/serving; the proxy's host routing does the rest. The control plane stores no domain and Apache keys off the host <em>label</em>, so the same stack works behind any domain.</p>
+
+<div class="warn"><strong>Security:</strong> <code>create</code> has <strong>no authentication</strong> — anyone who can reach the control plane can mint a host. Restrict who can reach the apex route (LAN-only, VPN, or a proxy access list). Per-host writes are always authenticated by the generated passphrase; reads are public by design.</div>
+
+<h2>Operating</h2>
+<table>
+  <tr><th>Task</th><th>Command (from the stack directory)</th></tr>
+  <tr><td>Update to the latest version</td><td><code>git pull && docker compose up -d --build</code></td></tr>
+  <tr><td>Restart</td><td><code>docker compose restart</code></td></tr>
+  <tr><td>Logs</td><td><code>docker compose logs -f</code></td></tr>
+  <tr><td>Stop</td><td><code>docker compose down</code> (data in <code>data/</code> persists)</td></tr>
+</table>
+<p>Back up the <code>data/</code> tree to preserve hosted content and credentials.</p>
+
+<h2>Verifying the stack (without the proxy)</h2>
+<p>You can exercise the backends directly with an explicit <code>Host</code> header before the proxy is in place:</p>
+<pre><code>BIND=172.17.0.1; A=8080; C=8081; D=plandrop.example.com
+# create
+read host pass &lt; &lt;(curl -s -X POST http://$BIND:$C/api/hosts \
+  | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d["host"],d["passphrase"])')
+# upload + read back
+curl -s -o /dev/null -w '%{http_code}\n' -X PUT -u "$host:$pass" \
+  -H "Host: $host.$D" --data '&lt;h1&gt;hello&lt;/h1&gt;' http://$BIND:$A/index.html   # 201
+curl -s -H "Host: $host.$D" http://$BIND:$A/                                  # &lt;h1&gt;hello&lt;/h1&gt;
+# remove
+curl -s -o /dev/null -w '%{http_code}\n' -X DELETE -u "$host:$pass" http://$BIND:$C/api/hosts/$host  # 204</code></pre>
+
+</body>
+</html>
