@@ -4,12 +4,17 @@ import { mkdir, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { generateLabel, generatePassphrase } from './generate';
 import { hasEntry, removeEntry, setEntry, verifyEntry } from './htpasswd';
+import { listTemplates } from './templates';
 import type { CreateResponse, RotateResponse } from './types';
 
 // The control plane is domain-free: it mints bare host labels and the shared
 // htpasswd. The client composes the full host.domain name from its own domain.
 const HOSTS_DIR = process.env.PLANDROP_HOSTS_DIR ?? '/srv/hosts';
 const AUTH_FILE = process.env.PLANDROP_AUTH_FILE ?? '/srv/auth/htpasswd';
+// The shared theme volume, mounted read-only. The control plane only enumerates
+// it (metadata, no static bytes); the ingress serves the files and Apache
+// serves them per-tenant under /.plandrop/.
+const THEME_DIR = process.env.PLANDROP_THEME_DIR ?? '/srv/templates';
 const PORT = Number(process.env.PLANDROP_CONTROL_PORT ?? '8081');
 const MAX_COLLISION_RETRIES = 10;
 
@@ -23,6 +28,12 @@ const LABEL_PATTERN = /^[a-z2-7]{16}$/;
 app.post('/api/hosts', async (c) => {
   const created = await createHost();
   return c.json(created, 201);
+});
+
+// Metadata only: enumerate the theme volume at request time so a freshly added
+// template folder is listed without a restart. Proxied through the ingress.
+app.get('/api/templates', async (c) => {
+  return c.json(await listTemplates(THEME_DIR));
 });
 
 // Manage an existing host: Basic host:passphrase, where the username must equal
