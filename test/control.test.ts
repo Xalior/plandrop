@@ -31,9 +31,7 @@ describe('control plane create', () => {
 
     expect(existsSync(join(dataDir, 'hosts', host, 'www'))).toBe(true);
 
-    const entry = readFileSync(authFile, 'utf8')
-      .split('\n')
-      .find((line) => line.startsWith(`${host}:`));
+    const entry = hostEntry(host);
     expect(entry).toBeDefined();
     const hash = entry?.slice(host.length + 1) ?? '';
     expect(hash.startsWith('$2b$')).toBe(true);
@@ -107,12 +105,15 @@ describe('control plane rotate', () => {
     expect((await davPut(host, newPass)).status).toBe(201);
   });
 
-  it('rejects a wrong passphrase with 401 and leaves htpasswd byte-identical', async () => {
+  it("rejects a wrong passphrase with 401 and leaves this host's entry unchanged", async () => {
     const { host, passphrase } = await create();
-    const before = readFileSync(authFile);
+    // Scope to THIS host's line only: sibling test files mutate other entries
+    // in the shared htpasswd concurrently, so whole-file byte-identity races.
+    const before = hostEntry(host);
+    expect(before).toBeDefined();
     const res = await rotate(host, 'not-the-passphrase');
     expect(res.status).toBe(401);
-    expect(readFileSync(authFile).equals(before)).toBe(true);
+    expect(hostEntry(host)).toBe(before);
     // The real passphrase still works.
     expect(await verifyStillValid(host, passphrase)).toBe(true);
   });
@@ -137,6 +138,14 @@ describe('control plane remove', () => {
     expect((await davPut(host, passphrase)).status).toBe(201);
   });
 });
+
+/** The shared htpasswd line for one host, or undefined. Scopes assertions to a
+ *  single tenant so they don't race sibling test files editing other entries. */
+function hostEntry(host: string): string | undefined {
+  return readFileSync(authFile, 'utf8')
+    .split('\n')
+    .find((line) => line.startsWith(`${host}:`));
+}
 
 async function verifyStillValid(host: string, pass: string): Promise<boolean> {
   return (await rotate(host, pass)).status === 200;
