@@ -18,11 +18,13 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:templates": "node scripts/gen-templates.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.0.0",
+    "bootswatch": "5.3.8",
     "eslint": "^10.5.0",
     "globals": "^17.6.0",
     "tsup": "^8.5.1",

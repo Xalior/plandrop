@@ -27,6 +27,9 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.0.0
+      bootswatch:
+        specifier: 5.3.8
+        version: 5.3.8
       eslint:
         specifier: ^10.5.0
         version: 10.5.0
@@ -671,6 +674,9 @@ packages:
   bcryptjs@3.0.3:
     resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
     hasBin: true
+
+  bootswatch@5.3.8:
+    resolution: {integrity: sha512-88mnH9tv+x6DV+scBxYFOpM4YSDVhyfEgbhqaEfvkHNctKI9qRcACxIP9nmBZ5mSeLXtsgax1VsRkUs1eWjlAQ==}
 
   brace-expansion@2.1.1:
     resolution: {integrity: sha512-WR1cURNjuvBLMZBMbqM0UoE+WAfdUcEV1ccD8PVBVOI+Z3ND4+SZbN8RsfT2bMuG1qwz5RFvPukSZm5fF2D5eA==}
@@ -1897,6 +1903,8 @@ snapshots:
   base-64@1.0.0: {}
 
   bcryptjs@3.0.3: {}
+
+  bootswatch@5.3.8: {}
 
   brace-expansion@2.1.1:
     dependencies:
