@@ -25,8 +25,15 @@
  * theme, so on light-oriented themes flipped to dark (cosmo, cerulean, …) it
  * sits as dim grey-on-dark. Repoint it at the theme's emphasis/border vars so
  * it reads at the same contrast the rest of the dark UI does.
+ *
+ * NOTE: several Bootswatch themes set the resting text with a *direct* `color`
+ * property (e.g. cerulean: `.btn-outline-secondary{color:#495057}`), which a
+ * `--bs-btn-color` variable override cannot beat. So we also set `color`
+ * directly here — at `[data-bs-theme=dark] .btn-outline-secondary` (0,2,0) it
+ * outranks the theme's `.btn-outline-secondary` (0,1,0), no !important needed.
  * ------------------------------------------------------------------ */
 [data-bs-theme=dark] .btn-outline-secondary {
+  color: var(--bs-emphasis-color);
   --bs-btn-color: var(--bs-emphasis-color);
   --bs-btn-border-color: var(--bs-border-color);
   --bs-btn-hover-color: var(--bs-body-bg);
