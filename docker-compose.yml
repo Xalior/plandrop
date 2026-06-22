@@ -4,6 +4,12 @@
 # these services speak plain HTTP behind it. The bind address is host-specific
 # (PLANDROP_BIND in .env): 127.0.0.1 for local dev, the docker-bridge or tailnet
 # IP where a front proxy can reach it in deployment.
+
+# Project name — the prefix for containers/networks/volumes (e.g.
+# plandrop-apache-1). Defaults to "plandrop" instead of the folder name;
+# override with COMPOSE_PROJECT_NAME in your .env.
+name: ${COMPOSE_PROJECT_NAME:-plandrop}
+
 services:
   # The only publicly-reachable control entrypoint. Bundles the built-in
   # templates, seeds the shared theme volume fresh on boot, serves /.plandrop/*
