@@ -36,11 +36,17 @@ export function generateTheme(theme, { skeletonDir, bootswatchDir, outDir }) {
   mkdirSync(join(dest, 'css'), { recursive: true });
   mkdirSync(join(dest, 'js'), { recursive: true });
 
-  // Header: rewrite the skeleton's asset paths to this theme's tree.
-  const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8').replaceAll(
-    `.plandrop/${SKELETON_NAME}/`,
-    `.plandrop/${theme}/`,
-  );
+  // Header: rewrite the skeleton's asset paths to this theme's tree, and
+  // retarget the per-template marker so theme-specific CSS fixes can scope by
+  // name. Both rewrites are anchored to their surrounding syntax (`.plandrop/…/`
+  // and `data-plandrop-template="…"`) so neither mangles other `bootstrap5`
+  // occurrences in the document.
+  const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8')
+    .replaceAll(`.plandrop/${SKELETON_NAME}/`, `.plandrop/${theme}/`)
+    .replaceAll(
+      `data-plandrop-template="${SKELETON_NAME}"`,
+      `data-plandrop-template="${theme}"`,
+    );
   writeFileSync(join(dest, 'header.html'), header);
 
   for (const part of VERBATIM) {
