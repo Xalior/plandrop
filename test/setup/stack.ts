@@ -47,34 +47,6 @@ export interface Stack {
   tenantB: Tenant;
 }
 
-/**
- * Host router for the CLI: route by Host — `localhost` to the real ingress
- * container, `<label>.localhost` to Apache — preserving the Host header so
- * Apache's vhost resolves the docroot. The control plane is no longer reachable
- * directly; the localhost hop now goes through the ingress, so CLI traffic
- * exercises the production front door. Bound to ::1 (where *.localhost resolves).
- */
-function startProxy(): http.Server {
-  const proxy = http.createServer((req, res) => {
-    const hostname = (req.headers.host ?? '').split(':')[0] ?? '';
-    const port = hostname === 'localhost' ? INGRESS_PORT : APACHE_PORT;
-    const upstream = http.request(
-      { host: '127.0.0.1', port, method: req.method, path: req.url, headers: req.headers },
-      (upstreamRes) => {
-        res.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
-        upstreamRes.pipe(res);
-      },
-    );
-    upstream.on('error', () => {
-      res.writeHead(502);
-      res.end('proxy error');
-    });
-    req.pipe(upstream);
-  });
-  proxy.listen(PROXY_PORT, '::1');
-  return proxy;
-}
-
 declare module 'vitest' {
   export interface ProvidedContext {
     stack: Stack;
@@ -151,15 +123,24 @@ export default async function setup(project: TestProject): Promise<() => void> {
     PLANDROP_APACHE_PORT: String(APACHE_PORT),
     PLANDROP_CONTROL_PORT: String(CONTROL_PORT),
     PLANDROP_INGRESS_PORT: String(INGRESS_PORT),
+    PLANDROP_PROXY_PORT: String(PROXY_PORT),
+    // The CLI's parent domain is `localhost`; *.localhost tenant hosts resolve
+    // to ::1, so publish the front proxy there (the parent localhost resolves to
+    // ::1 too, so both the bare and the tenant hops reach this one container).
+    PLANDROP_PROXY_DOMAIN: 'localhost',
+    PLANDROP_PROXY_BIND: '::1',
     PLANDROP_UID: String(uid),
     PLANDROP_GID: String(gid),
   };
 
   // dist/server.js must exist for the control image build.
   execFileSync('pnpm', ['run', 'build'], { cwd: pkgRoot, stdio: 'pipe' });
-  // All three containers: ingress seeds the theme volume + proxies /api to the
-  // (unpublished) control plane; apache serves tenants + the shared /.plandrop.
-  compose(['up', '-d', '--build', 'ingress', 'apache', 'control'], env);
+  // The full dev stack: ingress seeds the theme volume + proxies /api to the
+  // (unpublished) control plane; apache serves tenants + the shared /.plandrop;
+  // proxy (the `testproxy` profile) is the front proxy the CLI targets — the
+  // SAME nginx routing config manual browser testing uses. The control plane is
+  // brought up implicitly as ingress depends on it.
+  compose(['--profile', 'testproxy', 'up', '-d', '--build', 'ingress', 'apache', 'control', 'proxy'], env);
 
   await waitFor(
     'apache',
@@ -180,8 +161,13 @@ export default async function setup(project: TestProject): Promise<() => void> {
     60_000,
   );
 
-  const proxy = startProxy();
-  await waitFor('proxy', async () => (await probe(PROXY_PORT, '/', 'localhost', '::1')) > 0, 10_000);
+  // The front-proxy container shares the harness's nginx routing config. A
+  // response on the bare parent (localhost -> ingress hop) proves it is routing.
+  await waitFor(
+    'proxy',
+    async () => (await probe(PROXY_PORT, '/.plandrop/bootstrap5/template.html', 'localhost', '::1')) === 200,
+    30_000,
+  );
 
   project.provide('stack', {
     apachePort: APACHE_PORT,
@@ -197,9 +183,8 @@ export default async function setup(project: TestProject): Promise<() => void> {
   });
 
   return () => {
-    proxy.close();
     try {
-      compose(['down', '-v'], env);
+      compose(['--profile', 'testproxy', 'down', '-v'], env);
     } finally {
       rmSync(dataDir, { recursive: true, force: true });
     }
