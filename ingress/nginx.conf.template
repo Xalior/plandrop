@@ -29,6 +29,15 @@ http {
     listen ${PLANDROP_INGRESS_PORT};
     server_name _;
 
+    # Operator drop-in templates from the separate user mount, served namespaced
+    # under /.plandrop/user/. A longer prefix than /.plandrop/ below, so nginx's
+    # longest-match picks it for user templates (kept apart from the built-ins so
+    # a fresh seed never wipes them).
+    location /.plandrop/user/ {
+      alias ${PLANDROP_USER_THEME_DIR}/;
+      autoindex off;
+    }
+
     # Static template assets from the shared theme volume. A starter is fetched
     # as /.plandrop/<name>/template.html; assets sit alongside.
     location /.plandrop/ {

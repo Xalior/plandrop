@@ -16,6 +16,7 @@ set -eu
 SRC="${PLANDROP_TEMPLATE_SRC:-/usr/share/plandrop/templates}"
 export THEME_DIR="${PLANDROP_THEME_DIR:-/srv/templates}"
 export PLANDROP_THEME_DIR="$THEME_DIR"
+export PLANDROP_USER_THEME_DIR="${PLANDROP_USER_THEME_DIR:-/srv/user-templates}"
 export PLANDROP_INGRESS_PORT="${PLANDROP_INGRESS_PORT:-80}"
 export PLANDROP_CONTROL_HOST="${PLANDROP_CONTROL_HOST:-control}"
 export PLANDROP_CONTROL_PORT="${PLANDROP_CONTROL_PORT:-8081}"
@@ -35,7 +36,7 @@ for dir in "$SRC"/*/; do
 done
 
 # Render the nginx config from its template (nginx does not interpolate env).
-envsubst '${PLANDROP_INGRESS_PORT} ${PLANDROP_THEME_DIR} ${PLANDROP_CONTROL_HOST} ${PLANDROP_CONTROL_PORT}' \
+envsubst '${PLANDROP_INGRESS_PORT} ${PLANDROP_THEME_DIR} ${PLANDROP_USER_THEME_DIR} ${PLANDROP_CONTROL_HOST} ${PLANDROP_CONTROL_PORT}' \
   < /etc/nginx/nginx.conf.template > /tmp/nginx.conf
 
 exec nginx -c /tmp/nginx.conf -g 'daemon off;'
