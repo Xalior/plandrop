@@ -35,6 +35,21 @@ for dir in "$SRC"/*/; do
       "$THEME_DIR/$name/footer.html" > "$THEME_DIR/$name/template.html"
 done
 
+# Mirror the configured default theme's folder to .plandrop/default/ — the
+# autoindex chrome fallback. Apache's mod_rewrite serves default/header.html /
+# footer.html when a tenant has no local .header.html / .footer.html. An unknown
+# configured value falls back to bootstrap5 so the chrome always exists. The
+# header's asset links stay concrete (e.g. .plandrop/bootstrap5/...), which
+# Apache aliases, so the chrome's CSS resolves. No doc ever references default/.
+DEFAULT_TEMPLATE="${PLANDROP_DEFAULT_TEMPLATE:-}"
+if [ -z "$DEFAULT_TEMPLATE" ] || [ ! -d "$THEME_DIR/$DEFAULT_TEMPLATE" ]; then
+  if [ -n "$DEFAULT_TEMPLATE" ] && [ ! -d "$THEME_DIR/$DEFAULT_TEMPLATE" ]; then
+    echo "seed: PLANDROP_DEFAULT_TEMPLATE=$DEFAULT_TEMPLATE not found; using bootstrap5" >&2
+  fi
+  DEFAULT_TEMPLATE=bootstrap5
+fi
+cp -R "$THEME_DIR/$DEFAULT_TEMPLATE" "$THEME_DIR/default"
+
 # Render the nginx config from its template (nginx does not interpolate env).
 envsubst '${PLANDROP_INGRESS_PORT} ${PLANDROP_THEME_DIR} ${PLANDROP_USER_THEME_DIR} ${PLANDROP_CONTROL_HOST} ${PLANDROP_CONTROL_PORT}' \
   < /etc/nginx/nginx.conf.template > /tmp/nginx.conf
