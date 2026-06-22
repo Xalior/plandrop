@@ -62,18 +62,58 @@ export function requestedTemplate(
   return flag ?? dotfileTemplate ?? DEFAULT_ALIAS;
 }
 
-/** Enumerate template folders (each directory in the theme tree is a template). */
-export async function listTemplates(themeDir: string): Promise<TemplatesResponse> {
-  let names: string[];
+/**
+ * Resolve the operator-configured default to a concrete template that actually
+ * exists. An unknown/empty configured value falls back to `bootstrap5` (warning
+ * to stderr) so a typo in `PLANDROP_DEFAULT_TEMPLATE` never makes `/api/templates`
+ * advertise a default that `newdoc` can't fetch.
+ */
+export function resolveConfiguredDefault(
+  configured: string | undefined,
+  available: readonly string[],
+): string {
+  const wanted = configured && configured.length > 0 ? configured : DEFAULT_TEMPLATE;
+  if (available.includes(wanted)) {
+    return wanted;
+  }
+  if (wanted !== DEFAULT_TEMPLATE) {
+    process.stderr.write(
+      `PLANDROP_DEFAULT_TEMPLATE="${wanted}" names no available template; falling back to ${DEFAULT_TEMPLATE}\n`,
+    );
+  }
+  return DEFAULT_TEMPLATE;
+}
+
+/**
+ * Enumerate template folders. The built-in theme tree contributes its top-level
+ * directories directly; the optional separate user mount contributes its
+ * directories namespaced `user/<name>` (kept apart so the fresh-seed of the
+ * built-ins never wipes operator templates). The reported `default` is the
+ * operator-configured one, validated against the available set.
+ */
+export async function listTemplates(
+  themeDir: string,
+  options: { userDir?: string; configuredDefault?: string } = {},
+): Promise<TemplatesResponse> {
+  // `default/` is the seed-copied autoindex-chrome mirror, not a selectable
+  // template — exclude it so the list never advertises the `default` alias as a
+  // concrete name (docs always carry concrete names).
+  const builtins = (await readTemplateDirs(themeDir)).filter((name) => name !== DEFAULT_ALIAS);
+  const userNames = options.userDir ? await readTemplateDirs(options.userDir) : [];
+  const names = [...builtins, ...userNames.map((name) => `user/${name}`)];
+  const defaultTemplate = resolveConfiguredDefault(options.configuredDefault, names);
+  return buildTemplatesResponse(names, defaultTemplate);
+}
+
+/** The directory names directly under `dir`, or [] if it does not exist. */
+async function readTemplateDirs(dir: string): Promise<string[]> {
   try {
-    const dirents = await readdir(themeDir, { withFileTypes: true });
-    names = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name);
+    const dirents = await readdir(dir, { withFileTypes: true });
+    return dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      names = [];
-    } else {
-      throw error;
+      return [];
     }
+    throw error;
   }
-  return buildTemplatesResponse(names);
 }

@@ -15,6 +15,13 @@ const AUTH_FILE = process.env.PLANDROP_AUTH_FILE ?? '/srv/auth/htpasswd';
 // it (metadata, no static bytes); the ingress serves the files and Apache
 // serves them per-tenant under /.plandrop/.
 const THEME_DIR = process.env.PLANDROP_THEME_DIR ?? '/srv/templates';
+// The separate operator user-templates mount, read-only. Enumerated alongside
+// the built-ins and reported namespaced `user/<name>`. Kept apart from the
+// fresh-seeded built-in volume so a re-seed never wipes it.
+const USER_THEME_DIR = process.env.PLANDROP_USER_THEME_DIR ?? '/srv/user-templates';
+// What the `default` alias resolves to, operator-configurable. Validated against
+// the available set at request time (an unknown value falls back to bootstrap5).
+const DEFAULT_TEMPLATE = process.env.PLANDROP_DEFAULT_TEMPLATE;
 const PORT = Number(process.env.PLANDROP_CONTROL_PORT ?? '8081');
 const MAX_COLLISION_RETRIES = 10;
 
@@ -33,7 +40,12 @@ app.post('/api/hosts', async (c) => {
 // Metadata only: enumerate the theme volume at request time so a freshly added
 // template folder is listed without a restart. Proxied through the ingress.
 app.get('/api/templates', async (c) => {
-  return c.json(await listTemplates(THEME_DIR));
+  return c.json(
+    await listTemplates(THEME_DIR, {
+      userDir: USER_THEME_DIR,
+      configuredDefault: DEFAULT_TEMPLATE,
+    }),
+  );
 });
 
 // Manage an existing host: Basic host:passphrase, where the username must equal

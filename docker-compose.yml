@@ -23,14 +23,20 @@ services:
     environment:
       PLANDROP_INGRESS_PORT: "${PLANDROP_INGRESS_PORT:-8082}"
       PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_USER_THEME_DIR: /srv/user-templates
       PLANDROP_CONTROL_HOST: control
       PLANDROP_CONTROL_PORT: "${PLANDROP_CONTROL_PORT:-8081}"
+      # Which built-in theme's folder the seed mirrors to .plandrop/default/ for
+      # the autoindex chrome fallback (defaults to bootstrap5 when unset).
+      PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
     ports:
       # Plain HTTP — TLS/ingress terminate in front. The CLI targets this port.
       - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_INGRESS_PORT:-8082}:${PLANDROP_INGRESS_PORT:-8082}"
     volumes:
       # Read-write: the entrypoint seeds the built-in templates here on boot.
       - "plandrop-templates:/srv/templates"
+      # Operator drop-in templates, read-only; served at /.plandrop/user/.
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
     depends_on:
       - control
     healthcheck:
@@ -65,6 +71,8 @@ services:
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
       # Shared template assets, read-only; served per-tenant under /.plandrop/.
       - "plandrop-templates:/srv/templates:ro"
+      # Operator drop-in templates, read-only; served at /.plandrop/user/.
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
     depends_on:
       ingress:
         condition: service_healthy
@@ -114,6 +122,9 @@ services:
       PLANDROP_HOSTS_DIR: /srv/hosts
       PLANDROP_AUTH_FILE: /srv/auth/htpasswd
       PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_USER_THEME_DIR: /srv/user-templates
+      # What the `default` alias resolves to (defaults to bootstrap5 when unset).
+      PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
     # No published port: the control plane is internal-only, reachable only via
     # the ingress on the Docker network. It is never exposed to the public again.
     expose:
@@ -124,6 +135,9 @@ services:
       - "${PLANDROP_DATA:-./data}/auth:/srv/auth"
       # Shared template assets, read-only; enumerated for /api/templates.
       - "plandrop-templates:/srv/templates:ro"
+      # Operator drop-in templates, read-only; enumerated as user/<name>. A
+      # separate bind from the seeded built-in volume so a re-seed never wipes it.
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
     healthcheck:
       # node:24 ships a global fetch; any HTTP response means it is listening.
       test:
