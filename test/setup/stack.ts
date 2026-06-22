@@ -21,6 +21,10 @@ const INGRESS_PORT = 8791;
 const PROJECT = 'plandrop-stack-test';
 const TENANT_A = { label: 'tenanta', pass: 'passphraseaaaa' };
 const TENANT_B = { label: 'tenantb', pass: 'passphrasebbbb' };
+// A user-template fixture dropped into the operator user mount (separate from the
+// fresh-seeded built-in volume). Proves enumeration as user/<name>, static
+// serving, and that it survives an ingress re-seed.
+const USER_TEMPLATE = 'house';
 
 export interface Tenant {
   label: string;
@@ -45,6 +49,8 @@ export interface Stack {
   /** Pre-seeded fixture tenants for the Apache matrix. */
   tenantA: Tenant;
   tenantB: Tenant;
+  /** Name of the operator user-template fixture (listed as user/<name>). */
+  userTemplate: string;
 }
 
 declare module 'vitest' {
@@ -113,6 +119,18 @@ export default async function setup(project: TestProject): Promise<() => void> {
     [TENANT_A, TENANT_B].map((t) => `${t.label}:${hashSync(t.pass, 10)}`).join('\n') + '\n';
   writeFileSync(authFile, htpasswd);
 
+  // Operator user-templates mount (separate from the seeded built-in volume).
+  // A single fixture template with a self-identifying template.html so tests can
+  // assert enumeration (user/<name>), static serving, and survival across a
+  // re-seed. It lives under the data dir, bind-mounted read-only via
+  // PLANDROP_USER_TEMPLATES below.
+  const userTemplatesDir = join(dataDir, 'user-templates');
+  mkdirSync(join(userTemplatesDir, USER_TEMPLATE), { recursive: true });
+  writeFileSync(
+    join(userTemplatesDir, USER_TEMPLATE, 'template.html'),
+    `<!DOCTYPE html>\n<html><head><title>house</title></head>\n<body><main>user template ${USER_TEMPLATE}</main></body></html>\n`,
+  );
+
   // Run the containers as this host user so writes land as an owner of the
   // host-created data tree.
   const uid = process.getuid?.() ?? 1000;
@@ -124,6 +142,7 @@ export default async function setup(project: TestProject): Promise<() => void> {
     PLANDROP_CONTROL_PORT: String(CONTROL_PORT),
     PLANDROP_INGRESS_PORT: String(INGRESS_PORT),
     PLANDROP_PROXY_PORT: String(PROXY_PORT),
+    PLANDROP_USER_TEMPLATES: userTemplatesDir,
     // The CLI's parent domain is `localhost`; *.localhost tenant hosts resolve
     // to ::1, so publish the front proxy there (the parent localhost resolves to
     // ::1 too, so both the bare and the tenant hops reach this one container).
@@ -180,6 +199,7 @@ export default async function setup(project: TestProject): Promise<() => void> {
     proxyBase: `http://localhost:${PROXY_PORT}`,
     tenantA: TENANT_A,
     tenantB: TENANT_B,
+    userTemplate: USER_TEMPLATE,
   });
 
   return () => {

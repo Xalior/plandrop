@@ -45,8 +45,11 @@ describe('ingress /api/templates (proxied, dynamic)', () => {
     for (const theme of expected) {
       expect(body.templates).toContain(theme);
     }
-    // The full set is the Bootswatch themes plus the bootstrap5 skeleton.
-    expect(body.templates).toHaveLength(expected.length + 1);
+    // The full set is the Bootswatch themes plus the bootstrap5 skeleton, plus
+    // any namespaced operator user/<name> templates the harness drops in. The
+    // built-in count is therefore the bootswatch set + 1; user/* are extra.
+    const builtins = body.templates.filter((name) => !name.startsWith('user/'));
+    expect(builtins).toHaveLength(expected.length + 1);
   });
 });
 
