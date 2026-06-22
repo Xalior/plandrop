@@ -6,3 +6,8 @@ plandrop-*.tgz
 # Local env + runtime data (per-tenant content, shared htpasswd) — never committed.
 .env
 /data/
+
+# Generated template themes — built from the bootstrap5 skeleton at image-build
+# time (and by the generator locally). Only the skeleton is tracked.
+templates/*/
+!templates/bootstrap5/
