@@ -1,4 +1,4 @@
-.PHONY: build lint typecheck test check pack clean apache-pull apache-up apache-down control-build control-up control-down manual-up manual-down
+.PHONY: build lint typecheck test check pack clean showcase apache-pull apache-up apache-down control-build control-up control-down manual-up manual-down
 
 build:
 	pnpm run build
@@ -20,6 +20,15 @@ pack: build
 clean:
 	rm -rf dist
 	rm -f plandrop-*.tgz
+
+# Regenerate the all-themes showcase plan on a running stack. Builds the CLI,
+# then runs gen-showcase against $(SHOWCASE_DOMAIN) (default http://localhost:8083),
+# publishing from $(SHOWCASE_CWD) (default the current dir, which must hold a
+# `.plandrop`). e.g. make showcase SHOWCASE_DOMAIN=http://localhost:8083 SHOWCASE_CWD=~/plandrop-eyeball
+SHOWCASE_DOMAIN ?= http://localhost:8083
+SHOWCASE_CWD ?= $(CURDIR)
+showcase: build
+	node scripts/gen-showcase.mjs --domain "$(SHOWCASE_DOMAIN)" --cwd "$(SHOWCASE_CWD)"
 
 # Apache host service helpers. The integration tests manage their own throwaway
 # container; these are for running the service against your own .env/data.

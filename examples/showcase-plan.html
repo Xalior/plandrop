@@ -1,0 +1,714 @@
+    <!--
+      plandrop showcase plan — body fragment.
+
+      This is the inner HTML of a doc's <main class="container py-4">…</main>.
+      It is template-agnostic, URL-free planning markup (sprint backlog with
+      checkboxes; milestone / RACI / risk-register / sign-off tables; DoD;
+      acceptance criteria; dependencies; alerts; cards; a code block; a progress
+      bar; badges; blockquotes) wrapped around a deliberately ridiculous fake
+      "Project Bigdrop" plan. scripts/gen-showcase.mjs splices this into every
+      theme's scaffold to produce the all-themes showcase set.
+
+      Companies and people here are fictional; "Frontier AI Lab" is a generic
+      stand-in. No real hostnames, IPs, or URLs appear in this file.
+    -->
+    <div class="row">
+      <div class="col-xl-10 mx-auto">
+
+        <!-- Title block -->
+        <header class="mb-4">
+          <p class="text-body-secondary text-uppercase fw-semibold small mb-1">
+            Plan &middot; Confidential-ish &middot; v0.9-draft
+          </p>
+          <h1 class="display-4 mb-2">Project Bigdrop</h1>
+          <p class="lead mb-3">
+            A plan to turn <code>plandrop</code> &mdash; a 200-line static-file
+            yeeter &mdash; into a venture-scale SaaS, and then get
+            <strong>acquired by Frontier AI Lab</strong> before anyone notices it is
+            mostly an Apache config file.
+          </p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge text-bg-primary">Strategy</span>
+            <span class="badge text-bg-secondary">Go-To-Market</span>
+            <span class="badge text-bg-success">Series A-or-bust</span>
+            <span class="badge text-bg-warning">Exit</span>
+            <span class="badge rounded-pill text-bg-info">Definitely Not A Wrapper</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-primary">Approve plan</button>
+            <button type="button" class="btn btn-outline-secondary">Request changes</button>
+            <button type="button" class="btn btn-outline-danger btn-sm">Reject &amp; touch grass</button>
+          </div>
+        </header>
+
+        <hr class="my-4">
+
+        <!-- At-a-glance metadata -->
+        <section class="mb-5">
+          <div class="row g-3">
+            <div class="col-sm-6 col-lg-3">
+              <div class="border rounded p-3 h-100">
+                <div class="small text-body-secondary text-uppercase">Author</div>
+                <div class="fw-semibold">An over-caffeinated agent</div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="border rounded p-3 h-100">
+                <div class="small text-body-secondary text-uppercase">Sprint</div>
+                <div class="fw-semibold">7 of 9 &middot; &ldquo;Road to Term Sheet&rdquo;</div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="border rounded p-3 h-100">
+                <div class="small text-body-secondary text-uppercase">Status</div>
+                <div class="fw-semibold"><span class="badge text-bg-warning">In progress</span></div>
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="border rounded p-3 h-100">
+                <div class="small text-body-secondary text-uppercase">Target close</div>
+                <div class="fw-semibold">Q5, before runway</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Executive summary -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">1. Executive summary</h2>
+          <p>
+            <code>plandrop</code> currently lets an agent push a finished static
+            HTML file to a unique hostname and share the link. It has
+            <em>zero</em> server-side logic, which we will reframe to investors as
+            <mark>&ldquo;a radically serverless, AI-native publishing substrate.&rdquo;</mark>
+            The technology is sound. The valuation is imaginary. Both are assets.
+          </p>
+          <p>
+            This document lays out the path from <strong>weekend project</strong>
+            to <strong>nine-figure acqui-hire</strong>, covering product surface,
+            pricing, infrastructure, the metrics we will selectively report, and
+            the precise wording of the email we send to
+            <a href="#" class="link-primary">Frontier AI Lab</a>
+            corporate development.
+          </p>
+
+          <div class="alert alert-info" role="alert">
+            <strong>TL;DR:</strong> Wrap the CLI in a dashboard nobody asked for,
+            charge per &ldquo;drop,&rdquo; coin the term <em>DropOps</em>, and
+            position ourselves as critical agent infrastructure right up until the
+            term sheet clears.
+          </div>
+        </section>
+
+        <!-- Goals -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">2. Goals &amp; non-goals</h2>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <h3 class="h5">In scope</h3>
+              <ul>
+                <li>A hosted multi-tenant control plane (the existing one, but with a logo).</li>
+                <li>A billing layer that converts <code>mkdir</code> into recurring revenue.</li>
+                <li>
+                  An &ldquo;AI&rdquo; feature set, comprising:
+                  <ol type="a">
+                    <li>auto-generated plan summaries;</li>
+                    <li>
+                      a chat box that says &ldquo;Great question!&rdquo; and then:
+                      <ul>
+                        <li>re-renders your existing HTML, and</li>
+                        <li>charges you tokens for the privilege.</li>
+                      </ul>
+                    </li>
+                    <li>a vector database we will not actually query.</li>
+                  </ol>
+                </li>
+                <li>A SOC&nbsp;2 report we will frame and hang in the office.</li>
+              </ul>
+            </div>
+            <div class="col-md-6">
+              <h3 class="h5">Out of scope</h3>
+              <ul>
+                <li>Profitability (a Series B concern).</li>
+                <li>Reading the LGPL we shipped under.</li>
+                <li>Server-side logic (this remains our entire moat).</li>
+                <li>Telling Apache it is now &ldquo;edge AI compute.&rdquo;</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sprint backlog: checkbox task list -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">3. Sprint&nbsp;7 backlog</h2>
+          <p class="text-body-secondary">
+            Current sprint task list. Checked items are done; the rest are why we
+            are still here on a Friday.
+          </p>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <h3 class="h6 text-uppercase text-body-secondary">Engineering</h3>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="t1" checked disabled>
+                <label class="form-check-label" for="t1">
+                  Rename <code>upload</code> to <code>deploy</code> in the docs
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="t2" checked disabled>
+                <label class="form-check-label" for="t2">Stand up the dashboard shell</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="t3" checked disabled>
+                <label class="form-check-label" for="t3">Wire the billing provider to the create-tenant endpoint</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="t4" disabled>
+                <label class="form-check-label" for="t4">
+                  Ship the 4-second &ldquo;AI is thinking&rdquo; spinner
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="t5" disabled>
+                <label class="form-check-label" for="t5">
+                  Add one (1) row to the <code>vectors</code> table
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h3 class="h6 text-uppercase text-body-secondary">Go-to-market</h3>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="g1" checked disabled>
+                <label class="form-check-label" for="g1">File the <em>DropOps</em> trademark</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="g2" checked disabled>
+                <label class="form-check-label" for="g2">Draft the &ldquo;agent-authored artifacts&rdquo; blog post</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="g3" disabled>
+                <label class="form-check-label" for="g3">Make sure the right people read it</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="g4" disabled>
+                <label class="form-check-label" for="g4">Build a pitch deck with a hockey-stick chart</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="g5" disabled>
+                <label class="form-check-label" for="g5">Practise saying &ldquo;we have other offers&rdquo;</label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Sprint / milestone breakdown table -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">4. Milestone breakdown</h2>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 3rem;"></th>
+                  <th scope="col">Task</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Due</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" checked disabled aria-label="done">
+                    </div>
+                  </td>
+                  <td>Dashboard MVP behind a feature flag</td>
+                  <td>Eng</td>
+                  <td>Q1-W3</td>
+                  <td><span class="badge text-bg-success">Done</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" checked disabled aria-label="done">
+                    </div>
+                  </td>
+                  <td>Billing webhooks &amp; invoice emails</td>
+                  <td>Eng</td>
+                  <td>Q2-W1</td>
+                  <td><span class="badge text-bg-success">Done</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" disabled aria-label="not done">
+                    </div>
+                  </td>
+                  <td>&ldquo;AI enrichment&rdquo; endpoint (returns file unchanged)</td>
+                  <td>Eng</td>
+                  <td>Q3-W4</td>
+                  <td><span class="badge text-bg-warning">In&nbsp;progress</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" disabled aria-label="not done">
+                    </div>
+                  </td>
+                  <td>SOC&nbsp;2 evidence collection</td>
+                  <td>Ops</td>
+                  <td>Q3-W6</td>
+                  <td><span class="badge text-bg-danger">Blocked</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" disabled aria-label="not done">
+                    </div>
+                  </td>
+                  <td>Send the &ldquo;quick coffee?&rdquo; email to corp-dev</td>
+                  <td>CEO</td>
+                  <td>Q4-W2</td>
+                  <td><span class="badge text-bg-secondary">To&nbsp;do</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="progress mb-1" role="progressbar" aria-label="Sprint progress"
+               aria-valuenow="62" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 62%">
+              62% to exit
+            </div>
+          </div>
+          <p class="small text-body-secondary mb-0">Confidence interval: vibes.</p>
+        </section>
+
+        <!-- Pricing tiers as cards -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">5. Pricing tiers</h2>
+          <p class="text-body-secondary">
+            Three tiers, anchored so everyone picks the middle one. The free tier
+            exists to generate the word &ldquo;developers&rdquo; in our deck.
+          </p>
+          <div class="row row-cols-1 row-cols-md-3 g-4">
+            <div class="col">
+              <div class="card h-100">
+                <div class="card-header fw-semibold">Hobby</div>
+                <div class="card-body">
+                  <h3 class="card-title">$0<small class="text-body-secondary fs-6">/mo</small></h3>
+                  <p class="card-text text-body-secondary">For people who will never pay us.</p>
+                  <ul class="list-unstyled small mb-3">
+                    <li>3 drops</li>
+                    <li>Community support <span class="badge text-bg-secondary">read-only</span></li>
+                    <li>Our logo on your footer</li>
+                  </ul>
+                  <button type="button" class="btn btn-outline-primary w-100">Start free</button>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-bg-primary fw-semibold">
+                  Pro <span class="badge text-bg-light">Most popular</span>
+                </div>
+                <div class="card-body">
+                  <h3 class="card-title">$49<small class="text-body-secondary fs-6">/mo</small></h3>
+                  <p class="card-text text-body-secondary">For teams who skim pricing pages.</p>
+                  <ul class="list-unstyled small mb-3">
+                    <li>Unlimited drops*</li>
+                    <li>Custom subdomains</li>
+                    <li>&ldquo;Priority&rdquo; email support</li>
+                  </ul>
+                  <button type="button" class="btn btn-primary w-100">Go Pro</button>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card h-100">
+                <div class="card-header fw-semibold">Enterprise</div>
+                <div class="card-body">
+                  <h3 class="card-title">Let&rsquo;s talk<small class="text-body-secondary fs-6"> 💸</small></h3>
+                  <p class="card-text text-body-secondary">For procurement departments.</p>
+                  <ul class="list-unstyled small mb-3">
+                    <li>Everything in Pro</li>
+                    <li>An SLA we will renegotiate</li>
+                    <li>A dedicated chat channel we mute</li>
+                  </ul>
+                  <button type="button" class="btn btn-outline-secondary w-100">Contact sales</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="small text-body-secondary mt-2 mb-0">
+            * &ldquo;Unlimited&rdquo; subject to a fair-use policy we are still inventing.
+          </p>
+        </section>
+
+        <!-- Architecture + code block -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">6. Architecture &amp; the &ldquo;AI&rdquo; bit</h2>
+          <p>
+            The genius of <code>plandrop</code> is that the host runs
+            <strong>no application code</strong>. We will preserve this and simply
+            describe it differently. Below is the entire onboarding flow a customer
+            runs &mdash; note how it is indistinguishable from the open-source CLI,
+            because it is the open-source CLI.
+          </p>
+          <pre class="border rounded p-3 bg-body-tertiary"><code># Provision a tenant on the "Bigdrop Cloud" (it's the same control plane)
+npx plandrop create --name acme-q3-plan
+
+# Push your finished plan. This is the product.
+npx plandrop a1b2c3d4 upload ./plan.html
+
+# The "AI" enrichment step (bills tokens; returns your file)
+npx plandrop a1b2c3d4 enrich --model bigdrop-turbo --magic=true
+#   => ✓ analyzed 0 files
+#   => ✓ added value (see invoice)</code></pre>
+
+          <div class="alert alert-warning" role="alert">
+            <strong>Risk:</strong> A sufficiently curious customer may run
+            <code>cat plan.html</code> and notice the AI changed nothing. Mitigation:
+            ship a spinner that runs for 4 seconds.
+          </div>
+
+          <h3 class="h5 mt-4">Component responsibilities</h3>
+          <dl class="row">
+            <dt class="col-sm-3">Control plane</dt>
+            <dd class="col-sm-9">Makes a directory. Now also makes a billing charge.</dd>
+
+            <dt class="col-sm-3">Static host</dt>
+            <dd class="col-sm-9">Apache <code>mod_dav</code>. Rebranded as &ldquo;the inference edge.&rdquo;</dd>
+
+            <dt class="col-sm-3">AI layer</dt>
+            <dd class="col-sm-9">A loading animation and a confident tone of voice.</dd>
+
+            <dt class="col-sm-3">Data moat</dt>
+            <dd class="col-sm-9">A <code>vectors</code> table with one row in it (a test row).</dd>
+          </dl>
+        </section>
+
+        <!-- RACI matrix -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">7. RACI matrix</h2>
+          <p class="text-body-secondary">
+            <span class="fw-semibold">R</span>esponsible &middot;
+            <span class="fw-semibold">A</span>ccountable &middot;
+            <span class="fw-semibold">C</span>onsulted &middot;
+            <span class="fw-semibold">I</span>nformed.
+          </p>
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle text-center">
+              <thead>
+                <tr>
+                  <th scope="col" class="text-start">Activity</th>
+                  <th scope="col">CEO</th>
+                  <th scope="col">Eng</th>
+                  <th scope="col">Marketing</th>
+                  <th scope="col">Ops</th>
+                  <th scope="col">The Intern</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row" class="text-start">Ship the dashboard</th>
+                  <td>A</td><td>R</td><td>I</td><td>C</td><td>I</td>
+                </tr>
+                <tr>
+                  <th scope="row" class="text-start">Invent &ldquo;DropOps&rdquo;</th>
+                  <td>C</td><td>I</td><td>R/A</td><td>I</td><td>C</td>
+                </tr>
+                <tr>
+                  <th scope="row" class="text-start">Bolt on the AI</th>
+                  <td>A</td><td>R</td><td>C</td><td>I</td><td>R</td>
+                </tr>
+                <tr>
+                  <th scope="row" class="text-start">Email Frontier AI Lab corp-dev</th>
+                  <td>R/A</td><td>I</td><td>C</td><td>I</td><td>I</td>
+                </tr>
+                <tr>
+                  <th scope="row" class="text-start">Pretend we have other offers</th>
+                  <td>R/A</td><td>I</td><td>C</td><td>I</td><td>I</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Risk register -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">8. Risk register</h2>
+          <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle">
+              <caption>Risks ranked by how badly they end the company.</caption>
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Risk</th>
+                  <th scope="col">Likelihood</th>
+                  <th scope="col">Impact</th>
+                  <th scope="col">Owner</th>
+                  <th scope="col">Mitigation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">R1</th>
+                  <td>Frontier AI Lab rebuilds this in an afternoon</td>
+                  <td><span class="badge text-bg-warning">Medium</span></td>
+                  <td><span class="badge text-bg-danger">Fatal</span></td>
+                  <td>CEO</td>
+                  <td>Emphasise &ldquo;the brand&rdquo; and the 27 themes</td>
+                </tr>
+                <tr>
+                  <th scope="row">R2</th>
+                  <td>Customer reads the AI&rsquo;s output</td>
+                  <td><span class="badge text-bg-danger">High</span></td>
+                  <td><span class="badge text-bg-warning">High</span></td>
+                  <td>Eng</td>
+                  <td>Longer spinner; confident tone</td>
+                </tr>
+                <tr>
+                  <th scope="row">R3</th>
+                  <td>Someone reads the LGPL</td>
+                  <td><span class="badge text-bg-success">Low</span></td>
+                  <td><span class="badge text-bg-warning">High</span></td>
+                  <td>Legal</td>
+                  <td>Hope; a follow-up call with Legal</td>
+                </tr>
+                <tr>
+                  <th scope="row">R4</th>
+                  <td>Runway ends before the term sheet</td>
+                  <td><span class="badge text-bg-warning">Medium</span></td>
+                  <td><span class="badge text-bg-danger">Fatal</span></td>
+                  <td>CFO</td>
+                  <td>Move the &ldquo;quick coffee&rdquo; email up a quarter</td>
+                </tr>
+                <tr>
+                  <th scope="row">R5</th>
+                  <td>The intern realises they&rsquo;re doing two RACI rows</td>
+                  <td><span class="badge text-bg-success">Low</span></td>
+                  <td><span class="badge text-bg-secondary">Minor</span></td>
+                  <td>HR</td>
+                  <td>Pizza</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Acceptance criteria + Definition of Done -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">9. Acceptance criteria &amp; Definition of Done</h2>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <h3 class="h5">Acceptance criteria</h3>
+              <p class="text-body-secondary small mb-2">For the &ldquo;AI enrichment&rdquo; epic.</p>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="a1" checked disabled>
+                <label class="form-check-label" for="a1">
+                  Endpoint accepts a file and returns <strong>200 OK</strong>
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="a2" checked disabled>
+                <label class="form-check-label" for="a2">Spinner shows for &ge;&nbsp;4&nbsp;seconds</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="a3" disabled>
+                <label class="form-check-label" for="a3">Token meter increments per request</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="a4" disabled>
+                <label class="form-check-label" for="a4">
+                  Returned file is byte-identical to the input <span class="badge text-bg-info">by design</span>
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <h3 class="h5">Definition of Done</h3>
+              <p class="text-body-secondary small mb-2">Applies to every story this sprint.</p>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="d1" checked disabled>
+                <label class="form-check-label" for="d1">Code reviewed &amp; merged to <code>main</code></label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="d2" checked disabled>
+                <label class="form-check-label" for="d2">Tests green in CI</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="d3" disabled>
+                <label class="form-check-label" for="d3">Docs updated (we renamed a thing again)</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="d4" disabled>
+                <label class="form-check-label" for="d4">Demo&rsquo;d to a stakeholder who nodded</label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dependencies -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">10. Dependencies</h2>
+          <ul>
+            <li>
+              <strong>Upstream:</strong> the open-source <code>plandrop</code> CLI &amp;
+              control plane <span class="badge text-bg-secondary">LGPL-3.0</span> &mdash;
+              blocks everything; do not break it.
+            </li>
+            <li>
+              <strong>billing-provider</strong> account in good standing &mdash;
+              blocks the billing epic.
+            </li>
+            <li>
+              <strong>A warm intro</strong> to Frontier AI Lab corp-dev &mdash;
+              blocks the exit (see &sect;4, final row).
+            </li>
+            <li>
+              <strong>Apache <code>mod_dav</code></strong> continuing to exist &mdash;
+              out of our hands, gratefully.
+            </li>
+          </ul>
+          <div class="alert alert-success" role="alert">
+            <strong>Good news:</strong> none of these dependencies cost us anything,
+            which is also our gross margin story.
+          </div>
+        </section>
+
+        <!-- Metrics + blockquote -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">11. Metrics we will report</h2>
+          <p>
+            We will lead with growth rates and bury the denominators. Key
+            performance indicators, ranked by how good they look on a slide:
+          </p>
+          <ul>
+            <li><strong>MoM drop growth:</strong> <span class="text-success">+340%</span> (from 5 to 22).</li>
+            <li><strong>&ldquo;AI interactions&rdquo;:</strong> every spinner counts as one.</li>
+            <li><strong>NRR:</strong> a number we will define after the round closes.</li>
+            <li><strong>Burn multiple:</strong> <span class="text-danger">redacted</span>.</li>
+          </ul>
+
+          <figure class="border-start border-4 ps-3 my-4">
+            <blockquote class="blockquote">
+              <p class="mb-2">
+                &ldquo;We&rsquo;re not a file host. We&rsquo;re an
+                AI-native, agent-first publishing primitive for the post-server era.&rdquo;
+              </p>
+            </blockquote>
+            <figcaption class="blockquote-footer mb-0">
+              The pitch deck, <cite title="Slide 3">slide&nbsp;3</cite>, written at 2&nbsp;a.m.
+            </figcaption>
+          </figure>
+        </section>
+
+        <!-- Exit strategy -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">12. Exit strategy</h2>
+          <p>
+            The plan is a clean acqui-hire by <strong>Frontier AI Lab</strong>. We will
+            position <code>plandrop</code> as the canonical way for
+            <a href="#" class="link-primary">frontier-model</a>-powered
+            agents to publish their work &mdash; which, conveniently, is already
+            exactly what it does.
+          </p>
+          <ol>
+            <li>Get agents publishing through us &ldquo;by default.&rdquo;</li>
+            <li>Write a thoughtful blog post about <em>agent-authored artifacts</em>.</li>
+            <li>Make sure the right people read it.</li>
+            <li>Answer the &ldquo;quick coffee&rdquo; email within four minutes.</li>
+            <li>Negotiate as if we have other offers (we do not).</li>
+          </ol>
+
+          <div class="alert alert-danger" role="alert">
+            <strong>Failure mode:</strong> they realize they could rebuild this in an
+            afternoon. <em>Contingency:</em> emphasize &ldquo;the brand,&rdquo; the
+            27 themes, and our deep, unteachable expertise in <code>htpasswd</code>.
+          </div>
+        </section>
+
+        <!-- Sign-off / approval -->
+        <section class="mb-5">
+          <h2 class="h3 border-bottom pb-2 mb-3">13. Sign-off &amp; approval</h2>
+          <p class="text-body-secondary">
+            This plan is approved when every box below is checked. (Two are not.
+            That is why we are still pre-money.)
+          </p>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 3rem;">OK</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" checked disabled aria-label="signed">
+                    </div>
+                  </td>
+                  <td>CEO / Founder</td>
+                  <td>Drew &ldquo;Definitely-Not-A-Wrapper&rdquo; Dropworth</td>
+                  <td><span class="badge text-bg-success">Signed</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" checked disabled aria-label="signed">
+                    </div>
+                  </td>
+                  <td>Head of Engineering</td>
+                  <td>Pat Mod-Dav</td>
+                  <td><span class="badge text-bg-success">Signed</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" disabled aria-label="pending">
+                    </div>
+                  </td>
+                  <td>Acquirer (prospective)</td>
+                  <td>Frontier AI Lab Corp-Dev</td>
+                  <td><span class="badge text-bg-warning">Awaiting reply to coffee email</span></td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" disabled aria-label="pending">
+                    </div>
+                  </td>
+                  <td>Reality</td>
+                  <td>&mdash;</td>
+                  <td><span class="badge text-bg-secondary">Has not been consulted</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <blockquote class="blockquote fs-6 text-body-secondary mt-3">
+            <p class="mb-0">
+              Reminder: this is a joke plan in a theme-testing document. No actual
+              corporate development was harmed in the making of this fixture.
+            </p>
+          </blockquote>
+        </section>
+
+        <hr class="my-4">
+
+        <footer class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <span class="text-body-secondary small">
+            Prepared by an over-caffeinated agent &middot; Status:
+            <span class="badge text-bg-warning">Pending approval</span>
+          </span>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success btn-sm">Ship it</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm">Sleep on it</button>
+          </div>
+        </footer>
+
+      </div>
+    </div>
