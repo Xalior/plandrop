@@ -4,13 +4,30 @@
 # seeds the shared theme volume fresh on boot, serves /.plandrop/* statically,
 # and reverse-proxies /api/* to the control plane. Coupled to and versioned with
 # the control plane as one managed unit.
+#
+# Stage 1 generates the full template set from the pinned bootswatch package:
+# the committed bootstrap5 skeleton + one folder per Bootswatch theme, each with
+# that theme's compiled CSS vendored and self-hosted (no runtime CDN). The
+# generated set is bundled into the runtime image and seeded to the theme volume.
+FROM node:24-slim AS gen
+WORKDIR /app
+RUN corepack enable
+# Manifests first so the install layer caches across source changes.
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+# The committed templates (the bootstrap5 skeleton + the Bootswatch LICENSE) and
+# the generator; output the full set in place alongside the skeleton.
+COPY templates ./templates
+COPY scripts ./scripts
+RUN node scripts/gen-templates.mjs --out ./templates
+
 FROM nginx:alpine
 
 # envsubst (gettext) renders the config template at boot; it ships in the base.
 COPY ingress/nginx.conf.template /etc/nginx/nginx.conf.template
 COPY ingress/seed.sh /usr/local/bin/seed.sh
-# Built-in templates baked in; the entrypoint seeds them to the theme volume.
-COPY templates/ /usr/share/plandrop/templates/
+# The assembled template set (skeleton + generated themes + license/notice).
+COPY --from=gen /app/templates/ /usr/share/plandrop/templates/
 
 RUN chmod +x /usr/local/bin/seed.sh
 
