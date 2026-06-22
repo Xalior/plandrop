@@ -71,3 +71,42 @@ Visit the URLs the CLI printed and confirm:
 
 All of the above go through the single `proxy` container — exactly the routing a
 production front proxy performs.
+
+## 4. Testing from another device (across the LAN)
+
+Sections 1–3 use `localhost`, which only resolves on the host itself. To open the
+docs from a phone or another laptop you need a **wildcard domain that resolves to
+this host's LAN IP**, because tenant vhosts are `*.<domain>`. Two ways to get one:
+
+- **A wildcard DNS record you control** — point `*.plandrop.example.com` at the
+  host's LAN address (e.g. `198.51.100.20`), and use `plandrop.example.com`.
+- **Zero-config wildcard DNS** — `nip.io` / `sslip.io` resolve
+  `<anything>.<ip>.nip.io` to `<ip>`. For a host at `203.0.113.10` the domain is
+  `203.0.113.10.nip.io`, and any subdomain of it resolves to `203.0.113.10`.
+
+Then expose the proxy port on the LAN and set the domain in `.env`:
+
+```sh
+# .env  — made-up IP shown; use your host's real LAN address
+PLANDROP_PROXY_BIND=0.0.0.0                  # publish the proxy port on all interfaces
+PLANDROP_PROXY_DOMAIN=203.0.113.10.nip.io    # your wildcard host (or plandrop.example.com)
+```
+
+Only the proxy port is exposed; apache and ingress stay on loopback and are
+reached over the Docker network — the same single-front-door shape as
+production. Bring it up and drive the CLI at that one domain:
+
+```sh
+make manual-up
+mkdir ~/plandrop-manual && cd ~/plandrop-manual
+/path/to/plandrop/bin/plandrop create --domain http://203.0.113.10.nip.io:8083
+/path/to/plandrop/bin/plandrop newdoc index.html
+/path/to/plandrop/bin/plandrop upload .
+```
+
+The shareable URLs become `http://<label>.203.0.113.10.nip.io:8083/`, reachable
+from any device on the network — run the same section-3 browser checks there.
+
+> The stack ships **without auth**, so exposing it on the LAN makes it reachable
+> by anything on that network. That matches plandrop's model (LAN access is the
+> security boundary) — but don't bind it to an internet-routable address.
