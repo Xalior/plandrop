@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light" data-plandrop-template="bootstrap5">
+<html lang="en" data-bs-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,18 +8,20 @@
        /.plandrop/ -> theme volume); links are concrete (bootstrap5), never
        "default", so changing the default later never breaks this document. -->
   <link rel="stylesheet" href=".plandrop/bootstrap5/css/bootstrap.min.css">
-  <!-- plandrop's shared contrast layer; loaded after Bootstrap so it can
-       harden dark-mode contrast for vanilla Bootstrap markup across themes. -->
-  <link rel="stylesheet" href=".plandrop/bootstrap5/css/plandrop.css">
   <script defer src=".plandrop/bootstrap5/js/selfupdate.js"></script>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
     <div class="container">
       <a class="navbar-brand mb-0 h1" href="/">plandrop</a>
+      <!-- theme-toggle:start — only meaningful on the dual-mode bootstrap5
+           skeleton; the generator strips this whole block (and the matching
+           footer script) for every single-appearance Bootswatch theme, which
+           renders in its own native scheme. -->
       <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-theme-toggle>
         Toggle light / dark
       </button>
+      <!-- theme-toggle:end -->
     </div>
   </nav>
   <main class="container py-4">

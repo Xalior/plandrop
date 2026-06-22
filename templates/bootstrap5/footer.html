@@ -6,9 +6,12 @@
       and served by <a href="https://plandrop.dev/" class="link-body-emphasis">plandrop</a>.
     </p>
   </footer>
-  <!-- Theme toggle. Delegated on the document so it survives the self-update
-       <body> swap; the chosen theme lives on <html>, which the swap never
-       touches. No external dependency beyond Bootstrap's data-bs-theme. -->
+  <!-- theme-toggle:start — paired with the navbar toggle button. Only the
+       dual-mode bootstrap5 skeleton keeps this; the generator strips this whole
+       block for every single-appearance Bootswatch theme. Delegated on the
+       document so it survives the self-update <body> swap; the chosen theme
+       lives on <html>, which the swap never touches. No external dependency
+       beyond Bootstrap's data-bs-theme. -->
   <script>
     document.addEventListener('click', function (event) {
       var trigger = event.target.closest('[data-bs-theme-toggle]');
@@ -20,5 +23,6 @@
       root.setAttribute('data-bs-theme', next);
     });
   </script>
+  <!-- theme-toggle:end -->
 </body>
 </html>

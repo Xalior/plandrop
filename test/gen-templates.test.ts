@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { bootswatchThemes, generateAll } from '../scripts/gen-templates.mjs';
+import {
+  bootswatchThemes,
+  generateAll,
+  nativeScheme,
+} from '../scripts/gen-templates.mjs';
+
+/** Bootswatch themes we assert render in their native DARK scheme. */
+const NATIVE_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero', 'vapor'];
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const skeletonDir = join(repoRoot, 'templates', 'bootstrap5');
@@ -38,23 +45,55 @@ describe('template generator', () => {
       'footer.html',
       'js/selfupdate.js',
       'css/bootstrap.min.css',
-      'css/plandrop.css',
     ]) {
       expect(existsSync(join(outDir, 'darkly', file))).toBe(true);
     }
   });
 
-  it('ships plandrop.css in every theme and links it after bootstrap in the header', () => {
+  it('ships no plandrop.css and links none from any header (retired)', () => {
     const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
     for (const theme of themes) {
-      expect(existsSync(join(outDir, theme, 'css', 'plandrop.css'))).toBe(true);
+      expect(existsSync(join(outDir, theme, 'css', 'plandrop.css'))).toBe(false);
       const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
-      expect(header).toContain(`.plandrop/${theme}/css/plandrop.css`);
-      // Loaded after Bootstrap so the overrides win.
-      expect(header.indexOf('css/bootstrap.min.css')).toBeLessThan(
-        header.indexOf('css/plandrop.css'),
-      );
+      expect(header).not.toContain('plandrop.css');
     }
+  });
+
+  it('carries no data-plandrop-template marker (retired)', () => {
+    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
+    for (const theme of themes) {
+      const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
+      expect(header).not.toContain('data-plandrop-template');
+    }
+  });
+
+  it('pins each Bootswatch theme to its native data-bs-theme and drops the toggle', () => {
+    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
+    // The detected dark set must match the hardcoded list exactly.
+    const detectedDark = themes.filter((t) => nativeScheme(t) === 'dark').sort();
+    expect(detectedDark).toEqual([...NATIVE_DARK].sort());
+
+    for (const theme of themes) {
+      const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
+      const footer = readFileSync(join(outDir, theme, 'footer.html'), 'utf8');
+      expect(header).toContain(`data-bs-theme="${nativeScheme(theme)}"`);
+      // Single-mode Bootswatch themes carry no toggle button or script.
+      expect(header).not.toContain('data-bs-theme-toggle');
+      expect(header).not.toContain('theme-toggle:start');
+      expect(footer).not.toContain('data-bs-theme-toggle');
+      expect(footer).not.toContain('theme-toggle:start');
+      // The brand link home survives on every theme.
+      expect(header).toContain('<a class="navbar-brand mb-0 h1" href="/">');
+    }
+  });
+
+  it('keeps the toggle (button + script) on the dual-mode bootstrap5 skeleton', () => {
+    const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8');
+    const footer = readFileSync(join(skeletonDir, 'footer.html'), 'utf8');
+    expect(header).toContain('data-bs-theme="light"');
+    expect(header).toContain('data-bs-theme-toggle');
+    expect(footer).toContain("getAttribute('data-bs-theme')");
+    expect(nativeScheme('bootstrap5')).toBe('light');
   });
 
   it('rewrites the header asset paths to the concrete theme name', () => {
