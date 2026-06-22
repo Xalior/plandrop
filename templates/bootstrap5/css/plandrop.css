@@ -31,11 +31,21 @@
  * `--bs-btn-color` variable override cannot beat. So we also set `color`
  * directly here — at `[data-bs-theme=dark] .btn-outline-secondary` (0,2,0) it
  * outranks the theme's `.btn-outline-secondary` (0,1,0), no !important needed.
+ *
+ * The border is sourced from --bs-border-color-translucent (not
+ * --bs-border-color) for the same poison-proofing reason documented on the
+ * table/card rules below: brite hard-sets --bs-border-color:#000, which would
+ * otherwise make this button's outline invisible on its dark surface.
+ * brite also sets `.btn{border-color:#000}` as a DIRECT property, which a
+ * --bs-btn-border-color override cannot beat — so we also set `border-color`
+ * directly here (0,2,0 > the theme's `.btn` 0,1,0), exactly as we do for the
+ * resting text colour above.
  * ------------------------------------------------------------------ */
 [data-bs-theme=dark] .btn-outline-secondary {
   color: var(--bs-emphasis-color);
+  border-color: var(--bs-border-color-translucent);
   --bs-btn-color: var(--bs-emphasis-color);
-  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-border-color: var(--bs-border-color-translucent);
   --bs-btn-hover-color: var(--bs-body-bg);
   --bs-btn-hover-bg: var(--bs-emphasis-color);
   --bs-btn-hover-border-color: var(--bs-emphasis-color);
@@ -43,7 +53,7 @@
   --bs-btn-active-bg: var(--bs-emphasis-color);
   --bs-btn-active-border-color: var(--bs-emphasis-color);
   --bs-btn-disabled-color: var(--bs-secondary-color);
-  --bs-btn-disabled-border-color: var(--bs-border-color);
+  --bs-btn-disabled-border-color: var(--bs-border-color-translucent);
 }
 
 /* ------------------------------------------------------------------ *
@@ -107,26 +117,58 @@
 }
 
 /* ------------------------------------------------------------------ *
- * Quick pass: tables / cards / alerts / badges / form-check.
+ * Quick pass: tables / cards / form-check borders.
  *
- * Pull these onto theme-aware border/emphasis vars so the obvious dark gaps
- * (washed-out card/table borders, dim badge-secondary text, low-contrast
- * form-check borders) close up. Light themes already resolve these vars to
- * sensible values, so nothing here disturbs light mode.
+ * Pull these onto a theme-aware border var so the obvious dark gaps
+ * (washed-out card/table borders, low-contrast form-check borders) close up.
+ *
+ * SOURCE CHOICE — why --bs-border-color-translucent, not --bs-border-color:
+ * a variable override only wins if the var it reads is itself sane. The brite
+ * theme hard-sets `--bs-border-color:#000` for BOTH light and dark, so driving
+ * these borders from --bs-border-color renders them BLACK on brite's near-black
+ * dark surface — invisible, the exact gap we set out to close (render-
+ * confirmed). --bs-border-color-translucent resolves to rgba(255,255,255,0.15)
+ * in dark on every Bootswatch theme (it's relative to the light dark-mode
+ * foreground, so it can't collapse to black), and it is the same value
+ * Bootstrap itself uses for `.card` borders in dark — a poison-proof, theme-
+ * neutral source, not a per-theme flatten.
+ *
+ * VARIABLE vs DIRECT PROPERTY — the same lesson as .btn-outline-secondary:
+ *  - `.card` borders read --bs-card-border-color via `.card{border:… }`; no
+ *    theme sets a direct border-color on `.card`, so the variable override at
+ *    `[data-bs-theme=dark] .card` (0,2,0) governs.
+ *  - TABLE is different: brite adds `.table{border:2px solid #000}` AND
+ *    `.table{border-color:#000}` as DIRECT properties, and the cells inherit
+ *    that colour (`td{border-color:inherit}`), so overriding only the
+ *    --bs-table-border-color variable is silently DEFEATED — the cells still
+ *    render black. So we ALSO set `border-color` directly on `.table`; at
+ *    (0,2,0) it outranks brite's `.table` (0,1,0), the cells inherit it, and on
+ *    every other theme it just restates the colour they'd compute anyway.
+ *  - form-check sets the `border-color` longhand at (0,3,0), outranking
+ *    themes' `border:` shorthand (0,1,0).
  * ------------------------------------------------------------------ */
 [data-bs-theme=dark] .table {
-  --bs-table-border-color: var(--bs-border-color);
+  --bs-table-border-color: var(--bs-border-color-translucent);
+  border-color: var(--bs-border-color-translucent);
 }
 
 [data-bs-theme=dark] .card {
-  --bs-card-border-color: var(--bs-border-color);
-}
-
-[data-bs-theme=dark] .badge.text-bg-secondary,
-[data-bs-theme=dark] .badge.bg-secondary {
-  color: var(--bs-body-bg);
+  --bs-card-border-color: var(--bs-border-color-translucent);
 }
 
 [data-bs-theme=dark] .form-check-input:not(:checked) {
-  border-color: var(--bs-border-color);
+  border-color: var(--bs-border-color-translucent);
 }
+
+/* ------------------------------------------------------------------ *
+ * NOTE on .badge — intentionally NOT patched.
+ *
+ * Bootstrap's `.text-bg-secondary` already pairs a contrast-correct text
+ * colour (#000 or #fff, chosen per theme) with the secondary background, and
+ * it does so with `!important` — so any plain `color:` override here is both
+ * DEFEATED (the theme's !important wins our higher specificity) and WRONG
+ * where it would apply (e.g. forcing dark text onto cosmo's dark secondary
+ * badge). The legacy `.bg-secondary` badge is theme-dependent too and would
+ * regress as well. There is no single dark colour that is correct across
+ * themes, so the badge is left to Bootstrap's own per-theme pairing.
+ * ------------------------------------------------------------------ */
