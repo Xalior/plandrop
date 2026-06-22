@@ -69,6 +69,38 @@ services:
       ingress:
         condition: service_healthy
 
+  # Dev/test front proxy — the stand-in for the production front proxy (NPM,
+  # Cloudflare, etc.) that lives OUTSIDE this stack. Routes by Host on a single
+  # published port: the bare parent domain -> ingress, *.<parent> -> apache, so a
+  # browser and the CLI share ONE domain. It is the same nginx routing config the
+  # automated harness (test/setup/stack.ts) brings up, so manual and automated
+  # testing share one proxy definition. Behind the `testproxy` profile: a normal
+  # or production `docker compose up` never starts it (production uses the real
+  # external ingress).
+  proxy:
+    image: nginx:alpine
+    profiles: ["testproxy"]
+    restart: unless-stopped
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    environment:
+      PLANDROP_PROXY_PORT: "${PLANDROP_PROXY_PORT:-8083}"
+      PLANDROP_PROXY_DOMAIN: "${PLANDROP_PROXY_DOMAIN:-localhost}"
+      PLANDROP_INGRESS_HOST: ingress
+      PLANDROP_INGRESS_PORT: "${PLANDROP_INGRESS_PORT:-8082}"
+      PLANDROP_APACHE_HOST: apache
+      PLANDROP_APACHE_PORT: "${PLANDROP_APACHE_PORT:-8080}"
+    ports:
+      # The single host port a browser and the CLI both target. Binds its own
+      # address (default = PLANDROP_BIND) so the harness can publish it on ::1,
+      # where *.localhost tenant hosts resolve.
+      - "${PLANDROP_PROXY_BIND:-${PLANDROP_BIND:-127.0.0.1}}:${PLANDROP_PROXY_PORT:-8083}:${PLANDROP_PROXY_PORT:-8083}"
+    volumes:
+      - "./proxy/nginx.conf.template:/etc/nginx/nginx.conf.template:ro"
+      - "./proxy/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro"
+    depends_on:
+      ingress:
+        condition: service_healthy
+
   control:
     build:
       context: .

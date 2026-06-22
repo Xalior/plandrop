@@ -1,0 +1,64 @@
+# plandrop front proxy — the dev/test stand-in for the production front proxy
+# (NPM/Cloudflare/etc.) that lives OUTSIDE this stack. It routes by Host on a
+# SINGLE published port so a browser and the CLI share one domain:
+#
+#   <parent domain>  -> ingress  (bare parent: /.plandrop/* statics + /api proxy)
+#   *.<parent domain> -> apache   (tenant vhosts: static hosting + WebDAV writes)
+#
+# This is the same routing the production front proxy performs; it is the ONE
+# proxy definition shared by the automated harness (test/setup/stack.ts brings
+# this service up behind the `testproxy` profile) and manual browser testing.
+# Never started by a plain/production `docker compose up`.
+worker_processes auto;
+error_log /dev/stderr warn;
+pid /tmp/nginx.pid;
+
+events { worker_connections 1024; }
+
+http {
+  default_type application/octet-stream;
+  access_log   /dev/stdout;
+
+  # Keep runtime state writable for a non-root run.
+  client_body_temp_path /tmp/client_body;
+  proxy_temp_path       /tmp/proxy;
+  fastcgi_temp_path     /tmp/fastcgi;
+  uwsgi_temp_path       /tmp/uwsgi;
+  scgi_temp_path        /tmp/scgi;
+
+  # Docker's embedded DNS. Resolving the upstreams through it (with variable
+  # proxy_pass below) defers name resolution to request time, so the proxy
+  # starts even if ingress/apache are not yet registered in DNS.
+  resolver 127.0.0.11 ipv6=off valid=10s;
+
+  # Tenants upload via WebDAV (PUT) — don't cap the body, and preserve the Host
+  # header so Apache's mod_vhost_alias resolves the per-tenant docroot.
+  client_max_body_size 0;
+  proxy_set_header Host $host;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto $scheme;
+
+  # Bare parent domain -> ingress (control entrypoint).
+  server {
+    listen ${PLANDROP_PROXY_PORT};
+    server_name ${PLANDROP_PROXY_DOMAIN};
+
+    location / {
+      set $upstream "${PLANDROP_INGRESS_HOST}:${PLANDROP_INGRESS_PORT}";
+      proxy_pass http://$upstream;
+    }
+  }
+
+  # Everything else (the *.parent tenant vhosts) -> apache. Default server, so
+  # any subdomain Host on this port lands here and Apache picks the docroot from
+  # the host label.
+  server {
+    listen ${PLANDROP_PROXY_PORT} default_server;
+    server_name _;
+
+    location / {
+      set $upstream "${PLANDROP_APACHE_HOST}:${PLANDROP_APACHE_PORT}";
+      proxy_pass http://$upstream;
+    }
+  }
+}

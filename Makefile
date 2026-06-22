@@ -1,4 +1,4 @@
-.PHONY: build lint typecheck test check pack clean apache-pull apache-up apache-down control-build control-up control-down
+.PHONY: build lint typecheck test check pack clean apache-pull apache-up apache-down control-build control-up control-down manual-up manual-down
 
 build:
 	pnpm run build
@@ -41,3 +41,14 @@ control-up: build
 
 control-down:
 	docker compose down -v
+
+# Manual browser testflow — the whole stack PLUS the dev front proxy (the
+# `testproxy` profile). The proxy is the same nginx routing the automated tests
+# use: bare PLANDROP_PROXY_DOMAIN -> ingress, *.<domain> -> apache, on one host
+# port (PLANDROP_PROXY_PORT). Point the CLI at http://<domain>:<port> and a
+# browser at the host URLs it prints. See docs/manual-testing.md.
+manual-up: build
+	docker compose --profile testproxy up -d --build
+
+manual-down:
+	docker compose --profile testproxy down -v
