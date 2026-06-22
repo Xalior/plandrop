@@ -2,11 +2,15 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest';
+import { bootswatchThemes } from '../scripts/gen-templates.mjs';
 import { runCli } from './helpers/cli';
 import { httpRequest } from './helpers/http';
 
 const { ingressPort, apachePort, domain, proxyBase, tenantA } = inject('stack');
+
+const bootswatchDir = fileURLToPath(new URL('../node_modules/bootswatch', import.meta.url));
 
 interface TemplatesBody {
   default: string;
@@ -26,6 +30,39 @@ describe('ingress /api/templates (proxied, dynamic)', () => {
     const body = JSON.parse(res.body.toString()) as TemplatesBody;
     expect(body.default).toBe('bootstrap5');
     expect(body.templates).toContain('bootstrap5');
+  });
+
+  it('lists the full pinned Bootswatch set plus bootstrap5', async () => {
+    const res = await httpRequest({
+      port: ingressPort,
+      method: 'GET',
+      path: '/api/templates',
+      hostHeader: domain,
+    });
+    expect(res.status).toBe(200);
+    const body = JSON.parse(res.body.toString()) as TemplatesBody;
+    const expected = bootswatchThemes(bootswatchDir);
+    for (const theme of expected) {
+      expect(body.templates).toContain(theme);
+    }
+    // The full set is the Bootswatch themes plus the bootstrap5 skeleton.
+    expect(body.templates).toHaveLength(expected.length + 1);
+  });
+});
+
+describe('ingress serves each generated theme starter', () => {
+  it('serves template.html for a sample of generated themes', async () => {
+    for (const theme of ['cerulean', 'darkly', 'zephyr']) {
+      const res = await httpRequest({
+        port: ingressPort,
+        method: 'GET',
+        path: `/.plandrop/${theme}/template.html`,
+        hostHeader: domain,
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/text\/html/);
+      expect(res.body.toString()).toContain(`.plandrop/${theme}/css/bootstrap.min.css`);
+    }
   });
 });
 
@@ -166,6 +203,26 @@ describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => 
     expect(bad.stderr).toContain('bootstrap5');
   });
 
+  it('uses the dotfile template by default and lets --template override it', () => {
+    // Pin a theme at create time; newdoc with no flag honours it.
+    expect(
+      runCli(['create', '--domain', proxyBase, '--template', 'darkly'], { cwd, env: env() }).status,
+    ).toBe(0);
+
+    expect(runCli(['newdoc', 'pinned.html'], { cwd, env: env() }).status).toBe(0);
+    const pinned = readFileSync(join(cwd, 'pinned.html'), 'utf8');
+    expect(pinned).toContain('.plandrop/darkly/css/bootstrap.min.css');
+    expect(pinned).not.toContain('.plandrop/bootstrap5/');
+
+    // An explicit flag overrides the dotfile default.
+    expect(
+      runCli(['newdoc', 'over.html', '--template', 'cerulean'], { cwd, env: env() }).status,
+    ).toBe(0);
+    const over = readFileSync(join(cwd, 'over.html'), 'utf8');
+    expect(over).toContain('.plandrop/cerulean/css/bootstrap.min.css');
+    expect(over).not.toContain('.plandrop/darkly/');
+  });
+
   it('the written doc renders its assets when published via Apache', async () => {
     expect(runCli(['create', '--domain', proxyBase], { cwd, env: env() }).status).toBe(0);
     expect(runCli(['newdoc', 'index.html'], { cwd, env: env() }).status).toBe(0);
@@ -257,3 +314,27 @@ function waitForSeed(docker: (args: string[]) => string, name: string): void {
   }
   throw new Error('ingress did not seed the theme volume in time');
 }
+
+// Attribution ships in the built image (loud and proud): the Bootswatch MIT
+// LICENSE and the Bootstrap NOTICE are bundled with the templates.
+describe('attribution in the built ingress image', () => {
+  it('bundles the Bootswatch LICENSE and Bootstrap NOTICE', () => {
+    const image = 'plandrop-stack-test-ingress';
+    const out = execFileSync(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--entrypoint',
+        'sh',
+        image,
+        '-c',
+        'cat /usr/share/plandrop/templates/BOOTSWATCH-LICENSE /usr/share/plandrop/templates/bootstrap5/NOTICE',
+      ],
+      { encoding: 'utf8' },
+    );
+    expect(out).toContain('Thomas Park');
+    expect(out).toContain('Bootstrap');
+    expect(out).toContain('MIT');
+  });
+});
