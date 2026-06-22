@@ -1,0 +1,125 @@
+/*
+ * plandrop.css — shared "parent" contrast layer for plandrop documents.
+ *
+ * Loaded AFTER each theme's vendored bootstrap.min.css. Its only job is to
+ * harden DARK-MODE contrast for plain, vanilla Bootstrap markup, so a real
+ * plan (or a manual eyeball doc) stays readable in dark across every theme
+ * without per-theme patching.
+ *
+ * Design rules:
+ *  - Scope contrast fixes to [data-bs-theme=dark]; never touch light mode.
+ *  - Drive colours from theme-aware Bootstrap variables (--bs-emphasis-color,
+ *    --bs-body-color, --bs-secondary-color, --bs-border-color, --bs-link-color,
+ *    …) rather than hardcoded hex, so each theme keeps its own palette and
+ *    inherently-dark themes (darkly, cyborg, slate, solar, superhero, vapor)
+ *    are unaffected (they already resolve these vars to readable values).
+ *  - Surgical: fix the specific low-contrast offenders, don't flatten themes.
+ *
+ * This is plandrop's own code (no third-party notice required).
+ */
+
+/* ------------------------------------------------------------------ *
+ * .btn-outline-secondary — incl. the navbar theme-toggle button.
+ *
+ * Bootstrap hardcodes this button's colour/border to #6c757d regardless of
+ * theme, so on light-oriented themes flipped to dark (cosmo, cerulean, …) it
+ * sits as dim grey-on-dark. Repoint it at the theme's emphasis/border vars so
+ * it reads at the same contrast the rest of the dark UI does.
+ * ------------------------------------------------------------------ */
+[data-bs-theme=dark] .btn-outline-secondary {
+  --bs-btn-color: var(--bs-emphasis-color);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-body-bg);
+  --bs-btn-hover-bg: var(--bs-emphasis-color);
+  --bs-btn-hover-border-color: var(--bs-emphasis-color);
+  --bs-btn-active-color: var(--bs-body-bg);
+  --bs-btn-active-bg: var(--bs-emphasis-color);
+  --bs-btn-active-border-color: var(--bs-emphasis-color);
+  --bs-btn-disabled-color: var(--bs-secondary-color);
+  --bs-btn-disabled-border-color: var(--bs-border-color);
+}
+
+/* ------------------------------------------------------------------ *
+ * Headings / hero.
+ *
+ * Several light-oriented themes set --bs-heading-color:inherit in dark, so
+ * headings fall back to the (dimmed) body colour — e.g. brite's #dee2e6 body
+ * over a near-black hero reads weak. Lift headings to the emphasis colour,
+ * which every theme defines as its highest-contrast foreground.
+ * ------------------------------------------------------------------ */
+[data-bs-theme=dark] h1,
+[data-bs-theme=dark] h2,
+[data-bs-theme=dark] h3,
+[data-bs-theme=dark] h4,
+[data-bs-theme=dark] h5,
+[data-bs-theme=dark] h6,
+[data-bs-theme=dark] .h1,
+[data-bs-theme=dark] .h2,
+[data-bs-theme=dark] .h3,
+[data-bs-theme=dark] .h4,
+[data-bs-theme=dark] .h5,
+[data-bs-theme=dark] .h6,
+[data-bs-theme=dark] .display-1,
+[data-bs-theme=dark] .display-2,
+[data-bs-theme=dark] .display-3,
+[data-bs-theme=dark] .display-4,
+[data-bs-theme=dark] .display-5,
+[data-bs-theme=dark] .display-6 {
+  color: var(--bs-emphasis-color);
+}
+
+/* ------------------------------------------------------------------ *
+ * Secondary / muted text.
+ *
+ * --bs-secondary-color in dark is often body-colour at 0.75 alpha, and
+ * .text-secondary uses the legacy #6c757d on some themes — both can drop
+ * below a comfortable read on dark. Lift muted text toward the body colour
+ * (still visibly de-emphasised against full-strength emphasis text).
+ * ------------------------------------------------------------------ */
+[data-bs-theme=dark] .text-secondary,
+[data-bs-theme=dark] .text-body-secondary,
+[data-bs-theme=dark] .text-muted {
+  color: var(--bs-body-color) !important;
+  opacity: 0.85;
+}
+
+/* ------------------------------------------------------------------ *
+ * Plain body links.
+ *
+ * Make bare <a> in plan content read at the theme's link colour without the
+ * author having to reach for .link-body-emphasis. Scoped to content regions
+ * (main/footer) so navbar/button/alert link styling is left alone.
+ * ------------------------------------------------------------------ */
+[data-bs-theme=dark] main a:not([class]),
+[data-bs-theme=dark] footer a:not([class]) {
+  color: var(--bs-link-color);
+}
+[data-bs-theme=dark] main a:not([class]):hover,
+[data-bs-theme=dark] footer a:not([class]):hover {
+  color: var(--bs-link-hover-color);
+}
+
+/* ------------------------------------------------------------------ *
+ * Quick pass: tables / cards / alerts / badges / form-check.
+ *
+ * Pull these onto theme-aware border/emphasis vars so the obvious dark gaps
+ * (washed-out card/table borders, dim badge-secondary text, low-contrast
+ * form-check borders) close up. Light themes already resolve these vars to
+ * sensible values, so nothing here disturbs light mode.
+ * ------------------------------------------------------------------ */
+[data-bs-theme=dark] .table {
+  --bs-table-border-color: var(--bs-border-color);
+}
+
+[data-bs-theme=dark] .card {
+  --bs-card-border-color: var(--bs-border-color);
+}
+
+[data-bs-theme=dark] .badge.text-bg-secondary,
+[data-bs-theme=dark] .badge.bg-secondary {
+  color: var(--bs-body-bg);
+}
+
+[data-bs-theme=dark] .form-check-input:not(:checked) {
+  border-color: var(--bs-border-color);
+}

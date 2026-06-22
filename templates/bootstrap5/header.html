@@ -8,6 +8,9 @@
        /.plandrop/ -> theme volume); links are concrete (bootstrap5), never
        "default", so changing the default later never breaks this document. -->
   <link rel="stylesheet" href=".plandrop/bootstrap5/css/bootstrap.min.css">
+  <!-- plandrop's shared contrast layer; loaded after Bootstrap so it can
+       harden dark-mode contrast for vanilla Bootstrap markup across themes. -->
+  <link rel="stylesheet" href=".plandrop/bootstrap5/css/plandrop.css">
   <script defer src=".plandrop/bootstrap5/js/selfupdate.js"></script>
 </head>
 <body>

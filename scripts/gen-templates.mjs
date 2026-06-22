@@ -53,6 +53,12 @@ export function generateTheme(theme, { skeletonDir, bootswatchDir, outDir }) {
     join(bootswatchDir, 'dist', theme, 'bootstrap.min.css'),
     join(dest, 'css', 'bootstrap.min.css'),
   );
+  // plandrop's shared contrast layer, copied verbatim alongside the vendored
+  // Bootstrap CSS; the header link (rewritten above) retargets it per theme.
+  cpSync(
+    join(skeletonDir, 'css', 'plandrop.css'),
+    join(dest, 'css', 'plandrop.css'),
+  );
   return theme;
 }
 

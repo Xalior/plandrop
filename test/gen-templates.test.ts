@@ -32,8 +32,28 @@ describe('template generator', () => {
   it('gives each theme the three-part skeleton + self-update JS + vendored CSS', () => {
     const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
     expect(themes).toContain('darkly');
-    for (const file of ['header.html', 'plan.html', 'footer.html', 'js/selfupdate.js', 'css/bootstrap.min.css']) {
+    for (const file of [
+      'header.html',
+      'plan.html',
+      'footer.html',
+      'js/selfupdate.js',
+      'css/bootstrap.min.css',
+      'css/plandrop.css',
+    ]) {
       expect(existsSync(join(outDir, 'darkly', file))).toBe(true);
+    }
+  });
+
+  it('ships plandrop.css in every theme and links it after bootstrap in the header', () => {
+    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
+    for (const theme of themes) {
+      expect(existsSync(join(outDir, theme, 'css', 'plandrop.css'))).toBe(true);
+      const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
+      expect(header).toContain(`.plandrop/${theme}/css/plandrop.css`);
+      // Loaded after Bootstrap so the overrides win.
+      expect(header.indexOf('css/bootstrap.min.css')).toBeLessThan(
+        header.indexOf('css/plandrop.css'),
+      );
     }
   });
 
