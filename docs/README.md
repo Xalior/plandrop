@@ -11,14 +11,15 @@ npx plandrop upload ./planfile.html
 
 - **[Using the client](usage.md)** — the `npx plandrop` CLI: `create`, `upload`, `rotate`,
   `remove`, the `.plandrop` file, and how the domain is resolved.
-- **[Self-hosting the stack](setup.md)** — run the two-container stack (Apache `mod_dav`
-  host + control plane) with Docker Compose, and the reverse-proxy / TLS / DNS it needs in
-  front.
+- **[Self-hosting the stack](setup.md)** — run the three-container stack (nginx ingress +
+  Apache `mod_dav` host + control plane) with Docker Compose, and the reverse-proxy / TLS /
+  DNS it needs in front.
 
 ## How it fits together
 
-- The **control plane** (on your parent domain) mints a host: a unique label + passphrase,
-  a per-tenant directory, and a credentials entry. It is the only privileged writer.
+- Your parent domain reaches the **ingress**, which fronts the internal **control plane**
+  that mints a host: a unique label + passphrase, a per-tenant directory, and a credentials
+  entry. The control plane is the only privileged writer.
 - The **Apache host** (on `*.domain`) serves each host's content read-only to anyone, and
   accepts authenticated WebDAV writes from that host's owner.
 - The **client** writes a local `.plandrop` with the host, passphrase, and domain, then
