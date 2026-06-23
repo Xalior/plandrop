@@ -1,6 +1,6 @@
 {
   "name": "plandrop",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "Push a static HTML document to a unique, secure hostname on your network and share the link.",
   "type": "module",
   "license": "LGPL-3.0-only",
