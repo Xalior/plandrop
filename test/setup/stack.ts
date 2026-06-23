@@ -13,7 +13,6 @@ const pkgRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 const DOMAIN = 'plandrop.test';
 const APACHE_PORT = 8788;
-const CONTROL_PORT = 8789;
 const PROXY_PORT = 8790;
 // The ingress is the only published control entrypoint now: it serves the
 // template statics and reverse-proxies /api/* to the (unpublished) control plane.
@@ -139,7 +138,6 @@ export default async function setup(project: TestProject): Promise<() => void> {
     ...process.env,
     PLANDROP_DATA: dataDir,
     PLANDROP_APACHE_PORT: String(APACHE_PORT),
-    PLANDROP_CONTROL_PORT: String(CONTROL_PORT),
     PLANDROP_INGRESS_PORT: String(INGRESS_PORT),
     PLANDROP_PROXY_PORT: String(PROXY_PORT),
     PLANDROP_USER_TEMPLATES: userTemplatesDir,

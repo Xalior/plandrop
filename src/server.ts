@@ -22,7 +22,10 @@ const USER_THEME_DIR = process.env.PLANDROP_USER_THEME_DIR ?? '/srv/user-templat
 // What the `default` alias resolves to, operator-configurable. Validated against
 // the available set at request time (an unknown value falls back to bootstrap5).
 const DEFAULT_TEMPLATE = process.env.PLANDROP_DEFAULT_TEMPLATE;
-const PORT = Number(process.env.PLANDROP_CONTROL_PORT ?? '8081');
+// Fixed internal port. The control plane is a pure internal service — reached
+// only via the ingress on the docker network, never host-published — so this is
+// a constant the ingress shares, not an operator setting.
+const PORT = 8081;
 const MAX_COLLISION_RETRIES = 10;
 
 export const app = new Hono();

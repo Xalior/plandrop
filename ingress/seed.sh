@@ -19,6 +19,8 @@ export PLANDROP_THEME_DIR="$THEME_DIR"
 export PLANDROP_USER_THEME_DIR="${PLANDROP_USER_THEME_DIR:-/srv/user-templates}"
 export PLANDROP_INGRESS_PORT="${PLANDROP_INGRESS_PORT:-80}"
 export PLANDROP_CONTROL_HOST="${PLANDROP_CONTROL_HOST:-control}"
+# Fixed internal port the control plane listens on — a shared constant, not an
+# operator setting. The control plane hardcodes the same value.
 export PLANDROP_CONTROL_PORT="${PLANDROP_CONTROL_PORT:-8081}"
 
 # Fresh seed: clear the built-in volume entirely, then re-copy from the image.

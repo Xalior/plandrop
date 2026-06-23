@@ -40,7 +40,6 @@ address in your `.env`.
 | `PLANDROP_BIND` | Host address the services bind on — the address your reverse proxy reaches them at. `127.0.0.1` for local; in a deployment, the docker-bridge gateway (`172.17.0.1`) or another proxy-reachable IP. | `172.17.0.1` |
 | `PLANDROP_INGRESS_PORT` | Plain-HTTP port for the ingress — the public control entrypoint your reverse proxy points the apex at. | `8082` |
 | `PLANDROP_APACHE_PORT` | Plain-HTTP port for the static/WebDAV host (in-container and on the host, mapped 1:1). Unprivileged. | `8080` |
-| `PLANDROP_CONTROL_PORT` | The control plane's **internal** docker-network port. Not host-published — reached only through the ingress. | `8081` |
 | `PLANDROP_DEFAULT_TEMPLATE` | Template applied to a host's autoindex chrome when none is requested. | `bootstrap5` |
 | `PLANDROP_USER_TEMPLATES` | Host path to operator drop-in templates, layered over the built-ins. | `./user-templates` |
 | `PLANDROP_UID` / `PLANDROP_GID` | The user/group the containers run as, and that the `data/` tree should be owned by. Writes land as this UID. | `1000` |

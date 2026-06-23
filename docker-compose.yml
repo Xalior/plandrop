@@ -10,6 +10,12 @@
 # override with COMPOSE_PROJECT_NAME in your .env.
 name: ${COMPOSE_PROJECT_NAME:-plandrop}
 
+# The control plane's listen port. A fixed internal constant, NOT an operator
+# setting: the control plane is a pure internal service reached only via the
+# ingress on the docker network, never host-published. The control container and
+# the ingress's control-upstream share this one value via the anchor below.
+x-control-port: &control-port "8081"
+
 services:
   # The only publicly-reachable control entrypoint. Bundles the built-in
   # templates, seeds the shared theme volume fresh on boot, serves /.plandrop/*
@@ -25,7 +31,8 @@ services:
       PLANDROP_THEME_DIR: /srv/templates
       PLANDROP_USER_THEME_DIR: /srv/user-templates
       PLANDROP_CONTROL_HOST: control
-      PLANDROP_CONTROL_PORT: "${PLANDROP_CONTROL_PORT:-8081}"
+      # Fixed internal port the control plane listens on (see anchor above).
+      PLANDROP_CONTROL_PORT: *control-port
       # Which built-in theme's folder the seed mirrors to .plandrop/default/ for
       # the autoindex chrome fallback (defaults to bootstrap5 when unset).
       PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
@@ -118,7 +125,6 @@ services:
     # the files it creates are owned consistently with Apache's reads.
     user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
     environment:
-      PLANDROP_CONTROL_PORT: "${PLANDROP_CONTROL_PORT:-8081}"
       PLANDROP_HOSTS_DIR: /srv/hosts
       PLANDROP_AUTH_FILE: /srv/auth/htpasswd
       PLANDROP_THEME_DIR: /srv/templates
@@ -128,7 +134,7 @@ services:
     # No published port: the control plane is internal-only, reachable only via
     # the ingress on the Docker network. It is never exposed to the public again.
     expose:
-      - "${PLANDROP_CONTROL_PORT:-8081}"
+      - *control-port
     volumes:
       # Read-write: the control plane creates host dirs and writes htpasswd.
       - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
@@ -144,7 +150,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:'+process.env.PLANDROP_CONTROL_PORT).then(()=>process.exit(0),()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:8081').then(()=>process.exit(0),()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3
