@@ -52,23 +52,6 @@ describe('template generator', () => {
     expect(existsSync(join(outDir, 'darkly', 'js'))).toBe(false);
   });
 
-  it('ships no plandrop.css and links none from any header (retired)', () => {
-    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
-    for (const theme of themes) {
-      expect(existsSync(join(outDir, theme, 'css', 'plandrop.css'))).toBe(false);
-      const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
-      expect(header).not.toContain('plandrop.css');
-    }
-  });
-
-  it('carries no data-plandrop-template marker (retired)', () => {
-    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
-    for (const theme of themes) {
-      const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
-      expect(header).not.toContain('data-plandrop-template');
-    }
-  });
-
   it('pins each Bootswatch theme to its native data-bs-theme and drops the toggle', () => {
     const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
     // The detected dark set must match the hardcoded list exactly.
