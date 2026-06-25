@@ -5,8 +5,8 @@
 # templates. The built-in theme volume (mounted at THEME_DIR) is wiped and
 # re-populated from them each boot, so the built-in set is always exactly what
 # shipped — a stale entry from a prior boot never survives. Operator templates
-# live on a *separate* mount (a later phase) that this seed never touches, so
-# wiping this volume wholesale is safe.
+# live on a *separate* mount that this seed never touches, so wiping this volume
+# wholesale is safe.
 #
 # For each template folder, the seeder assembles template.html from the three
 # parts (header.html + plan.html + footer.html) so the parts stay the single

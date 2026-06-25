@@ -35,7 +35,7 @@ describe('parseArgs', () => {
 });
 
 describe('main', () => {
-  // Every command is now a live fs/network command; routing is covered by the
+  // Every command is a live fs/network command; routing is covered by the
   // parseArgs cases above and the per-command integration tests. Here we only
   // assert the dispatch-level usage path.
   it('exits non-zero with usage text on an unknown command', async () => {

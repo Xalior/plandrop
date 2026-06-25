@@ -15,8 +15,8 @@ export interface Dotfile {
   passphrase: string;
   /**
    * The template this location defaults to, stored as-is (may be the `default`
-   * alias) and resolved to a concrete name at `newdoc` time. Optional — absent
-   * in dotfiles written before templates existed.
+   * alias) and resolved to a concrete name at `newdoc` time. Optional — a
+   * dotfile without it falls back to the `default` alias.
    */
   template?: string;
 }

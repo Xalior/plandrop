@@ -13,7 +13,7 @@
 //     light/dark toggle button and the paired footer toggle <script>, defaulting
 //     to data-bs-theme="light".
 //   * Every Bootswatch theme is a single-appearance design. Forcing a toggle on
-//     them produced a long tail of contrast bugs, so we DROP the toggle (button
+//     them yields a long tail of contrast bugs, so they carry no toggle (button
 //     + script) and pin data-bs-theme to the theme's own native scheme, letting
 //     it render exactly as Bootswatch authored it. No contrast patches.
 //

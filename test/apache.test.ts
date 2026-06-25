@@ -7,7 +7,7 @@ const hostA = `${tenantA.label}.${domain}`;
 const authA = { user: tenantA.label, pass: tenantA.pass };
 const authB = { user: tenantB.label, pass: tenantB.pass };
 
-// Asserts the discovery PoC 1 matrix against the live container: open reads,
+// Asserts the mod_dav access matrix against the live container: open reads,
 // per-tenant authed writes, cross-tenant + anonymous writes denied.
 describe('apache mod_dav matrix', () => {
   it('anonymous GET of the seeded asset -> 200', async () => {

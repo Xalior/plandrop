@@ -14,7 +14,7 @@ const pkgRoot = fileURLToPath(new URL('../../', import.meta.url));
 const DOMAIN = 'plandrop.test';
 const APACHE_PORT = 8788;
 const PROXY_PORT = 8790;
-// The ingress is the only published control entrypoint now: it serves the
+// The ingress is the only published control entrypoint: it serves the
 // template statics and reverse-proxies /api/* to the (unpublished) control plane.
 const INGRESS_PORT = 8791;
 const PROJECT = 'plandrop-stack-test';
@@ -33,9 +33,9 @@ export interface Tenant {
 export interface Stack {
   apachePort: number;
   /**
-   * Port for direct control-plane API calls. The control plane no longer
-   * publishes a port; this is the ingress port, which proxies /api/* to it — so
-   * every existing control test exercises the real front door.
+   * Port for direct control-plane API calls. The control plane does not
+   * publish a port; this is the ingress port, which proxies /api/* to it — so
+   * every control test exercises the real front door.
    */
   controlPort: number;
   /** The ingress published port (template statics + /api proxy). */

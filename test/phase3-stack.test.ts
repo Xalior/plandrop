@@ -24,7 +24,7 @@ async function fetchTemplates(): Promise<TemplatesBody> {
   return JSON.parse(res.body.toString()) as TemplatesBody;
 }
 
-// --- Deliverable 2: operator user-templates mount ---------------------------
+// --- operator user-templates mount ------------------------------------------
 describe('user-templates mount (namespaced user/<name>)', () => {
   const userName = `user/${userTemplate}`;
 
@@ -145,7 +145,7 @@ function waitForSeed(docker: (args: string[]) => string, name: string): void {
   throw new Error('ingress did not seed the theme volume in time');
 }
 
-// --- Deliverable 1: configurable default (throwaway control + ingress) ------
+// --- configurable default (throwaway control + ingress) ---------------------
 // The shared stack runs with the built-in default (bootstrap5). Configuring a
 // different default is a property of PLANDROP_DEFAULT_TEMPLATE at boot, so it is
 // exercised on throwaway containers with their own volume, leaving the shared
@@ -230,7 +230,7 @@ describe('PLANDROP_DEFAULT_TEMPLATE configures the reported default', () => {
   });
 });
 
-// --- Deliverable 3: autoindex chrome ----------------------------------------
+// --- autoindex chrome -------------------------------------------------------
 describe('autoindex chrome (default fallback + per-tenant override)', () => {
   // Mint a fresh tenant and give its www a file but no index.html, so a GET /
   // produces a directory listing.

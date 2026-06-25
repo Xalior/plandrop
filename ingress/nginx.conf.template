@@ -1,7 +1,6 @@
 # plandrop ingress — the only publicly-reachable control entrypoint. Serves the
 # template static files itself (the control plane serves zero static bytes) and
 # reverse-proxies the dynamic API to the control plane on the internal network.
-# Ships without auth in this phase (the future security chokepoint lives here).
 worker_processes auto;
 error_log /dev/stderr warn;
 pid /tmp/nginx.pid;

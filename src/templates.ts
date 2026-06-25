@@ -2,9 +2,9 @@ import { readdir } from 'node:fs/promises';
 import type { TemplatesResponse } from './types';
 
 /**
- * The concrete template `default` resolves to in Phase 1. A doc stores the
- * resolved concrete name, never "default", so changing this never breaks an
- * existing doc. (Made operator-configurable in a later phase.)
+ * The fallback concrete template `default` resolves to when the operator
+ * configures no other. A doc stores the resolved concrete name, never
+ * "default", so changing this never breaks an existing doc.
  */
 export const DEFAULT_TEMPLATE = 'bootstrap5';
 

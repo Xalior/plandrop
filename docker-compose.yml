@@ -139,7 +139,7 @@ services:
       # What the `default` alias resolves to (defaults to bootstrap5 when unset).
       PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
     # No published port: the control plane is internal-only, reachable only via
-    # the ingress on the Docker network. It is never exposed to the public again.
+    # the ingress on the Docker network. It is never exposed to the public.
     expose:
       - *control-port
     volumes:
@@ -166,5 +166,5 @@ services:
 volumes:
   # Built-in template assets, re-seeded fresh from the ingress image on every
   # boot. Ephemeral seed state, not operator data — operator templates are a
-  # separate mount (a later phase) that the fresh seed never wipes.
+  # separate mount that the fresh seed never wipes.
   plandrop-templates:
