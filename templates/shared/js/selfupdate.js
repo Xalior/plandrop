@@ -6,9 +6,23 @@
  * Zero server-side logic: it relies only on Apache's default static handling of
  * conditional requests (ETag / Last-Modified). A discrete file (not inline) so
  * the swap strategy can be changed later without touching every document.
+ *
+ * Shared, theme-neutral: one copy lives at .plandrop/shared/js/selfupdate.js and
+ * every template's header references it (no per-theme duplication). It also ships
+ * with the statically-scaffolded templates on plandrop.dev, which is why the
+ * file:// guard below matters.
  */
 (function () {
   'use strict';
+
+  // No host to poll on a file:// (or other non-HTTP) document: conditional
+  // requests (ETag / If-None-Match / If-Modified-Since) need a server to answer
+  // them, so self-update is a no-op there. This lets the same script ship in
+  // statically-scaffolded local plans — harmless when the doc is opened straight
+  // off disk, live again once it is hosted over HTTP(S).
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    return;
+  }
 
   var POLL_MS = 5000;
   // The document's own URL, without a fragment — what we re-fetch to compare.

@@ -25,6 +25,15 @@ export function buildTemplatesResponse(
 /** The alias that resolves to whatever the server currently calls the default. */
 export const DEFAULT_ALIAS = 'default';
 
+/**
+ * Theme-volume directory names that are NOT selectable templates and must never
+ * be advertised by `/api/templates`:
+ *   - `default` — the seed-copied autoindex-chrome mirror.
+ *   - `shared`  — the theme-neutral shared assets (e.g. selfupdate.js), served
+ *     at `.plandrop/shared/…`; carries no header/plan/footer.
+ */
+export const RESERVED_TEMPLATE_DIRS: ReadonlySet<string> = new Set([DEFAULT_ALIAS, 'shared']);
+
 /** Thrown when a requested template name is not among the available ones. */
 export class UnknownTemplateError extends Error {
   constructor(requested: string, available: readonly string[]) {
@@ -95,10 +104,12 @@ export async function listTemplates(
   themeDir: string,
   options: { userDir?: string; configuredDefault?: string } = {},
 ): Promise<TemplatesResponse> {
-  // `default/` is the seed-copied autoindex-chrome mirror, not a selectable
-  // template — exclude it so the list never advertises the `default` alias as a
-  // concrete name (docs always carry concrete names).
-  const builtins = (await readTemplateDirs(themeDir)).filter((name) => name !== DEFAULT_ALIAS);
+  // Drop the reserved dirs (`default/` chrome mirror, `shared/` assets) so the
+  // list never advertises them as concrete templates — docs always carry
+  // concrete, selectable names.
+  const builtins = (await readTemplateDirs(themeDir)).filter(
+    (name) => !RESERVED_TEMPLATE_DIRS.has(name),
+  );
   const userNames = options.userDir ? await readTemplateDirs(options.userDir) : [];
   const names = [...builtins, ...userNames.map((name) => `user/${name}`)];
   const defaultTemplate = resolveConfiguredDefault(options.configuredDefault, names);

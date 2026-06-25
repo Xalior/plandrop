@@ -8,6 +8,8 @@ plandrop-*.tgz
 /data/
 
 # Generated template themes — built from the bootstrap5 skeleton at image-build
-# time (and by the generator locally). Only the skeleton is tracked.
+# time (and by the generator locally). Only the skeleton and the shared,
+# theme-neutral assets (selfupdate.js) are tracked.
 templates/*/
 !templates/bootstrap5/
+!templates/shared/

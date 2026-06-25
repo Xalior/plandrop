@@ -36,18 +36,20 @@ describe('template generator', () => {
     }
   });
 
-  it('gives each theme the three-part skeleton + self-update JS + vendored CSS', () => {
+  it('gives each theme the three-part skeleton + vendored CSS, but no per-theme JS', () => {
     const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
     expect(themes).toContain('darkly');
     for (const file of [
       'header.html',
       'plan.html',
       'footer.html',
-      'js/selfupdate.js',
       'css/bootstrap.min.css',
     ]) {
       expect(existsSync(join(outDir, 'darkly', file))).toBe(true);
     }
+    // self-update is shared (.plandrop/shared/js/), never copied per theme.
+    expect(existsSync(join(outDir, 'darkly', 'js', 'selfupdate.js'))).toBe(false);
+    expect(existsSync(join(outDir, 'darkly', 'js'))).toBe(false);
   });
 
   it('ships no plandrop.css and links none from any header (retired)', () => {
@@ -84,6 +86,12 @@ describe('template generator', () => {
       expect(footer).not.toContain('theme-toggle:start');
       // The brand link home survives on every theme.
       expect(header).toContain('<a class="navbar-brand mb-0 h1" href="/">');
+      // The navbar itself carries data-bs-theme too — Bootswatch gates its
+      // dark-navbar colours on `.navbar[data-bs-theme=dark]`, which only matches
+      // when the attribute is on the navbar, not merely inherited from <html>.
+      expect(header).toContain(
+        `<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom" data-bs-theme="${nativeScheme(theme)}"`,
+      );
     }
   });
 
@@ -94,14 +102,21 @@ describe('template generator', () => {
     expect(header).toContain('data-bs-theme-toggle');
     expect(footer).toContain("getAttribute('data-bs-theme')");
     expect(nativeScheme('bootstrap5')).toBe('light');
+    // The skeleton navbar is NOT pinned — it inherits data-bs-theme from <html>
+    // so the toggle flips the navbar along with the page.
+    expect(header).toContain(
+      '<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">',
+    );
   });
 
-  it('rewrites the header asset paths to the concrete theme name', () => {
+  it('rewrites the CSS path to the concrete theme name, leaves shared JS neutral', () => {
     generateAll({ skeletonDir, bootswatchDir, outDir });
     const header = readFileSync(join(outDir, 'darkly', 'header.html'), 'utf8');
     expect(header).toContain('.plandrop/darkly/css/bootstrap.min.css');
-    expect(header).toContain('.plandrop/darkly/js/selfupdate.js');
     expect(header).not.toContain('.plandrop/bootstrap5/');
+    // self-update stays at the shared, theme-neutral path — not retargeted.
+    expect(header).toContain('.plandrop/shared/js/selfupdate.js');
+    expect(header).not.toContain('.plandrop/darkly/js/');
   });
 
   it('vendors a self-hosted CSS (no runtime CDN link) carrying the MIT banners', () => {

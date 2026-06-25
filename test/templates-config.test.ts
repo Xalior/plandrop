@@ -36,7 +36,7 @@ describe('listTemplates enumeration', () => {
   beforeEach(() => {
     themeDir = mkdtempSync(join(tmpdir(), 'plandrop-theme-'));
     userDir = mkdtempSync(join(tmpdir(), 'plandrop-user-'));
-    for (const name of ['bootstrap5', 'darkly', 'default']) {
+    for (const name of ['bootstrap5', 'darkly', 'default', 'shared']) {
       mkdirSync(join(themeDir, name));
     }
     mkdirSync(join(userDir, 'house'));
@@ -54,6 +54,8 @@ describe('listTemplates enumeration', () => {
     expect(res.templates).toContain('user/house');
     // `default/` is the autoindex-chrome mirror, never a selectable template.
     expect(res.templates).not.toContain('default');
+    // `shared/` holds theme-neutral assets (selfupdate.js), not a template.
+    expect(res.templates).not.toContain('shared');
   });
 
   it('reports the configured default, validated against the available set', async () => {

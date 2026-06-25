@@ -82,6 +82,21 @@ describe('ingress static template serving', () => {
     const html = res.body.toString();
     expect(html.trimStart().startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('.plandrop/bootstrap5/css/bootstrap.min.css');
+    // self-update is referenced by the shared, theme-neutral path, not per-theme.
+    expect(html).toContain('.plandrop/shared/js/selfupdate.js');
+  });
+
+  it('serves the shared, theme-neutral self-update JS once at /.plandrop/shared/', async () => {
+    const res = await httpRequest({
+      port: ingressPort,
+      method: 'GET',
+      path: '/.plandrop/shared/js/selfupdate.js',
+      hostHeader: domain,
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/javascript/);
+    // The file:// guard ships with it (so static/local plans can carry it safely).
+    expect(res.body.toString()).toContain('location.protocol');
   });
 });
 
@@ -204,6 +219,19 @@ describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => 
     const bad = runCli(['newdoc', 'bar.html', '--template', 'nope'], { cwd, env: env() });
     expect(bad.status).not.toBe(0);
     expect(bad.stderr).toContain('bootstrap5');
+  });
+
+  it('scaffolds from --domain with no .plandrop (template-server mode)', () => {
+    // No `create`, so no dotfile: newdoc resolves the template server straight
+    // from --domain. This is how `newdoc --domain plandrop.dev` works against the
+    // static, publish-less template host.
+    expect(existsSync(join(cwd, '.plandrop'))).toBe(false);
+    const made = runCli(['newdoc', 'nodot.html', '--domain', proxyBase], { cwd, env: env() });
+    expect(made.status).toBe(0);
+    const doc = readFileSync(join(cwd, 'nodot.html'), 'utf8');
+    expect(doc).toContain('.plandrop/bootstrap5/css/bootstrap.min.css');
+    // Still no dotfile written — newdoc only scaffolds a file.
+    expect(existsSync(join(cwd, '.plandrop'))).toBe(false);
   });
 
   it('uses the dotfile template by default and lets --template override it', () => {

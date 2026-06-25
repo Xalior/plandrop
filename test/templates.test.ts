@@ -31,15 +31,18 @@ describe('bootstrap5 template parts', () => {
     const assembled = part('header.html') + part('plan.html') + part('footer.html');
     expect(assembled.trimStart().startsWith('<!DOCTYPE html>')).toBe(true);
     expect(assembled.trimEnd().endsWith('</html>')).toBe(true);
-    // plan.html content sits between header and footer.
-    expect(assembled).toContain('Your document');
+    // plan.html content (the onboarding comment) sits between header and footer.
+    expect(assembled).toContain('Replace this comment');
   });
 
-  it('references assets by the concrete template name, never "default"', () => {
+  it('references the theme CSS by concrete name and self-update by the shared path', () => {
     const header = part('header.html');
+    // The per-theme CSS is concrete (never "default").
     expect(header).toContain('.plandrop/bootstrap5/css/bootstrap.min.css');
-    expect(header).toContain('.plandrop/bootstrap5/js/selfupdate.js');
     expect(header).not.toContain('.plandrop/default/');
+    // selfupdate.js is shared and theme-neutral, not per-theme.
+    expect(header).toContain('.plandrop/shared/js/selfupdate.js');
+    expect(header).not.toContain('.plandrop/bootstrap5/js/');
   });
 
   it('supports light/dark via data-bs-theme', () => {

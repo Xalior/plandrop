@@ -1,5 +1,39 @@
 # Changelog
 
+## [Unreleased] — 0.2.1
+
+### Added
+
+- **`newdoc` works without a host** — `newdoc` no longer requires a `.plandrop`. It resolves
+  its template server by the usual precedence (`--domain` flag > `PLANDROP_DOMAIN` > nearest
+  `.plandrop` > user config) and, with nothing configured, defaults to **plandrop.dev** — so
+  `npx plandrop newdoc plan.html` scaffolds a document out of the box. Pointed at plandrop.dev
+  you get **static, publish-less** templates (assets referenced by absolute
+  `https://plandrop.dev/.plandrop/…` URLs, so the document renders standalone — even opened as
+  a `file://` URL — and carrying the shared self-update script, which lies dormant on `file://`
+  and comes alive once the saved plan is hosted over HTTP(S)); pointed at your own host you get
+  that host's self-updating ones. Unlike `create`, `newdoc` never prompts — the default stands
+  in for it.
+
+### Changed
+
+- **One shared `selfupdate.js`, not one per theme** — the self-update script is now seeded once
+  at the theme-neutral `.plandrop/shared/js/selfupdate.js` and referenced by every template,
+  instead of being copied byte-for-byte into all 27 theme folders (the per-theme CSS still
+  differs and stays per theme). A fix to the update logic no longer means regenerating every
+  theme. The script gained a `file://` guard — it no-ops when there is no host to poll — so it
+  now also ships with the statically-scaffolded plandrop.dev templates for local plans.
+
+### Fixed
+
+- **Dark-theme navbar contrast** — the navbar in single-appearance Bootswatch themes now
+  carries `data-bs-theme` on the navbar element itself, not just on `<html>`. Bootswatch
+  gates its dark-navbar colours on the `.navbar[data-bs-theme=dark]` attribute selector,
+  which doesn't match an inherited value, so the brand/links in dark themes (cyborg,
+  darkly, slate, solar, superhero, vapor) were falling back to a near-black `#222` on a
+  dark bar. The dual-mode `bootstrap5` skeleton is left inheriting so its light/dark toggle
+  still flips the navbar with the page.
+
 ## [0.2.0] — 2026-06-23
 
 Templates & themes, served behind a new nginx ingress.

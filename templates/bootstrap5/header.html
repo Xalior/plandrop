@@ -8,7 +8,10 @@
        /.plandrop/ -> theme volume); links are concrete (bootstrap5), never
        "default", so changing the default later never breaks this document. -->
   <link rel="stylesheet" href=".plandrop/bootstrap5/css/bootstrap.min.css">
-  <script defer src=".plandrop/bootstrap5/js/selfupdate.js"></script>
+  <!-- selfupdate.js is shared and theme-neutral: one copy under .plandrop/shared/
+       serves every theme. The path stays bare (not retargeted per theme) so the
+       generator's `.plandrop/<theme>/` rewrite leaves it pointing at the shared. -->
+  <script defer src=".plandrop/shared/js/selfupdate.js"></script>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">

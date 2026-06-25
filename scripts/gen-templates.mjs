@@ -1,10 +1,11 @@
 // Generate one plandrop template folder per Bootswatch theme.
 //
 // Each generated folder is the shared three-part skeleton (header.html /
-// plan.html / footer.html + the self-update JS) taken from the bootstrap5
-// template, with that theme's compiled, self-hosted CSS vendored in. The header
-// references its assets by the concrete theme name, so a doc built from a theme
-// links only into that theme's tree.
+// plan.html / footer.html) taken from the bootstrap5 template, with that theme's
+// compiled, self-hosted CSS vendored in. The header references its CSS by the
+// concrete theme name, so a doc built from a theme links into that theme's tree;
+// the self-update JS is the one exception — shared and theme-neutral at
+// .plandrop/shared/js/selfupdate.js, not copied per theme.
 //
 // Appearance policy — honour each theme's NATIVE mode:
 //   * bootstrap5 (the skeleton) is the one genuinely dual-mode design — stock
@@ -98,6 +99,16 @@ export function renderHeader(skeletonHeader, theme) {
   );
   if (theme !== SKELETON_NAME) {
     header = stripToggle(header);
+    // Pin data-bs-theme on the navbar too, not just <html>. Bootswatch gates its
+    // dark-navbar colours on the attribute selector `.navbar[data-bs-theme=dark]`,
+    // which needs the attribute ON the navbar — inheriting it from <html> doesn't
+    // match (e.g. darkly's brand otherwise falls back to #222, dark-on-dark). The
+    // dual-mode skeleton is left inheriting so its light/dark toggle still flips
+    // the navbar with the rest of the page.
+    header = header.replace(
+      /(<nav class="navbar[^"]*")/,
+      `$1 data-bs-theme="${nativeScheme(theme)}"`,
+    );
   }
   return header;
 }
@@ -114,7 +125,6 @@ export function renderFooter(skeletonFooter, theme) {
 export function generateTheme(theme, { skeletonDir, bootswatchDir, outDir }) {
   const dest = join(outDir, theme);
   mkdirSync(join(dest, 'css'), { recursive: true });
-  mkdirSync(join(dest, 'js'), { recursive: true });
 
   const header = renderHeader(readFileSync(join(skeletonDir, 'header.html'), 'utf8'), theme);
   writeFileSync(join(dest, 'header.html'), header);
@@ -123,8 +133,9 @@ export function generateTheme(theme, { skeletonDir, bootswatchDir, outDir }) {
   writeFileSync(join(dest, 'footer.html'), footer);
 
   // plan.html carries no template-name paths and no toggle, so it copies as-is.
+  // No per-theme js/: selfupdate.js is shared and theme-neutral, seeded once to
+  // .plandrop/shared/js/ (the header references that bare path, not a per-theme one).
   cpSync(join(skeletonDir, 'plan.html'), join(dest, 'plan.html'));
-  cpSync(join(skeletonDir, 'js', 'selfupdate.js'), join(dest, 'js', 'selfupdate.js'));
 
   // The theme's self-contained compiled CSS.
   cpSync(
