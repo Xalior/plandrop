@@ -22,6 +22,10 @@ services:
   # statically, and reverse-proxies /api/* to the control plane. Coupled to and
   # versioned with the control plane as one managed unit.
   ingress:
+    # Prebuilt image from GHCR (multi-arch: amd64 / arm64 / arm v7). `build:` is
+    # kept so devs can `docker compose up --build` from source; users instead run
+    # `docker compose pull` to fetch this image and skip the build entirely.
+    image: ghcr.io/xalior/plandrop-ingress:${PLANDROP_VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile.ingress
@@ -117,6 +121,9 @@ services:
         condition: service_healthy
 
   control:
+    # Prebuilt image from GHCR (multi-arch: amd64 / arm64 / arm v7). As with the
+    # ingress: `docker compose pull` fetches it; `--build` rebuilds from source.
+    image: ghcr.io/xalior/plandrop-control:${PLANDROP_VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile.control

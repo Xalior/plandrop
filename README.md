@@ -21,8 +21,10 @@ Two containers behind a reused TLS reverse proxy:
 - **Control plane** — a small Node/Hono service that mints and manages hosts (the only
   privileged writer of the content tree and credentials).
 
-The control image builds entirely inside Docker (multistage), so the stack runs from a
-clean clone with no host toolchain, on x86-64 or arm64.
+Prebuilt multi-arch images (`amd64`, `arm64`, `arm/v7`) are published to GHCR, so the stack
+runs from a clean clone with `docker compose pull` — no host toolchain, on a server or a
+Raspberry Pi alike. Prefer to build from source? The images are multistage and build
+entirely inside Docker (`docker compose up -d --build`).
 
 ## Docs
 

@@ -14,8 +14,9 @@ and reusable.
 
 ## Requirements
 
-- Docker + Docker Compose. The control image builds entirely inside Docker (multistage),
-  so **no Node toolchain is needed on the host** — it builds on x86-64 or arm64 alike.
+- Docker + Docker Compose. Prebuilt images are published, so **no toolchain is needed on
+  the host** — and if you'd rather build from source, the images are multistage and build
+  entirely inside Docker.
 - A reverse proxy that terminates TLS and routes by hostname (e.g. Nginx Proxy Manager,
   Caddy, Traefik, plain nginx).
 - A domain you control, with a wildcard DNS record (see below).
@@ -27,11 +28,20 @@ git clone https://github.com/Xalior/plandrop.git
 cd plandrop
 cp .env.example .env       # then edit (see below)
 mkdir -p data/hosts data/auth
-docker compose up -d --build
+docker compose pull        # fetch the prebuilt ingress + control images from GHCR
+docker compose up -d
 ```
 
-This builds the ingress and control images, pulls Apache, and starts the stack bound to the
-address in your `.env`.
+This pulls the `ingress` and `control` images from
+[GHCR](https://github.com/Xalior/plandrop/pkgs/container/plandrop-control) (and Apache from
+Docker Hub) and starts the stack bound to the address in your `.env`. The images are
+**multi-arch** — `amd64`, `arm64`, and `arm/v7` (32-bit ARM) — so they run on a Raspberry Pi
+as well as a server. Pin a specific release with `PLANDROP_VERSION` in `.env` (default
+`latest`); the clone is still needed for the compose file, Apache config, and `.env`.
+
+> **Build from source instead** — for development or local changes, swap the last two lines
+> for `docker compose up -d --build`, which builds both images from the Dockerfiles rather
+> than pulling them.
 
 ## Configuration (`.env`)
 
@@ -90,7 +100,8 @@ and Apache keys off the host *label*, so the same stack works behind any domain.
 
 | Task | Command (from the stack directory) |
 |------|-----------------------------------|
-| Update to the latest version | `git pull && docker compose up -d --build` |
+| Update (prebuilt images) | `git pull && docker compose pull && docker compose up -d` |
+| Update (build from source) | `git pull && docker compose up -d --build` |
 | Restart | `docker compose restart` |
 | Logs | `docker compose logs -f` |
 | Stop | `docker compose down` (data in `data/` persists) |

@@ -1,0 +1,80 @@
+# Build and publish the two plandrop container images to GHCR.
+#
+# Only the `control` and `ingress` images are ours; `apache` and the dev `proxy`
+# use stock upstream images with config bind-mounted from this repo, so there is
+# nothing to publish for them.
+#
+# Releases only: a `v*` tag (e.g. v0.2.1) publishes semver + `latest`. No build
+# on plain pushes to a branch. `workflow_dispatch` is a manual re-publish button
+# (it tags by commit sha and never moves `latest`).
+#
+# Auth uses the built-in GITHUB_TOKEN — no secret to configure. NOTE: each
+# package (plandrop-control, plandrop-ingress) is created PRIVATE on its first
+# push; flip each to public once in its package settings so users can pull.
+name: Publish images
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: control
+            dockerfile: Dockerfile.control
+          - image: ingress
+            dockerfile: Dockerfile.ingress
+    steps:
+      - uses: actions/checkout@v4
+
+      # QEMU lets one amd64 runner emulate the arm builds below.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Derives tags + OCI labels. Owner is lowercased automatically, so the
+      # image name resolves to ghcr.io/xalior/plandrop-<image>. `latest=auto`
+      # (the default flavor) tags `latest` only for a semver tag build, so a
+      # manual sha-only run never moves it.
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/plandrop-${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          # arm/v7 = 32-bit ARM (older Raspberry Pi / armhf hosts).
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Per-image build cache so control and ingress don't evict each other.
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

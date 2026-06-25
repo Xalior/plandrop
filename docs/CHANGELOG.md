@@ -15,6 +15,13 @@
   that host's self-updating ones. Unlike `create`, `newdoc` never prompts — the default stands
   in for it.
 
+- **Prebuilt container images on GHCR** — the `ingress` and `control` images are published
+  to `ghcr.io/xalior/plandrop-ingress` and `ghcr.io/xalior/plandrop-control` on each release
+  tag, multi-arch (`amd64`, `arm64`, `arm/v7`). `docker-compose.yml` references them so
+  `docker compose pull && docker compose up -d` runs the stack with no local build; pin a
+  release with `PLANDROP_VERSION` (default `latest`). Building from source still works with
+  `docker compose up -d --build`.
+
 ### Changed
 
 - **One shared `selfupdate.js`, not one per theme** — the self-update script is now seeded once
