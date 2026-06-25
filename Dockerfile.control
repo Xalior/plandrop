@@ -4,8 +4,10 @@
 # so it can be cloned and `docker compose build` anywhere (e.g. a Pi).
 #
 # Stage 1: install deps and bundle src/server.ts -> dist/server.js (deps inlined
-# by tsup, so the runtime image is just Node + one file).
-FROM node:24-slim AS build
+# by tsup, so the runtime image is just Node + one file). Pinned to the builder
+# platform: the bundle is platform-independent JS, so this stage runs natively
+# (no emulated pnpm/esbuild) even when the runtime targets another arch.
+FROM --platform=$BUILDPLATFORM node:22-slim AS build
 WORKDIR /app
 RUN corepack enable
 # Manifests first so the install layer caches across source changes.
@@ -15,8 +17,10 @@ COPY tsconfig.json tsup.config.ts ./
 COPY src ./src
 RUN pnpm run build
 
-# Stage 2: minimal runtime — just the bundled server.
-FROM node:24-slim AS runtime
+# Stage 2: minimal runtime — just the bundled server. Built per target arch, so
+# the base must exist for each: Node 22 ships amd64/arm64/arm-v7, whereas Node 24
+# carries no 32-bit arm/v7 — the arch older Raspberry Pis need.
+FROM node:22-slim AS runtime
 WORKDIR /app
 COPY --from=build /app/dist/server.js ./server.js
 # Runs as the non-root user/UID chosen in docker-compose (the writer of the

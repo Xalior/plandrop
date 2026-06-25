@@ -9,7 +9,9 @@
 # the committed bootstrap5 skeleton + one folder per Bootswatch theme, each with
 # that theme's compiled CSS vendored and self-hosted (no runtime CDN). The
 # generated set is bundled into the runtime image and seeded to the theme volume.
-FROM node:24-slim AS gen
+# Pinned to the builder platform: it only emits text/CSS (platform-independent),
+# so it runs natively rather than under emulation for each target arch.
+FROM --platform=$BUILDPLATFORM node:22-slim AS gen
 WORKDIR /app
 RUN corepack enable
 # Manifests first so the install layer caches across source changes.
