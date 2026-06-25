@@ -4,6 +4,12 @@
   "description": "Push a static HTML document to a unique, secure hostname on your network and share the link.",
   "type": "module",
   "license": "LGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xalior/plandrop.git"
+  },
+  "homepage": "https://plandrop.dev",
+  "bugs": "https://github.com/Xalior/plandrop/issues",
   "packageManager": "pnpm@10.18.1",
   "bin": {
     "plandrop": "dist/cli.js"
