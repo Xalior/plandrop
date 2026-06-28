@@ -1,4 +1,4 @@
-.PHONY: build lint typecheck test check pack clean showcase apache-pull apache-up apache-down control-build control-up control-down manual-up manual-down
+.PHONY: build lint typecheck test check pack clean showcase apache-build apache-up apache-down control-build control-up control-down manual-up manual-down
 
 build:
 	pnpm run build
@@ -31,12 +31,13 @@ showcase: build
 	node scripts/gen-showcase.mjs --domain "$(SHOWCASE_DOMAIN)" --cwd "$(SHOWCASE_CWD)"
 
 # Apache host service helpers. The integration tests manage their own throwaway
-# container; these are for running the service against your own .env/data.
-apache-pull:
-	docker pull httpd:2.4
+# container; these are for running the service against your own .env/data. The
+# vhost config is baked into the image, so build it from source here.
+apache-build:
+	docker compose build apache
 
 apache-up:
-	docker compose up -d apache
+	docker compose up -d --build apache
 
 apache-down:
 	docker compose down -v

@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+
+# The plandrop dev/test front proxy: stock nginx with the routing config and
+# its entrypoint baked in, so the image is self-contained — no host-side config
+# bind mount. It is the stand-in for the production front proxy (NPM/Cloudflare/
+# etc.) that lives OUTSIDE this stack, behind the `testproxy` profile; a plain
+# `docker compose up` never starts it.
+#
+# Stock upstream base, no build step — the config is platform-independent, so
+# the COPYs make this trivially multi-arch (amd64 / arm64 / arm v7).
+FROM nginx:alpine
+
+# The entrypoint renders nginx.conf from the template with envsubst (nginx does
+# not interpolate env) using the proxy ports/hosts from the container
+# environment, then execs nginx — so routing stays a runtime setting.
+COPY proxy/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY proxy/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

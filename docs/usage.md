@@ -21,6 +21,7 @@ npx plandrop upload ./planfile.html
 | Command | What it does |
 |---------|--------------|
 | `create` | Mint a new host (a unique hostname + passphrase) and write them to a `.plandrop` file in the current directory. |
+| `newdoc <filename>` | Scaffold a new template-based HTML document locally from a server-hosted theme. Needs no host — defaults to the public template host. |
 | `upload <path> [remote]` | Push a file or a directory (recursively) to your host over authenticated WebDAV. |
 | `rotate` | Change the host's passphrase (the old one stops working immediately). |
 | `remove` | Delete the host and its content, and remove the local `.plandrop`. |
@@ -57,6 +58,33 @@ URI — including a port — is used as given. The full URI is stored in `.pland
 
 With nothing set and no input available (non-interactive, closed stdin), `create` exits
 non-zero with a clear error.
+
+## newdoc
+
+Scaffold a starting document from one of the server's themes, written to a local file:
+
+```sh
+npx plandrop newdoc plan.html                    # default theme from plandrop.dev
+npx plandrop newdoc plan.html --template darkly  # a specific theme
+npx plandrop newdoc plan.html --domain https://plandrop.example.com  # your own host's themes
+```
+
+Unlike the other commands, `newdoc` needs no host or passphrase — it only fetches a template.
+With nothing configured it defaults to the public template host **plandrop.dev**, so
+`npx plandrop newdoc plan.html` works out of the box; it never prompts.
+
+- **Pointed at plandrop.dev** (the default) you get **static, publish-less** templates: assets
+  are referenced by absolute `https://plandrop.dev/…` URLs, so the document renders standalone
+  — even opened straight off disk as a `file://` URL — and its self-update script lies dormant
+  until the saved doc is hosted over HTTP(S).
+- **Pointed at your own running stack** (via `--domain`, `PLANDROP_DOMAIN`, or a nearby
+  `.plandrop`) you get that host's self-updating templates.
+
+The theme is chosen by precedence: `--template` flag > the nearest `.plandrop`'s `template`
+field > the server's default. Domain resolution follows the same precedence as `create` (see
+[Where the domain comes from](#where-the-domain-comes-from)), except `newdoc` never prompts and
+falls back to plandrop.dev. It refuses to overwrite an existing file without `--force`. The
+scaffolded file is yours to edit — then `upload` it like any other document.
 
 ## upload
 

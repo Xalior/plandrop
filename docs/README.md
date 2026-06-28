@@ -9,8 +9,8 @@ npx plandrop upload ./planfile.html
 # → share https://<host>.plandrop.example.com/
 ```
 
-- **[Using the client](usage.md)** — the `npx plandrop` CLI: `create`, `upload`, `rotate`,
-  `remove`, the `.plandrop` file, and how the domain is resolved.
+- **[Using the client](usage.md)** — the `npx plandrop` CLI: `create`, `newdoc`, `upload`,
+  `rotate`, `remove`, the `.plandrop` file, and how the domain is resolved.
 - **[Self-hosting the stack](setup.md)** — run the three-container stack (nginx ingress +
   Apache `mod_dav` host + control plane) with Docker Compose, and the reverse-proxy / TLS /
   DNS it needs in front.
@@ -24,7 +24,7 @@ npx plandrop upload ./planfile.html
   accepts authenticated WebDAV writes from that host's owner.
 - The **client** writes a local `.plandrop` with the host, passphrase, and domain, then
   uploads over authenticated WebDAV and prints the shareable link.
-- A reused **reverse proxy** provides wildcard TLS and host routing; the two services speak
-  plain HTTP behind it.
+- A reused **reverse proxy** provides wildcard TLS and host routing; the host-published
+  services (ingress + Apache) speak plain HTTP behind it.
 
 Source: <https://github.com/Xalior/plandrop> · LGPL-3.0-only.

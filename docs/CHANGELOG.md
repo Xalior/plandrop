@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.2.2] — 2026-06-28
+
+### Changed
+
+- **Self-contained server images** — every service now bakes its own config into its image,
+  so the running stack is a true black box: the compose file plus a `.env` (and the `data/`
+  tree) is all a deployer needs, with no repo checkout for host-side config. The Apache vhost
+  config (`apache/httpd.conf`, with `${PLANDROP_APACHE_PORT}` still interpolated at runtime)
+  ships in a new `ghcr.io/xalior/plandrop-apache` image, and the dev front-proxy config in
+  `ghcr.io/xalior/plandrop-proxy`; both are multi-arch (`amd64`, `arm64`, `arm/v7`) and built
+  by the publish workflow alongside `ingress`/`control`. Genuine runtime data and operator
+  content (the `data/` tree, the operator `user-templates` drop-in, the seeded theme volume)
+  stay as mounts. Building from source (`docker compose up -d --build`) still works.
+
+### Documentation
+
+- **Documented `newdoc`** in the [client usage guide](usage.md) — it was previously absent.
+  Covers the no-host default (scaffolds from plandrop.dev's static, publish-less templates),
+  the `--template` / `--domain` flags and their precedence, and static-vs-self-updating
+  behaviour.
+- **Corrected the stack description** in the README and docs index to the **three** containers
+  (nginx ingress + Apache `mod_dav` host + control plane), not two — the ingress was missing.
+
 ## [0.2.1] — 2026-06-25
 
 ### Added

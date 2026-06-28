@@ -1,16 +1,18 @@
-# Build and publish the two plandrop container images to GHCR.
+# Build and publish the plandrop container images to GHCR.
 #
-# Only the `control` and `ingress` images are ours; `apache` and the dev `proxy`
-# use stock upstream images with config bind-mounted from this repo, so there is
-# nothing to publish for them.
+# Each service ships its own config baked into its image, so the running server
+# is a self-contained black box (compose + .env, no repo checkout): `control`
+# and `ingress` are built from source; `apache` and the dev `proxy` are stock
+# upstream bases with their config COPYed in. All four publish here.
 #
 # Releases only: a `v*` tag (e.g. v0.2.1) publishes semver + `latest`. No build
 # on plain pushes to a branch. `workflow_dispatch` is a manual re-publish button
 # (it tags by commit sha and never moves `latest`).
 #
 # Auth uses the built-in GITHUB_TOKEN — no secret to configure. NOTE: each
-# package (plandrop-control, plandrop-ingress) is created PRIVATE on its first
-# push; flip each to public once in its package settings so users can pull.
+# package (plandrop-control, plandrop-ingress, plandrop-apache, plandrop-proxy)
+# is created PRIVATE on its first push; flip each to public once in its package
+# settings so users can pull.
 name: Publish images
 
 on:
@@ -34,6 +36,10 @@ jobs:
             dockerfile: Dockerfile.control
           - image: ingress
             dockerfile: Dockerfile.ingress
+          - image: apache
+            dockerfile: Dockerfile.apache
+          - image: proxy
+            dockerfile: Dockerfile.proxy
     steps:
       - uses: actions/checkout@v4
 

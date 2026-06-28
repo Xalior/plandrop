@@ -28,19 +28,20 @@ git clone https://github.com/Xalior/plandrop.git
 cd plandrop
 cp .env.example .env       # then edit (see below)
 mkdir -p data/hosts data/auth
-docker compose pull        # fetch the prebuilt ingress + control images from GHCR
+docker compose pull        # fetch the prebuilt images from GHCR
 docker compose up -d
 ```
 
-This pulls the `ingress` and `control` images from
-[GHCR](https://github.com/Xalior/plandrop/pkgs/container/plandrop-control) (and Apache from
-Docker Hub) and starts the stack bound to the address in your `.env`. The images are
-**multi-arch** — `amd64`, `arm64`, and `arm/v7` (32-bit ARM) — so they run on a Raspberry Pi
-as well as a server. Pin a specific release with `PLANDROP_VERSION` in `.env` (default
-`latest`); the clone is still needed for the compose file, Apache config, and `.env`.
+This pulls the `ingress`, `control`, and `apache` images from
+[GHCR](https://github.com/Xalior/plandrop/pkgs/container/plandrop-control) and starts the
+stack bound to the address in your `.env`. Each image carries its own config, so the only
+host-side files you need are the compose file and `.env` (plus the `data/` tree). The images
+are **multi-arch** — `amd64`, `arm64`, and `arm/v7` (32-bit ARM) — so they run on a Raspberry
+Pi as well as a server. Pin a specific release with `PLANDROP_VERSION` in `.env` (default
+`latest`).
 
 > **Build from source instead** — for development or local changes, swap the last two lines
-> for `docker compose up -d --build`, which builds both images from the Dockerfiles rather
+> for `docker compose up -d --build`, which builds the images from the Dockerfiles rather
 > than pulling them.
 
 ## Configuration (`.env`)

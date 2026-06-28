@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1
+
+# The plandrop static + WebDAV host: stock Apache mod_dav with the plandrop
+# vhost config baked in, so the image is self-contained — no host-side config
+# bind mount. One dynamic vhost serves *.<domain> read-only and accepts
+# per-tenant authed WebDAV writes; the shared theme assets and tenant content
+# come in as runtime mounts (the data tree and the seeded theme volume).
+#
+# Stock upstream base, no build step — the config is platform-independent, so
+# the single COPY makes this trivially multi-arch (amd64 / arm64 / arm v7).
+FROM httpd:2.4
+
+# The vhost config. Apache interpolates ${PLANDROP_APACHE_PORT} from the
+# container environment at config-parse time (set by docker-compose), so the
+# listen port stays a runtime setting rather than being hardcoded here.
+COPY apache/httpd.conf /usr/local/apache2/conf/httpd.conf
