@@ -1,0 +1,106 @@
+# plandrop — exposed deployment (behind an external proxy).
+#
+# The stack sits behind a separate TLS/HTTP proxy you already run (Nginx Proxy
+# Manager, Cloudflare, Caddy, …) which terminates TLS and routes by hostname.
+# ingress and apache publish plain-HTTP ports on PLANDROP_BIND for that proxy to
+# reach; control is internal-only. There is no bundled proxy here — routing is
+# the external one's job (the parent domain -> ingress, *.<domain> -> apache).
+#
+# Image-only: every service is a prebuilt GHCR image, so this file plus a .env is
+# the whole deployment — no repo, no build. Track latest (default) or pin with
+# PLANDROP_VERSION.
+name: ${COMPOSE_PROJECT_NAME:-plandrop}
+
+# The control plane's fixed internal listen port — never host-published; the
+# ingress reaches it on the docker network at this one value.
+x-control-port: &control-port "8081"
+
+services:
+  # The only publicly-reachable control entrypoint: serves /.plandrop/* template
+  # statics, reverse-proxies /api/* to the control plane, and seeds the theme
+  # volume on boot. The external proxy points the parent domain here.
+  ingress:
+    image: ghcr.io/xalior/plandrop-ingress:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      PLANDROP_INGRESS_PORT: "${PLANDROP_INGRESS_PORT:-8082}"
+      PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_USER_THEME_DIR: /srv/user-templates
+      PLANDROP_CONTROL_HOST: control
+      PLANDROP_CONTROL_PORT: *control-port
+      PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
+    ports:
+      # Plain HTTP — the external proxy terminates TLS in front and forwards here.
+      - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_INGRESS_PORT:-8082}:${PLANDROP_INGRESS_PORT:-8082}"
+    volumes:
+      - "plandrop-templates:/srv/templates"
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
+    depends_on:
+      - control
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "test -f /srv/templates/bootstrap5/template.html"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # The static + WebDAV host: one dynamic vhost serves every *.<domain> subdomain
+  # (open reads, per-tenant authed writes). The external proxy forwards
+  # *.<domain> here. Config is baked into the image — no host-side mount.
+  apache:
+    image: ghcr.io/xalior/plandrop-apache:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    # DAV writes land as PLANDROP_UID, matching host-side ownership of data/.
+    user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
+    environment:
+      # Apache interpolates ${PLANDROP_APACHE_PORT} in its baked config at start.
+      PLANDROP_APACHE_PORT: "${PLANDROP_APACHE_PORT:-8080}"
+    ports:
+      - "${PLANDROP_BIND:-127.0.0.1}:${PLANDROP_APACHE_PORT:-8080}:${PLANDROP_APACHE_PORT:-8080}"
+    volumes:
+      # Per-tenant content (DAV writes land here); shared auth (read-only here —
+      # the control plane writes it); shared theme assets; operator drop-ins.
+      - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
+      - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
+      - "plandrop-templates:/srv/templates:ro"
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
+    depends_on:
+      ingress:
+        condition: service_healthy
+
+  # The only writer of the content tree and credentials. Internal-only — reached
+  # solely through the ingress on the docker network, never host-published.
+  control:
+    image: ghcr.io/xalior/plandrop-control:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
+    environment:
+      PLANDROP_HOSTS_DIR: /srv/hosts
+      PLANDROP_AUTH_FILE: /srv/auth/htpasswd
+      PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_USER_THEME_DIR: /srv/user-templates
+      PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
+    expose:
+      - *control-port
+    volumes:
+      - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
+      - "${PLANDROP_DATA:-./data}/auth:/srv/auth"
+      - "plandrop-templates:/srv/templates:ro"
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8081').then(()=>process.exit(0),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  # Built-in template assets, re-seeded fresh from the ingress image on each boot.
+  # Operator drop-ins live in the separate user-templates mount, never wiped here.
+  plandrop-templates:

@@ -1,9 +1,20 @@
-# plandrop stack. The Apache mod_dav host serves *.<domain> read-only and
-# accepts per-tenant authed WebDAV writes; the control plane mints/manages hosts.
-# Ingress/TLS is out of scope and reused (NPM or any SSL/HTTP ingress in front);
-# these services speak plain HTTP behind it. The bind address is host-specific
-# (PLANDROP_BIND in .env): 127.0.0.1 for local dev, the docker-bridge or tailnet
-# IP where a front proxy can reach it in deployment.
+# plandrop — build & test stack (development only).
+#
+# This is the file that carries build contexts: it builds every image from
+# source and runs the integration/manual stacks (make check, manual-up,
+# test/setup/stack.ts), including the testproxy front proxy. It is NOT a
+# deployment file.
+#
+# To run a server from the prebuilt GHCR images (no repo, no build), use a
+# hosting file — image-only, just the compose file + a .env:
+#   compose.proxy.yml   — self-contained: bundles its own proxy so one localhost
+#                         port serves everything (localhost self-hosting).
+#   compose.exposed.yml — services exposed behind your own external TLS proxy
+#                         (shared hosting, e.g. behind Nginx Proxy Manager).
+#
+# The Apache mod_dav host serves *.<domain> read-only and accepts per-tenant
+# authed WebDAV writes; the control plane mints/manages hosts; these speak plain
+# HTTP. PLANDROP_BIND (.env) is host-specific: 127.0.0.1 for local dev.
 
 # Project name — the prefix for containers/networks/volumes (e.g.
 # plandrop-apache-1). Defaults to "plandrop" instead of the folder name;

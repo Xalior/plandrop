@@ -1,0 +1,121 @@
+# plandrop — self-contained deployment (bundled proxy).
+#
+# A complete stack with its own front proxy, so a single host port serves both
+# the control entrypoint and the *.<domain> tenant hosts — no external proxy,
+# domain, or TLS needed. Point a browser and the CLI at PLANDROP_PROXY_PORT on
+# localhost; the proxy routes the parent host -> ingress and *.<host> -> apache.
+# Defaults target *.localhost, which resolves to loopback on modern OSes.
+#
+# Image-only: every service is a prebuilt GHCR image, so this file plus a .env is
+# the whole stack — no repo, no build. Track latest (default) or pin with
+# PLANDROP_VERSION. Only the proxy publishes a host port; the other services are
+# reached over the docker network.
+name: ${COMPOSE_PROJECT_NAME:-plandrop}
+
+# The control plane's fixed internal listen port — never host-published; the
+# ingress reaches it on the docker network at this one value.
+x-control-port: &control-port "8081"
+
+services:
+  # The control entrypoint: serves /.plandrop/* template statics, reverse-proxies
+  # /api/* to the control plane, and seeds the theme volume on boot. Reached by
+  # the proxy over the docker network — no host port of its own.
+  ingress:
+    image: ghcr.io/xalior/plandrop-ingress:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      PLANDROP_INGRESS_PORT: "${PLANDROP_INGRESS_PORT:-8082}"
+      PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_USER_THEME_DIR: /srv/user-templates
+      PLANDROP_CONTROL_HOST: control
+      PLANDROP_CONTROL_PORT: *control-port
+      PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
+    volumes:
+      - "plandrop-templates:/srv/templates"
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
+    depends_on:
+      - control
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "test -f /srv/templates/bootstrap5/template.html"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # The static + WebDAV host: one dynamic vhost serves every *.<domain> subdomain
+  # (open reads, per-tenant authed writes). Config is baked into the image. The
+  # proxy reaches it over the docker network — no host port.
+  apache:
+    image: ghcr.io/xalior/plandrop-apache:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    # DAV writes land as PLANDROP_UID, matching host-side ownership of data/.
+    user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
+    environment:
+      # Apache interpolates ${PLANDROP_APACHE_PORT} in its baked config at start.
+      PLANDROP_APACHE_PORT: "${PLANDROP_APACHE_PORT:-8080}"
+    volumes:
+      - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
+      - "${PLANDROP_DATA:-./data}/auth:/srv/auth:ro"
+      - "plandrop-templates:/srv/templates:ro"
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
+    depends_on:
+      ingress:
+        condition: service_healthy
+
+  # The bundled front proxy: routes by Host on one published port — the parent
+  # host to the ingress, *.<host> to apache — so a browser and the CLI share one
+  # localhost address. Routing config baked into the image.
+  proxy:
+    image: ghcr.io/xalior/plandrop-proxy:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      PLANDROP_PROXY_PORT: "${PLANDROP_PROXY_PORT:-8083}"
+      PLANDROP_PROXY_DOMAIN: "${PLANDROP_PROXY_DOMAIN:-localhost}"
+      PLANDROP_INGRESS_HOST: ingress
+      PLANDROP_INGRESS_PORT: "${PLANDROP_INGRESS_PORT:-8082}"
+      PLANDROP_APACHE_HOST: apache
+      PLANDROP_APACHE_PORT: "${PLANDROP_APACHE_PORT:-8080}"
+    ports:
+      # The single host port a browser and the CLI both target. Defaults to ::1
+      # as well as 127.0.0.1 reachability via *.localhost on modern OSes.
+      - "${PLANDROP_PROXY_BIND:-${PLANDROP_BIND:-127.0.0.1}}:${PLANDROP_PROXY_PORT:-8083}:${PLANDROP_PROXY_PORT:-8083}"
+    depends_on:
+      ingress:
+        condition: service_healthy
+
+  # The only writer of the content tree and credentials. Internal-only — reached
+  # solely through the ingress on the docker network.
+  control:
+    image: ghcr.io/xalior/plandrop-control:${PLANDROP_VERSION:-latest}
+    restart: unless-stopped
+    user: "${PLANDROP_UID:-1000}:${PLANDROP_GID:-1000}"
+    environment:
+      PLANDROP_HOSTS_DIR: /srv/hosts
+      PLANDROP_AUTH_FILE: /srv/auth/htpasswd
+      PLANDROP_THEME_DIR: /srv/templates
+      PLANDROP_USER_THEME_DIR: /srv/user-templates
+      PLANDROP_DEFAULT_TEMPLATE: "${PLANDROP_DEFAULT_TEMPLATE:-}"
+    expose:
+      - *control-port
+    volumes:
+      - "${PLANDROP_DATA:-./data}/hosts:/srv/hosts"
+      - "${PLANDROP_DATA:-./data}/auth:/srv/auth"
+      - "plandrop-templates:/srv/templates:ro"
+      - "${PLANDROP_USER_TEMPLATES:-./user-templates}:/srv/user-templates:ro"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8081').then(()=>process.exit(0),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  # Built-in template assets, re-seeded fresh from the ingress image on each boot.
+  # Operator drop-ins live in the separate user-templates mount, never wiped here.
+  plandrop-templates:
