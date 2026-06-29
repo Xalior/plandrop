@@ -17,32 +17,45 @@ and reusable.
 - Docker + Docker Compose. Prebuilt images are published, so **no toolchain is needed on
   the host** — and if you'd rather build from source, the images are multistage and build
   entirely inside Docker.
-- A reverse proxy that terminates TLS and routes by hostname (e.g. Nginx Proxy Manager,
-  Caddy, Traefik, plain nginx).
-- A domain you control, with a wildcard DNS record (see below).
+- For `compose.exposed.yml`: a reverse proxy that terminates TLS and routes by hostname
+  (e.g. Nginx Proxy Manager, Caddy, Traefik, plain nginx), plus a domain you control with a
+  wildcard DNS record (see below). `compose.proxy.yml` bundles its own proxy and needs
+  neither for localhost/single-host use.
+
+## Choose a compose file
+
+The stack ships as two ready-to-run, **image-only** compose files — no repo, no build, just
+the compose file plus a `.env`:
+
+| File | Use |
+|------|-----|
+| **`compose.exposed.yml`** | Behind **your own** TLS/reverse proxy (this guide). ingress + apache publish plain-HTTP ports for the proxy to reach. |
+| **`compose.proxy.yml`** | **Self-contained** — bundles its own proxy so a single host port serves both the control entrypoint and the `*.<domain>` tenant hosts, with no external proxy. Good for a single host or trying it on `localhost`. |
+
+(`docker-compose.yml` in the repo is the **development build/test** stack — it carries the
+build contexts and is not for deployment.)
 
 ## Quick start
 
+Grab the file you want and a `.env`, then pull + up — no clone, no build:
+
 ```sh
-git clone https://github.com/Xalior/plandrop.git
-cd plandrop
-cp .env.example .env       # then edit (see below)
+mkdir plandrop && cd plandrop
+curl -fsSLO https://raw.githubusercontent.com/Xalior/plandrop/main/compose.exposed.yml
+curl -fsSL https://raw.githubusercontent.com/Xalior/plandrop/main/.env.example -o .env
+# edit .env (see below); set COMPOSE_FILE=compose.exposed.yml so bare `docker compose` finds it
 mkdir -p data/hosts data/auth
 docker compose pull        # fetch the prebuilt images from GHCR
 docker compose up -d
 ```
 
-This pulls the `ingress`, `control`, and `apache` images from
-[GHCR](https://github.com/Xalior/plandrop/pkgs/container/plandrop-control) and starts the
-stack bound to the address in your `.env`. Each image carries its own config, so the only
-host-side files you need are the compose file and `.env` (plus the `data/` tree). The images
-are **multi-arch** — `amd64`, `arm64`, and `arm/v7` (32-bit ARM) — so they run on a Raspberry
-Pi as well as a server. Pin a specific release with `PLANDROP_VERSION` in `.env` (default
-`latest`).
+Each image carries its own config, so the only host-side files are the compose file, `.env`,
+and the `data/` tree. The images are **multi-arch** — `amd64`, `arm64`, and `arm/v7` (32-bit
+ARM) — so they run on a Raspberry Pi as well as a server. Track `latest` (default) or pin a
+release with `PLANDROP_VERSION` in `.env`.
 
-> **Build from source instead** — for development or local changes, swap the last two lines
-> for `docker compose up -d --build`, which builds the images from the Dockerfiles rather
-> than pulling them.
+> **Build from source instead** — for development, `git clone` the repo and use the dev
+> stack, which builds the images from the Dockerfiles: `docker compose up -d --build`.
 
 ## Configuration (`.env`)
 
@@ -101,8 +114,7 @@ and Apache keys off the host *label*, so the same stack works behind any domain.
 
 | Task | Command (from the stack directory) |
 |------|-----------------------------------|
-| Update (prebuilt images) | `git pull && docker compose pull && docker compose up -d` |
-| Update (build from source) | `git pull && docker compose up -d --build` |
+| Update | `docker compose pull && docker compose up -d` — no `git pull` (image-only). Re-fetch the compose file only if it changes; move releases by editing `PLANDROP_VERSION`. |
 | Restart | `docker compose restart` |
 | Logs | `docker compose logs -f` |
 | Stop | `docker compose down` (data in `data/` persists) |
