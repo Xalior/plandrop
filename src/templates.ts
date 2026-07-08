@@ -1,5 +1,26 @@
 import { readdir } from 'node:fs/promises';
+import { controlUrl, timedFetch } from './endpoint';
 import type { TemplatesResponse } from './types';
+
+/**
+ * The public template host the client falls back to when nothing else resolves
+ * a domain — its static, publish-less templates make `newdoc <file>` work with
+ * no configuration at all. Templates only: it accepts no published documents.
+ */
+export const PUBLIC_TEMPLATE_HOST = 'https://plandrop.dev';
+
+/** Fetch and validate a server's /api/templates listing. */
+export async function fetchTemplates(base: string): Promise<TemplatesResponse> {
+  const res = await timedFetch(controlUrl(base, '/api/templates'));
+  if (!res.ok) {
+    throw new Error(`templates request responded ${res.status}`);
+  }
+  const body = (await res.json()) as Partial<TemplatesResponse>;
+  if (typeof body.default !== 'string' || !Array.isArray(body.templates)) {
+    throw new Error('templates endpoint returned an unexpected response');
+  }
+  return { default: body.default, templates: body.templates };
+}
 
 /**
  * The fallback concrete template `default` resolves to when the operator
@@ -62,13 +83,15 @@ export function resolveTemplate(
 
 /**
  * The template name to request, by precedence: an explicit `--template` flag,
- * then the dotfile's `template` field, then the `default` alias.
+ * then the dotfile's `template` field, then the user config's (the tier `init`
+ * writes), then the `default` alias.
  */
 export function requestedTemplate(
   flag: string | undefined,
   dotfileTemplate: string | undefined,
+  configTemplate?: string | undefined,
 ): string {
-  return flag ?? dotfileTemplate ?? DEFAULT_ALIAS;
+  return flag ?? dotfileTemplate ?? configTemplate ?? DEFAULT_ALIAS;
 }
 
 /**

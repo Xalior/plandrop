@@ -1,5 +1,10 @@
 # Self-hosting the plandrop stack
 
+This page covers a **real-domain deployment** — the stack behind a reverse proxy with
+wildcard DNS and TLS, reachable across your network. To just **try plandrop locally** on one
+machine with no domain or DNS, use the one-command starter in the [Quickstart](quickstart.md)
+instead.
+
 The stack is three containers sharing one data volume:
 
 | Service | Role |

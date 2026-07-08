@@ -17,9 +17,12 @@ export function promptLine(message: string): Promise<string | undefined> {
       stdin.off('data', onData);
       stdin.off('end', onEnd);
       stdin.off('error', onError);
-      if (!stdin.isTTY) {
-        stdin.pause();
-      }
+      // Pause AND unref unconditionally: a resumed TTY stdin holds the event
+      // loop open, so a command that prompted would otherwise finish its work
+      // but never exit. Unref'd, stdin does not keep the process alive between
+      // (or after) prompts; the ref() below re-arms it while a prompt is pending.
+      stdin.pause();
+      stdin.unref?.();
       resolve(value);
     };
 
@@ -40,6 +43,10 @@ export function promptLine(message: string): Promise<string | undefined> {
     stdin.on('data', onData);
     stdin.on('end', onEnd);
     stdin.on('error', onError);
+    // Keep the event loop alive while this prompt awaits input (a pending
+    // promise alone would not), undone by the unref in finish(). Guarded:
+    // ref/unref exist on socket/TTY stdin but not on a file-redirect stdin.
+    stdin.ref?.();
     stdin.resume();
   });
 }

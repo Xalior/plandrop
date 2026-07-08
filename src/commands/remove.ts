@@ -1,9 +1,14 @@
 import { unlinkSync } from 'node:fs';
 import { loadContext } from '../context';
-import { controlUrl } from '../endpoint';
+import { controlUrl, timedFetch } from '../endpoint';
+import { printCommandHelp, wantsHelp } from '../usage';
 import type { Dispatch } from '../dispatch';
 
 export async function run(dispatch: Dispatch): Promise<number> {
+  if (wantsHelp(dispatch.params)) {
+    printCommandHelp('remove');
+    return 0;
+  }
   let ctx;
   try {
     ctx = loadContext(process.cwd(), dispatch.hashOverride);
@@ -14,7 +19,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
 
   let res: Response;
   try {
-    res = await fetch(controlUrl(ctx.base, `/api/hosts/${ctx.host}`), {
+    res = await timedFetch(controlUrl(ctx.base, `/api/hosts/${ctx.host}`), {
       method: 'DELETE',
       headers: { Authorization: basicAuth(ctx.host, ctx.passphrase) },
     });

@@ -40,6 +40,14 @@ function writeUserConfig(domain: string): string {
   return configHome;
 }
 
+/** A system-tier config dir suitable for XDG_CONFIG_DIRS. */
+function writeSystemConfig(domain: string): string {
+  const configDir = join(workdir, 'sys');
+  mkdirSync(join(configDir, 'plandrop'), { recursive: true });
+  writeFileSync(join(configDir, 'plandrop', 'config.json'), JSON.stringify({ domain }));
+  return configDir;
+}
+
 describe('resolveDomain precedence', () => {
   it('prefers the flag over everything else (bare hostname -> https)', async () => {
     const domain = await resolveDomain(
@@ -82,6 +90,26 @@ describe('resolveDomain precedence', () => {
   it('falls to the user config when no flag/env/repo', async () => {
     const domain = await resolveDomain(sources({ configHome: writeUserConfig('https://user.example') }));
     expect(domain).toBe('https://user.example');
+  });
+
+  it('falls to the system config below the user config', async () => {
+    const domain = await resolveDomain(
+      sources({
+        env: { XDG_CONFIG_DIRS: writeSystemConfig('https://sys.example') },
+        configHome: writeUserConfig('https://user.example'),
+      }),
+    );
+    expect(domain).toBe('https://user.example');
+  });
+
+  it('falls to the system config when no user config exists', async () => {
+    const domain = await resolveDomain(
+      sources({
+        env: { XDG_CONFIG_DIRS: writeSystemConfig('https://sys.example') },
+        prompt: () => Promise.resolve('prompt.example'),
+      }),
+    );
+    expect(domain).toBe('https://sys.example');
   });
 
   it('falls to the prompt as a last resort', async () => {

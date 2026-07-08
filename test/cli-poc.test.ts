@@ -81,10 +81,11 @@ describe('build output', () => {
 });
 
 describe('npx invocation', () => {
-  it('an unknown command exits non-zero with usage on stderr', () => {
+  it('an unknown command exits non-zero pointing at plandrop help', () => {
     const result = runNpx(['frobnic']);
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toMatch(/Usage:/);
+    expect(result.stderr).toMatch(/unknown command: frobnic/);
+    expect(result.stderr).toMatch(/plandrop help/);
   });
 
   it('create with no domain and closed stdin fails cleanly', () => {

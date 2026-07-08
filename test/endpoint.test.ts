@@ -1,5 +1,7 @@
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { describe, expect, it } from 'vitest';
-import { controlUrl, hostBaseUri, hostUrl, normalizeBaseUri } from '../src/endpoint';
+import { controlUrl, hostBaseUri, hostUrl, normalizeBaseUri, timedFetch } from '../src/endpoint';
 
 describe('normalizeBaseUri', () => {
   it('defaults a bare hostname to https', () => {
@@ -26,6 +28,45 @@ describe('controlUrl', () => {
     expect(controlUrl('https://plandrop.example.com', '/api/hosts')).toBe(
       'https://plandrop.example.com/api/hosts',
     );
+  });
+});
+
+describe('timedFetch', () => {
+  function listen(server: Server): Promise<string> {
+    return new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => {
+        resolve(`http://127.0.0.1:${(server.address() as AddressInfo).port}`);
+      });
+    });
+  }
+
+  it('rejects with a clear error when the host never answers', async () => {
+    // Accepts the connection but never responds — the silent-host hang the
+    // timeout exists for.
+    const server = createServer(() => {});
+    const base = await listen(server);
+    try {
+      await expect(timedFetch(`${base}/api/hosts`, { method: 'POST' }, 200)).rejects.toThrow(
+        /no response from 127\.0\.0\.1:\d+ within \d+s/,
+      );
+    } finally {
+      server.close();
+    }
+  });
+
+  it('passes a timely response through untouched', async () => {
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"ok":true}');
+    });
+    const base = await listen(server);
+    try {
+      const res = await timedFetch(`${base}/api/templates`);
+      expect(res.ok).toBe(true);
+      expect(await res.json()).toEqual({ ok: true });
+    } finally {
+      server.close();
+    }
   });
 });
 

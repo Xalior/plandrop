@@ -1,8 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { dotfileExists, findDotfile, readDotfile, writeDotfile } from '../src/dotfile';
+import {
+  dotfileExists,
+  findDotfile,
+  mergeDotfileConfig,
+  readDotfile,
+  readDotfileConfig,
+  writeDotfile,
+} from '../src/dotfile';
 
 let workdir: string;
 
@@ -54,6 +61,45 @@ describe('dotfile read/write', () => {
     const path = join(workdir, '.plandrop');
     writeFileSync(path, JSON.stringify({ ...sample, template: 42 }));
     expect(() => readDotfile(path)).toThrow();
+  });
+});
+
+describe('readDotfileConfig', () => {
+  it('reads the preference keys of a full dotfile', () => {
+    const path = writeDotfile(workdir, { ...sample, template: 'darkly' });
+    expect(readDotfileConfig(path)).toEqual({ domain: sample.domain, template: 'darkly' });
+  });
+
+  it('tolerates a config-only dotfile with no host/passphrase', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ domain: 'https://x.example' }));
+    expect(readDotfileConfig(path)).toEqual({ domain: 'https://x.example' });
+  });
+
+  it('ignores non-string preference values', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ domain: 42, template: 'darkly' }));
+    expect(readDotfileConfig(path)).toEqual({ template: 'darkly' });
+  });
+});
+
+describe('mergeDotfileConfig', () => {
+  it('creates a config-only dotfile when none exists, mode 0600', () => {
+    const path = mergeDotfileConfig(workdir, { domain: 'https://x.example' });
+    expect(statSync(path).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ domain: 'https://x.example' });
+  });
+
+  it('preserves host, passphrase, and unknown keys while updating preferences', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ ...sample, extra: 'kept' }));
+    mergeDotfileConfig(workdir, { domain: 'https://new.example', template: 'darkly' });
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({
+      ...sample,
+      extra: 'kept',
+      domain: 'https://new.example',
+      template: 'darkly',
+    });
   });
 });
 

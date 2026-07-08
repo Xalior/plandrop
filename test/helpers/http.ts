@@ -42,6 +42,13 @@ export function httpRequest(options: HttpOptions): Promise<HttpResult> {
         method: options.method,
         path: options.path,
         headers,
+        // One fresh connection per request. Node's default global agent pools
+        // keep-alive sockets, and Apache closes an idle keep-alive connection
+        // after 5s (KeepAliveTimeout) — a request handed a pooled socket the
+        // server is closing at that moment dies with ECONNRESET ("socket hang
+        // up"). The suite idles the pool for seconds at a time (CLI subprocess
+        // runs between requests), so reuse is a genuine race, not a speedup.
+        agent: false,
       },
       (res) => {
         const chunks: Buffer[] = [];

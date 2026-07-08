@@ -1,10 +1,15 @@
 import { loadContext } from '../context';
 import { writeDotfile } from '../dotfile';
-import { controlUrl } from '../endpoint';
+import { controlUrl, timedFetch } from '../endpoint';
+import { printCommandHelp, wantsHelp } from '../usage';
 import type { Dispatch } from '../dispatch';
 import type { RotateResponse } from '../types';
 
 export async function run(dispatch: Dispatch): Promise<number> {
+  if (wantsHelp(dispatch.params)) {
+    printCommandHelp('rotate');
+    return 0;
+  }
   let ctx;
   try {
     ctx = loadContext(process.cwd(), dispatch.hashOverride);
@@ -15,7 +20,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
 
   let res: Response;
   try {
-    res = await fetch(controlUrl(ctx.base, `/api/hosts/${ctx.host}/rotate`), {
+    res = await timedFetch(controlUrl(ctx.base, `/api/hosts/${ctx.host}/rotate`), {
       method: 'POST',
       headers: { Authorization: basicAuth(ctx.host, ctx.passphrase) },
     });

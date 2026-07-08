@@ -1,6 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { findDotfile, readDotfile } from './dotfile';
+import { readConfigFile, systemConfig, userConfigPath } from './config';
+import { findDotfile, readDotfileConfig } from './dotfile';
 import { normalizeBaseUri } from './endpoint';
 
 /** Thrown when no domain can be resolved and none can be prompted for. */
@@ -21,9 +20,10 @@ export interface DomainSources {
 
 /**
  * Resolve the base URI by precedence: --domain flag > PLANDROP_DOMAIN env >
- * repo config (nearest .plandrop) > per-user config (XDG) > prompt. The result
- * is normalized to a full base URI (bare hostnames default to https). With
- * nothing set and no input available, throws DomainError.
+ * repo config (nearest .plandrop) > per-user config (XDG) > system config
+ * ($XDG_CONFIG_DIRS / /etc — admin-managed, read-only to the CLI) > prompt.
+ * The result is normalized to a full base URI (bare hostnames default to
+ * https). With nothing set and no input available, throws DomainError.
  */
 export async function resolveDomain(sources: DomainSources): Promise<string> {
   const raw =
@@ -31,6 +31,7 @@ export async function resolveDomain(sources: DomainSources): Promise<string> {
     clean(sources.env.PLANDROP_DOMAIN) ??
     repoDomain(sources.cwd) ??
     userDomain(sources.configHome, sources.home) ??
+    clean(systemConfig(sources.env).domain) ??
     clean(await sources.prompt());
 
   if (raw === undefined) {
@@ -51,24 +52,14 @@ function repoDomain(cwd: string): string | undefined {
     return undefined;
   }
   try {
-    return clean(readDotfile(path).domain);
+    return clean(readDotfileConfig(path).domain);
   } catch {
     return undefined;
   }
 }
 
 function userDomain(configHome: string | undefined, home: string): string | undefined {
-  const base = clean(configHome) ?? join(home, '.config');
-  const path = join(base, 'plandrop', 'config.json');
-  if (!existsSync(path)) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(readFileSync(path, 'utf8')) as { domain?: unknown };
-    return typeof parsed.domain === 'string' ? clean(parsed.domain) : undefined;
-  } catch {
-    return undefined;
-  }
+  return clean(readConfigFile(userConfigPath(configHome, home)).domain);
 }
 
 function clean(value: string | undefined): string | undefined {

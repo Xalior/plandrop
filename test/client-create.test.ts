@@ -102,4 +102,42 @@ describe('client create', () => {
     ).toBe(0);
     expect(readDotfile().template).toBe('darkly');
   });
+
+  it('fills in a config-only .plandrop from init --local without --force', () => {
+    // init --local records preferences only (no host); create must fill the
+    // host in — not demand --force — and keep the recorded template.
+    expect(
+      runCli(['init', '--yes', '--local', '--domain', controlAddr, '--template', 'darkly'], {
+        cwd,
+        env: env(),
+      }).status,
+    ).toBe(0);
+    expect(readDotfile().host).toBeUndefined();
+
+    const created = runCli(['create'], { cwd, env: env() });
+    expect(created.status).toBe(0);
+    const dotfile = readDotfile();
+    expect(dotfile.domain).toBe(controlAddr);
+    expect(dotfile.host).toMatch(/^[a-z2-7]{16}$/);
+    expect(dotfile.template).toBe('darkly');
+  });
+
+  it('scaffolds the autosync hook with --hook, none without', () => {
+    // Non-interactive create sets up no hook unless asked.
+    expect(runCli(['create', '--domain', controlAddr], { cwd, env: env() }).status).toBe(0);
+    expect(existsSync(join(cwd, '.claude', 'settings.json'))).toBe(false);
+
+    const hooked = runCli(
+      ['create', '--force', '--domain', controlAddr, '--hook', '--hook-path', 'plans/*.html'],
+      { cwd, env: env() },
+    );
+    expect(hooked.status).toBe(0);
+    const settings = JSON.parse(readFileSync(join(cwd, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: { PostToolUse: { matcher: string; hooks: { command: string }[] }[] };
+    };
+    expect(settings.hooks.PostToolUse[0]?.matcher).toBe('Write|Edit');
+    expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain(
+      'plandrop upload "plans/$(basename "$f")"',
+    );
+  });
 });

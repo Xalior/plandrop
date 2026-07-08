@@ -21,8 +21,14 @@ describe('requestedTemplate precedence', () => {
     expect(requestedTemplate(undefined, 'darkly')).toBe('darkly');
   });
 
-  it('falls back to the default alias when neither is set', () => {
+  it('falls back to the user config template below the dotfile', () => {
+    expect(requestedTemplate(undefined, 'darkly', 'sketchy')).toBe('darkly');
+    expect(requestedTemplate(undefined, undefined, 'sketchy')).toBe('sketchy');
+  });
+
+  it('falls back to the default alias when nothing is set', () => {
     expect(requestedTemplate(undefined, undefined)).toBe(DEFAULT_ALIAS);
+    expect(requestedTemplate(undefined, undefined, undefined)).toBe(DEFAULT_ALIAS);
   });
 });
 

@@ -25,6 +25,75 @@ npx plandrop upload ./planfile.html
 | `upload <path> [remote]` | Push a file or a directory (recursively) to your host over authenticated WebDAV. |
 | `rotate` | Change the host's passphrase (the old one stops working immediately). |
 | `remove` | Delete the host and its content, and remove the local `.plandrop`. |
+| `init` | Record your default domain (and template) in a config file the other commands resolve. |
+| `server` | Stand up a local plandrop server (Docker) via the plandrop.dev starter script. |
+| `help` | List every command, or show one command's usage and examples. |
+
+`plandrop help <command>` (or `plandrop <command> --help`) prints any command's detailed
+usage; a bare `plandrop` prints the overview.
+
+## init
+
+First-run setup — records the preferences the other commands resolve when no flag or
+`.plandrop` applies, so you never hand-author the JSON:
+
+```sh
+npx plandrop init                                  # guided (prompts)
+npx plandrop init --yes --domain http://localhost:8083
+npx plandrop init --local --domain https://plandrop.example.com --template darkly
+```
+
+It asks for (or takes via flags):
+
+- **Domain** — the plandrop server your documents publish to and templates come from.
+  The public CDN `https://plandrop.dev` is offered as the default, with a caveat: it
+  serves **templates only**, so `newdoc` works out of the box but publishing
+  (`create`/`upload`) needs your own server (see [server](#server)).
+- **Template** — a default theme, offered from the chosen domain's live list. Optional.
+- **Where to write** — the **per-user** config `~/.config/plandrop/config.json`
+  (honours `XDG_CONFIG_HOME`; the default, or `--user`) or a **project-local**
+  `.plandrop` in the current directory (`--local`).
+
+Either target is **merged**, never clobbered: a `.plandrop` already holding a minted
+`host`/`passphrase` keeps them. An existing per-user config is not overwritten without
+confirmation (non-interactively, `--force`). On completion it prints the absolute path
+of the file it wrote. `init` only writes config — it never mints a host or runs Docker.
+
+### The config file and its search path
+
+The config is plain JSON with two optional keys:
+
+```json
+{ "domain": "https://plandrop.example.com", "template": "darkly" }
+```
+
+It is read at two tiers, below any flag/env/`.plandrop` (see
+[Where the domain comes from](#where-the-domain-comes-from) for the full precedence):
+
+- **User** — `$XDG_CONFIG_HOME/plandrop/config.json`, defaulting to
+  `~/.config/plandrop/config.json`. This is what `init --user` writes.
+- **System** — admin-managed defaults, read-only to the CLI (`init` never writes them):
+  each `$XDG_CONFIG_DIRS` entry (default `/etc/xdg`) as `<dir>/plandrop/config.json`,
+  then `/etc/plandrop/config.json`, then the Homebrew prefixes
+  (`/opt/homebrew/etc/plandrop/config.json`, `/usr/local/etc/plandrop/config.json`).
+  The search applies on macOS and Linux alike; each key comes from the first file that
+  defines it.
+
+## server
+
+Stand up a complete plandrop server on your own machine — no domain, DNS, or TLS proxy:
+
+```sh
+npx plandrop server                      # downloads and runs the plandrop.dev starter
+# or, equivalently, the canonical one-liner:
+curl -fsSL https://plandrop.dev/start.sh | sh
+```
+
+`server` requires Docker + Compose; it writes a localhost-defaults `.env`, pulls the
+prebuilt GHCR images, and brings the stack up on `http://localhost:8083`. See the
+[Quickstart](quickstart.md) for the full walkthrough — inspecting the starter first,
+publishing your first document, and the from-source alternative. For a real-domain
+deployment (wildcard DNS + TLS in front), see [Self-hosting](setup.md).
 
 ## create
 

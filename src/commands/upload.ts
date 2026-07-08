@@ -1,14 +1,19 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, join, posix, relative, sep } from 'node:path';
 import { loadContext } from '../context';
-import { hostUrl } from '../endpoint';
+import { hostBaseUri, hostUrl } from '../endpoint';
+import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import { makeClient, makeDir, putFile, WrongTenantError } from '../webdav';
 import type { Dispatch } from '../dispatch';
 
 export async function run(dispatch: Dispatch): Promise<number> {
+  if (wantsHelp(dispatch.params)) {
+    printCommandHelp('upload');
+    return 0;
+  }
   const localPath = dispatch.params[0];
   if (localPath === undefined) {
-    process.stderr.write('usage: plandrop upload <path> [remote-path]\n');
+    process.stderr.write(`${usageLine('upload')}\n`);
     return 2;
   }
   const remoteArg = dispatch.params[1];
@@ -30,13 +35,18 @@ export async function run(dispatch: Dispatch): Promise<number> {
   }
 
   const client = makeClient(ctx.base, ctx.host, ctx.passphrase);
+  // A single file reports its exact shareable URL (the path it was PUT to); a
+  // directory upload spans many files, so it reports the host root.
+  let uploadedUrl: string;
   try {
     if (stats.isDirectory()) {
       await uploadDirectory(client, localPath, toRemoteBase(remoteArg));
+      uploadedUrl = hostUrl(ctx.base, ctx.host);
     } else {
       const remote = remoteArg === undefined ? `/${basename(localPath)}` : normalizeRemote(remoteArg);
       await ensureParent(client, remote, new Set());
       await putFile(client, remote, readFileSync(localPath));
+      uploadedUrl = `${hostBaseUri(ctx.base, ctx.host)}${remote}`;
     }
   } catch (error) {
     if (error instanceof WrongTenantError) {
@@ -47,7 +57,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 1;
   }
 
-  process.stdout.write(`uploaded to ${hostUrl(ctx.base, ctx.host)}\n`);
+  process.stdout.write(`uploaded to ${uploadedUrl}\n`);
   return 0;
 }
 

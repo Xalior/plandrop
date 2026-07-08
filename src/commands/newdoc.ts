@@ -1,29 +1,27 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { readConfigFile, userConfigPath } from '../config';
 import { DomainError, resolveDomain } from '../domain';
-import { findDotfile, readDotfile } from '../dotfile';
-import { controlUrl } from '../endpoint';
+import { findDotfile, readDotfileConfig } from '../dotfile';
+import { controlUrl, timedFetch } from '../endpoint';
 import {
+  fetchTemplates,
+  PUBLIC_TEMPLATE_HOST,
   requestedTemplate,
   resolveTemplate,
   UnknownTemplateError,
 } from '../templates';
+import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import type { Dispatch } from '../dispatch';
-import type { TemplatesResponse } from '../types';
-
-/**
- * The public template host newdoc falls back to when nothing else resolves a
- * domain — its static, publish-less templates make `newdoc <file>` work with no
- * configuration at all.
- */
-const DEFAULT_TEMPLATE_HOST = 'https://plandrop.dev';
 
 export async function run(dispatch: Dispatch): Promise<number> {
+  if (wantsHelp(dispatch.params)) {
+    printCommandHelp('newdoc');
+    return 0;
+  }
   const { filename, template: templateFlag, domain: domainFlag, force } = parseFlags(dispatch.params);
   if (filename === undefined) {
-    process.stderr.write(
-      'usage: plandrop newdoc <filename> [--template <name>] [--domain <uri>] [--force]\n',
-    );
+    process.stderr.write(`${usageLine('newdoc')}\n`);
     return 2;
   }
 
@@ -53,15 +51,15 @@ export async function run(dispatch: Dispatch): Promise<number> {
     if (!(error instanceof DomainError)) {
       throw error;
     }
-    base = DEFAULT_TEMPLATE_HOST;
-    process.stderr.write(`no domain configured; using ${DEFAULT_TEMPLATE_HOST} (static templates)\n`);
+    base = PUBLIC_TEMPLATE_HOST;
+    process.stderr.write(`no domain configured; using ${PUBLIC_TEMPLATE_HOST} (static templates)\n`);
   }
 
   let concrete: string;
   let starter: string;
   try {
     const available = await fetchTemplates(base);
-    const requested = requestedTemplate(templateFlag, nearestDotfileTemplate(cwd));
+    const requested = requestedTemplate(templateFlag, nearestDotfileTemplate(cwd), userConfigTemplate());
     concrete = resolveTemplate(requested, available);
     starter = await fetchStarter(base, concrete);
   } catch (error) {
@@ -89,26 +87,19 @@ function nearestDotfileTemplate(cwd: string): string | undefined {
     return undefined;
   }
   try {
-    return readDotfile(path).template;
+    return readDotfileConfig(path).template;
   } catch {
     return undefined;
   }
 }
 
-async function fetchTemplates(base: string): Promise<TemplatesResponse> {
-  const res = await fetch(controlUrl(base, '/api/templates'));
-  if (!res.ok) {
-    throw new Error(`templates request responded ${res.status}`);
-  }
-  const body = (await res.json()) as Partial<TemplatesResponse>;
-  if (typeof body.default !== 'string' || !Array.isArray(body.templates)) {
-    throw new Error('templates endpoint returned an unexpected response');
-  }
-  return { default: body.default, templates: body.templates };
+/** The per-user config's `template` preference (the tier `init` writes). */
+function userConfigTemplate(): string | undefined {
+  return readConfigFile(userConfigPath(process.env.XDG_CONFIG_HOME, homedir())).template;
 }
 
 async function fetchStarter(base: string, concrete: string): Promise<string> {
-  const res = await fetch(controlUrl(base, `/.plandrop/${concrete}/template.html`));
+  const res = await timedFetch(controlUrl(base, `/.plandrop/${concrete}/template.html`));
   if (!res.ok) {
     throw new Error(`starter request for ${concrete} responded ${res.status}`);
   }

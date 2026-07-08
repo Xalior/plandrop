@@ -1,5 +1,5 @@
 /** The commands plandrop accepts. Every command name is fewer than 8 characters. */
-export const COMMANDS = ['create', 'upload', 'rotate', 'remove', 'newdoc'] as const;
+export const COMMANDS = ['create', 'newdoc', 'upload', 'rotate', 'remove', 'init', 'server', 'help'] as const;
 
 export type CommandName = (typeof COMMANDS)[number];
 
@@ -20,9 +20,22 @@ export class UsageError extends Error {}
 const HASH_MIN_LENGTH = 8;
 
 export function parseArgs(argv: readonly string[]): Dispatch {
+  // A bare invocation orients the user rather than erroring.
+  if (argv.length === 0) {
+    return { command: 'help', hashOverride: undefined, params: [] };
+  }
+
+  // -h/--help in any position resolves to help — intercepted before the
+  // hash/command split so it works wherever the flag lands. Any known command
+  // name alongside it becomes the help topic.
+  if (argv.some((arg) => arg === '-h' || arg === '--help')) {
+    const topic = argv.find((arg) => isCommand(arg) && arg !== 'help');
+    return { command: 'help', hashOverride: undefined, params: topic === undefined ? [] : [topic] };
+  }
+
   const first = argv[0];
   if (first === undefined) {
-    throw new UsageError('no command given');
+    throw new UsageError('no command given (run `plandrop help`)');
   }
 
   let command: string;
@@ -41,7 +54,9 @@ export function parseArgs(argv: readonly string[]): Dispatch {
 
   if (!isCommand(command)) {
     throw new UsageError(
-      command === '' ? 'no command given' : `unknown command: ${command}`,
+      command === ''
+        ? 'no command given (run `plandrop help`)'
+        : `unknown command: ${command} (run \`plandrop help\`)`,
     );
   }
 
@@ -55,6 +70,6 @@ export function hashSource(dispatch: Dispatch): string {
     : 'dotfile';
 }
 
-function isCommand(value: string): value is CommandName {
+export function isCommand(value: string): value is CommandName {
   return (COMMANDS as readonly string[]).includes(value);
 }

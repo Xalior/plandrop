@@ -15,6 +15,9 @@ current directory. The `.plandrop` file holds your passphrase — **don't commit
 Start from a themed template instead of a blank file with `npx plandrop newdoc plan.html`
 (works with no host — it defaults to the public template gallery on plandrop.dev).
 
+**Try it locally:** `npx plandrop server` brings up a full plandrop stack on your own
+machine (Docker) with no domain or DNS — see the [Quickstart](docs/quickstart.md).
+
 ## What it is
 
 Three containers behind a reused TLS reverse proxy:
@@ -34,6 +37,8 @@ Pi alike. Prefer to build from source? The images build entirely inside Docker
 
 ## Docs
 
+- [Quickstart](docs/quickstart.md) — run a server locally and publish your first document,
+  no domain or DNS.
 - [Using the client](docs/usage.md) — the `npx plandrop` CLI.
 - [Self-hosting the stack](docs/setup.md) — Docker Compose, configuration, and the
   reverse-proxy / TLS / DNS it needs in front.

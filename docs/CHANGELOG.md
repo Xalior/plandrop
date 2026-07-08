@@ -1,5 +1,61 @@
 # Changelog
 
+## [Unreleased] — 0.3.0
+
+User-friendliness: discoverable help, guided onboarding, and a one-command localhost server.
+
+### Added
+
+- **`help` command** — `plandrop help` lists every command with a one-liner;
+  `plandrop help <command>` (or `plandrop <command> --help`, or `-h` in any position) prints
+  that command's usage, flags, and examples. A bare `plandrop` prints the overview (exit 0)
+  instead of erroring, and an unknown command points at `plandrop help`. All command help text
+  lives in one registry, so help and per-command usage errors can't drift apart.
+- **`init` command** — guided first-run setup that *writes* the config the resolvers already
+  read: the default domain (the public CDN `plandrop.dev` is offered, with its templates-only
+  caveat) and optionally a default template, to either the per-user
+  `~/.config/plandrop/config.json` (honours `XDG_CONFIG_HOME`) or a project-local `.plandrop`.
+  Both targets are merged, never clobbered — an existing `host`/`passphrase` survives — and an
+  existing per-user config is not overwritten without confirmation (`--force`
+  non-interactively). Scriptable via `--domain`, `--template`, `--local`/`--user`, `--yes`;
+  prints the absolute path it wrote.
+- **System config tier** — domain/template resolution gains an admin-managed tier below the
+  per-user config: each `$XDG_CONFIG_DIRS` entry (default `/etc/xdg`) as
+  `<dir>/plandrop/config.json`, then `/etc/plandrop/config.json`, then the Homebrew `etc`
+  prefixes. Read-only to the CLI (`init` never writes it). The per-user config also gains a
+  `template` key, ranked below a `.plandrop`'s `template` in template precedence.
+- **`server` command + `curl | bash` starter** — the canonical way to stand up a plandrop
+  server is now `curl -fsSL https://plandrop.dev/start.sh | sh` (the committed
+  `scripts/start.sh`, served from plandrop.dev); `npx plandrop server` downloads and runs the
+  same starter. It requires Docker + Compose (clear message and non-zero exit when missing —
+  it never installs anything), writes a localhost-defaults `.env` if none exists, fetches the
+  self-contained `compose.proxy.yml`, pulls the prebuilt GHCR images, and brings the stack up
+  on `http://localhost:8083` — no domain, DNS, or TLS proxy. Re-runnable; tracks `latest`
+  unless `PLANDROP_VERSION` pins a release.
+- **`create` offers the Claude Code autosync hook** — after minting a host, an interactive
+  `create` offers (opt-in) to scaffold a `PostToolUse` hook in the project's
+  `.claude/settings.json` that republishes a watched HTML document via `plandrop upload`
+  whenever it is saved, prompting for the path to watch (default `docs/*.html`). The merge
+  preserves existing settings and hooks and skips cleanly when an equivalent hook is already
+  present. Non-interactive control via `--hook`/`--no-hook`/`--hook-path <glob>`.
+
+### Changed
+
+- **`upload` prints the file URL** — a single-file upload now prints the full shareable URL
+  including the filename (the exact path it PUT to), so the link opens the document directly;
+  a directory upload still prints the host root.
+
+### Fixed
+
+- **`create` no longer hangs on an unreachable host** — control-plane requests (`create`,
+  `rotate`, `remove`, and `newdoc`'s template fetches) are bounded by a 10s timeout, so a
+  domain that resolves but silently drops the connection (e.g. a LAN-only server addressed
+  from off-LAN) fails with a clear "no response from `<host>` — is it reachable on your
+  network?" instead of hanging forever.
+- **Prompted commands exit cleanly** — stdin is paused and unref'd after every prompt (TTY
+  included), so an interactive `create` returns to the shell after printing its result instead
+  of keeping the process alive.
+
 ## [0.2.2] — 2026-06-28
 
 ### Changed
