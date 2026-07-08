@@ -62,11 +62,12 @@ jobs:
         run: pnpm run build
 
       # Trusted Publishing needs a recent npm (the OIDC exchange landed in
-      # 11.5.1). setup-node's bundled npm may be older, so pin it forward.
-      - name: Update npm for trusted publishing
-        run: npm install -g npm@latest
-
+      # 11.5.1) and setup-node's bundled npm is older. Run that npm via `npx` for
+      # a pristine copy: an in-place `npm install -g npm@latest` self-upgrade
+      # prunes the new npm's bundled dependencies, leaving `--provenance` unable
+      # to load `sigstore` ("Cannot find module 'sigstore'").
+      #
       # No token: npm performs the OIDC exchange because id-token:write is set
       # and the run matches the trusted-publisher config above.
       - name: Publish
-        run: npm publish --provenance --access public
+        run: npx -y npm@latest publish --provenance --access public
