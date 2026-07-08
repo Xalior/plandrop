@@ -221,3 +221,14 @@ npx plandrop <host-label> upload ./planfile.html
 
 Command names are all shorter than 8 characters, so the length of the first argument is
 enough to tell a command from a host label.
+
+## Claude Code skill
+
+Driving plandrop from an AI agent? A Claude Code **skill** packages this workflow
+(scaffold → fill in → publish → share) with the commands and guardrails, so the agent runs
+it when you ask to "start a doc with plandrop." Install it with the
+[`skills`](https://github.com/Xalior/agent-skills) CLI:
+
+```sh
+npx skills add Xalior/agent-skills --skill plandrop
+```

@@ -43,6 +43,10 @@ Pi alike. Prefer to build from source? The images build entirely inside Docker
 - [Self-hosting the stack](docs/setup.md) — Docker Compose, configuration, and the
   reverse-proxy / TLS / DNS it needs in front.
 
+**Driving it from an AI agent?** Install the Claude Code skill:
+`npx skills add Xalior/agent-skills --skill plandrop` (see
+[Using the client](docs/usage.md#claude-code-skill)).
+
 ## License
 
 LGPL-3.0-only.
