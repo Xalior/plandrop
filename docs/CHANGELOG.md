@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — 0.3.0
+## 0.3.0 — 2026-07-09
 
 User-friendliness: discoverable help, guided onboarding, and a one-command localhost server.
 
