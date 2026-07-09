@@ -2,6 +2,18 @@
 
 ## [Unreleased] — 0.4.0
 
+### Changed
+
+- **Inline code is calm green, not angry pink** — a new shared, theme-neutral override
+  stylesheet (`.plandrop/shared/css/plandrop.css`, loaded after every theme's
+  `bootstrap.min.css`) retunes Bootstrap's `--bs-code-color` across all themes: dark green
+  (`#11632a`) on light themes, a lighter green (`#7ec699`) under `data-bs-theme="dark"`. The
+  vendored Bootswatch CSS stays byte-identical to upstream — cross-theme appearance tweaks now
+  have a single home that survives Bootswatch upgrades. Each generated `<html>` carries a
+  `data-plandrop-theme="<name>"` attribute so the override sheet can make per-theme exceptions:
+  quartz (nominally light, but its signature surface is saturated purple glass) takes the
+  dark-scheme green.
+
 ## 0.3.0 — 2026-07-08
 
 User-friendliness: discoverable help, guided onboarding, and a one-command localhost server.

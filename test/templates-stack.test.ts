@@ -82,8 +82,10 @@ describe('ingress static template serving', () => {
     const html = res.body.toString();
     expect(html.trimStart().startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('.plandrop/bootstrap5/css/bootstrap.min.css');
-    // self-update is referenced by the shared, theme-neutral path, not per-theme.
+    // self-update and the override CSS are referenced by the shared,
+    // theme-neutral paths, not per-theme.
     expect(html).toContain('.plandrop/shared/js/selfupdate.js');
+    expect(html).toContain('.plandrop/shared/css/plandrop.css');
   });
 
   it('serves the shared, theme-neutral self-update JS once at /.plandrop/shared/', async () => {
@@ -97,6 +99,19 @@ describe('ingress static template serving', () => {
     expect(res.headers['content-type']).toMatch(/javascript/);
     // The file:// guard ships with it (so static/local plans can carry it safely).
     expect(res.body.toString()).toContain('location.protocol');
+  });
+
+  it('serves the shared cross-theme override CSS once at /.plandrop/shared/', async () => {
+    const res = await httpRequest({
+      port: ingressPort,
+      method: 'GET',
+      path: '/.plandrop/shared/css/plandrop.css',
+      hostHeader: domain,
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/css/);
+    // The calm-green inline-code override rides on Bootstrap's custom property.
+    expect(res.body.toString()).toContain('--bs-code-color');
   });
 });
 

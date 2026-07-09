@@ -93,6 +93,13 @@ export function renderHeader(skeletonHeader, theme) {
     `.plandrop/${SKELETON_NAME}/`,
     `.plandrop/${theme}/`,
   );
+  // The concrete theme name on <html>, as a styling hook for the shared
+  // cross-theme overrides (shared/css/plandrop.css) — data-bs-theme alone can't
+  // distinguish a theme like quartz whose "light" scheme is a saturated surface.
+  header = header.replace(
+    `data-plandrop-theme="${SKELETON_NAME}"`,
+    `data-plandrop-theme="${theme}"`,
+  );
   header = header.replace(
     /(<html[^>]*\sdata-bs-theme=")[^"]*(")/,
     `$1${nativeScheme(theme)}$2`,

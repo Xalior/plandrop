@@ -92,14 +92,28 @@ describe('template generator', () => {
     );
   });
 
-  it('rewrites the CSS path to the concrete theme name, leaves shared JS neutral', () => {
+  it('rewrites the CSS path to the concrete theme name, leaves shared assets neutral', () => {
     generateAll({ skeletonDir, bootswatchDir, outDir });
     const header = readFileSync(join(outDir, 'darkly', 'header.html'), 'utf8');
     expect(header).toContain('.plandrop/darkly/css/bootstrap.min.css');
     expect(header).not.toContain('.plandrop/bootstrap5/');
-    // self-update stays at the shared, theme-neutral path — not retargeted.
+    // self-update and the cross-theme override CSS stay at the shared,
+    // theme-neutral paths — not retargeted.
     expect(header).toContain('.plandrop/shared/js/selfupdate.js');
+    expect(header).toContain('.plandrop/shared/css/plandrop.css');
     expect(header).not.toContain('.plandrop/darkly/js/');
+    // <html> carries the concrete theme name — the shared override CSS keys
+    // per-theme exceptions (e.g. quartz) on this attribute.
+    expect(header).toContain('data-plandrop-theme="darkly"');
+    expect(header).not.toContain('data-plandrop-theme="bootstrap5"');
+  });
+
+  it('links the cross-theme override CSS after the theme CSS so it wins by source order', () => {
+    generateAll({ skeletonDir, bootswatchDir, outDir });
+    const header = readFileSync(join(outDir, 'darkly', 'header.html'), 'utf8');
+    expect(header.indexOf('.plandrop/shared/css/plandrop.css')).toBeGreaterThan(
+      header.indexOf('.plandrop/darkly/css/bootstrap.min.css'),
+    );
   });
 
   it('vendors a self-hosted CSS (no runtime CDN link) carrying the MIT banners', () => {

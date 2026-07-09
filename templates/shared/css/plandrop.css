@@ -1,0 +1,25 @@
+/* plandrop's cross-theme overrides, loaded after every theme's bootstrap.min.css
+ * so source order wins. The vendored Bootswatch CSS stays byte-identical to
+ * upstream; anything plandrop wants to look different across all themes belongs
+ * here, keyed on Bootstrap's CSS custom properties.
+ *
+ * Inline code: every Bootswatch theme inherits Bootstrap's magenta/pink
+ * --bs-code-color, which reads as an angry red against prose. A calm green is
+ * easier on the eye for the code-dense documents plandrop hosts — dark green on
+ * the light themes, a lighter green under [data-bs-theme=dark] (the dark themes
+ * pin that attribute on <html>, so the split resolves per theme). */
+:root {
+  --bs-code-color: #11632a;
+}
+
+[data-bs-theme="dark"] {
+  --bs-code-color: #7ec699;
+}
+
+/* quartz is nominally light (data-bs-theme="light") but its signature surface
+ * is a saturated purple glass, where the dark green vanishes; it takes the
+ * dark-scheme green instead. Themes are told apart by the data-plandrop-theme
+ * attribute the generator stamps on <html>. */
+[data-plandrop-theme="quartz"] {
+  --bs-code-color: #7ec699;
+}
