@@ -31,8 +31,10 @@ describe('bootstrap5 template parts', () => {
     const assembled = part('header.html') + part('plan.html') + part('footer.html');
     expect(assembled.trimStart().startsWith('<!DOCTYPE html>')).toBe(true);
     expect(assembled.trimEnd().endsWith('</html>')).toBe(true);
-    // plan.html content (the onboarding comment) sits between header and footer.
-    expect(assembled).toContain('Replace this comment');
+    // plan.html content (the agent-facing onboarding comment) sits between
+    // header and footer.
+    expect(assembled).toContain('Agent: this document is yours');
+    expect(assembled).toContain('replace this comment');
   });
 
   it('references the theme CSS by concrete name and self-update by the shared path', () => {

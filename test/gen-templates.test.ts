@@ -7,6 +7,7 @@ import {
   bootswatchThemes,
   generateAll,
   nativeScheme,
+  vendorSharedAssets,
 } from '../scripts/gen-templates.mjs';
 
 /** Bootswatch themes we assert render in their native DARK scheme. */
@@ -62,11 +63,12 @@ describe('template generator', () => {
       const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
       const footer = readFileSync(join(outDir, theme, 'footer.html'), 'utf8');
       expect(header).toContain(`data-bs-theme="${nativeScheme(theme)}"`);
-      // Single-mode Bootswatch themes carry no toggle button or script.
+      // Single-mode Bootswatch themes carry no toggle button or script — the
+      // stripped footer holds no script at all, and the header no button.
       expect(header).not.toContain('data-bs-theme-toggle');
-      expect(header).not.toContain('theme-toggle:start');
+      expect(header).not.toContain('<button');
       expect(footer).not.toContain('data-bs-theme-toggle');
-      expect(footer).not.toContain('theme-toggle:start');
+      expect(footer).not.toContain('<script');
       // The brand link home survives on every theme.
       expect(header).toContain('<a class="navbar-brand mb-0 h1" href="/">');
       // The navbar itself carries data-bs-theme too — Bootswatch gates its
@@ -106,6 +108,20 @@ describe('template generator', () => {
     // per-theme exceptions (e.g. quartz) on this attribute.
     expect(header).toContain('data-plandrop-theme="darkly"');
     expect(header).not.toContain('data-plandrop-theme="bootstrap5"');
+  });
+
+  it('vendors the shared enhancement bundles with their licenses', () => {
+    vendorSharedAssets({ modulesDir: join(repoRoot, 'node_modules'), outDir });
+    for (const file of [
+      'mermaid/mermaid.min.js',
+      'mermaid/LICENSE',
+      'highlight/highlight.min.js',
+      'highlight/styles/github.min.css',
+      'highlight/styles/github-dark.min.css',
+      'highlight/LICENSE',
+    ]) {
+      expect(existsSync(join(outDir, 'shared', 'vendor', file))).toBe(true);
+    }
   });
 
   it('links the cross-theme override CSS after the theme CSS so it wins by source order', () => {

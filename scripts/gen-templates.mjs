@@ -21,6 +21,11 @@
 // (Bootswatch overrides + full Bootstrap, both copyright banners retained), so
 // no SCSS compilation is needed here — just copy it in.
 //
+// Alongside the themes, the run also vendors the shared document-enhancement
+// libraries (mermaid, highlight.js) from their pinned npm packages into
+// templates/shared/vendor/, served at .plandrop/shared/vendor/ and lazy-loaded
+// by shared/js/enhance.js only when a document actually uses them.
+//
 // Usage:
 //   node scripts/gen-templates.mjs [--skeleton DIR] [--bootswatch DIR] [--out DIR]
 // Defaults resolve to this repo's templates/bootstrap5, node_modules/bootswatch,
@@ -72,21 +77,28 @@ export function nativeScheme(theme) {
 }
 
 /**
- * Strip the dual-mode theme-toggle block (delimited by `theme-toggle:start` /
- * `theme-toggle:end` HTML comments) from a header/footer fragment. Used for the
- * single-appearance Bootswatch themes, which carry no toggle.
+ * Strip the dual-mode theme toggle from a header/footer fragment: the navbar
+ * <button> carrying the data-bs-theme-toggle attribute, and the footer
+ * <script> that drives it (recognised by referencing that same attribute).
+ * Used for the single-appearance Bootswatch themes, which carry no toggle.
  */
 export function stripToggle(html) {
-  return html.replace(
-    /[ \t]*<!-- theme-toggle:start[\s\S]*?theme-toggle:end -->\n?/g,
-    '',
-  );
+  return html
+    .replace(/[ \t]*<button[^>]*\bdata-bs-theme-toggle\b[\s\S]*?<\/button>\n?/g, '')
+    .replace(
+      /[ \t]*<script>(?:(?!<\/script>)[\s\S])*?data-bs-theme-toggle[\s\S]*?<\/script>\n?/g,
+      '',
+    );
 }
 
 /**
  * Rewrite the skeleton header for a theme: retarget asset paths to the theme's
  * tree, pin data-bs-theme to the theme's native scheme, and (for the single-mode
  * Bootswatch themes) strip the toggle button.
+ *
+ * Asset links stay CONCRETE (the theme's own name, never `default`) so changing
+ * the configured default theme later never breaks an existing document; the
+ * `.plandrop/shared/…` paths are theme-neutral and are deliberately left alone.
  */
 export function renderHeader(skeletonHeader, theme) {
   let header = skeletonHeader.replaceAll(
@@ -120,7 +132,12 @@ export function renderHeader(skeletonHeader, theme) {
   return header;
 }
 
-/** Rewrite the skeleton footer for a theme: drop the toggle script for single-mode themes. */
+/**
+ * Rewrite the skeleton footer for a theme: drop the toggle script for
+ * single-mode themes. The skeleton's toggle listener is delegated on the
+ * document (not bound to the button) so it survives the self-update <body>
+ * swap; the chosen theme lives on <html>, which the swap never touches.
+ */
 export function renderFooter(skeletonFooter, theme) {
   return theme === SKELETON_NAME ? skeletonFooter : stripToggle(skeletonFooter);
 }
@@ -150,6 +167,29 @@ export function generateTheme(theme, { skeletonDir, bootswatchDir, outDir }) {
     join(dest, 'css', 'bootstrap.min.css'),
   );
   return theme;
+}
+
+/**
+ * The shared vendor assets: browser bundles copied verbatim (licenses included)
+ * from the pinned npm packages into shared/vendor/, served at
+ * .plandrop/shared/vendor/. enhance.js lazy-loads them, so a document that uses
+ * no diagrams or code blocks never fetches them.
+ */
+const VENDOR_ASSETS = [
+  ['mermaid/dist/mermaid.min.js', 'mermaid/mermaid.min.js'],
+  ['mermaid/LICENSE', 'mermaid/LICENSE'],
+  ['@highlightjs/cdn-assets/highlight.min.js', 'highlight/highlight.min.js'],
+  ['@highlightjs/cdn-assets/styles/github.min.css', 'highlight/styles/github.min.css'],
+  ['@highlightjs/cdn-assets/styles/github-dark.min.css', 'highlight/styles/github-dark.min.css'],
+  ['@highlightjs/cdn-assets/LICENSE', 'highlight/LICENSE'],
+];
+
+export function vendorSharedAssets({ modulesDir, outDir }) {
+  for (const [from, to] of VENDOR_ASSETS) {
+    const dest = join(outDir, 'shared', 'vendor', to);
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(join(modulesDir, from), dest);
+  }
 }
 
 /** Every theme name shipped by the Bootswatch dist (each dist subdir is a theme). */
@@ -191,5 +231,8 @@ function parseArgs(argv) {
 if (process.argv[1] && dirname(process.argv[1]) === dirname(fileURLToPath(import.meta.url))) {
   const opts = parseArgs(process.argv.slice(2));
   const themes = generateAll(opts);
-  process.stdout.write(`generated ${themes.length} theme(s) into ${opts.outDir}\n`);
+  vendorSharedAssets({ modulesDir: join(repoRoot, 'node_modules'), outDir: opts.outDir });
+  process.stdout.write(
+    `generated ${themes.length} theme(s) + shared vendor assets into ${opts.outDir}\n`,
+  );
 }

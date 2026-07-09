@@ -32,8 +32,9 @@ for dir in "$SRC"/*/; do
   name=$(basename "$dir")
   cp -R "$dir" "$THEME_DIR/$name"
   # Assemble the starter from the three parts — but only for real template
-  # folders. `shared/` (the theme-neutral selfupdate.js, served at
-  # .plandrop/shared/js/) has no header/plan/footer; copy it through, don't
+  # folders. `shared/` (the theme-neutral assets served at .plandrop/shared/:
+  # selfupdate.js, enhance.js, plandrop.css, and the vendored mermaid +
+  # highlight.js bundles) has no header/plan/footer; copy it through, don't
   # assemble it.
   if [ -f "$THEME_DIR/$name/header.html" ]; then
     cat "$THEME_DIR/$name/header.html" \

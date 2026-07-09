@@ -155,6 +155,13 @@ field > the server's default. Domain resolution follows the same precedence as `
 falls back to plandrop.dev. It refuses to overwrite an existing file without `--force`. The
 scaffolded file is yours to edit — then `upload` it like any other document.
 
+Every scaffolded document comes with **mermaid** and **highlight.js** preinstalled, self-hosted
+by the template server (no CDN): write `<pre class="mermaid">…</pre>` for a rendered diagram,
+and `<pre><code class="language-…">…</code></pre>` for highlighted code (the language
+auto-detects if the class is omitted). Both follow the document's light/dark theme, and load
+lazily — a document using neither fetches neither. The starter's single HTML comment explains
+the same to whoever (or whatever) writes the document body.
+
 ## upload
 
 Upload a single file (served at its name under the host root):

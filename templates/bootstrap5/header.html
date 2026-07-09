@@ -4,30 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>plandrop document</title>
-  <!-- Template assets are served from the shared theme tree (Apache Alias
-       /.plandrop/ -> theme volume); links are concrete (bootstrap5), never
-       "default", so changing the default later never breaks this document. -->
   <link rel="stylesheet" href=".plandrop/bootstrap5/css/bootstrap.min.css">
-  <!-- plandrop.css and selfupdate.js are shared and theme-neutral: one copy under
-       .plandrop/shared/ serves every theme. Their paths stay bare (not retargeted
-       per theme) so the generator's `.plandrop/<theme>/` rewrite leaves them
-       pointing at the shared tree. The CSS loads after the theme's bootstrap.min.css
-       so plandrop's cross-theme overrides win by source order. -->
   <link rel="stylesheet" href=".plandrop/shared/css/plandrop.css">
   <script defer src=".plandrop/shared/js/selfupdate.js"></script>
+  <script defer src=".plandrop/shared/js/enhance.js"></script>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
     <div class="container">
       <a class="navbar-brand mb-0 h1" href="/">plandrop</a>
-      <!-- theme-toggle:start — only meaningful on the dual-mode bootstrap5
-           skeleton; the generator strips this whole block (and the matching
-           footer script) for every single-appearance Bootswatch theme, which
-           renders in its own native scheme. -->
       <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-theme-toggle>
         Toggle light / dark
       </button>
-      <!-- theme-toggle:end -->
     </div>
   </nav>
   <main class="container py-4">

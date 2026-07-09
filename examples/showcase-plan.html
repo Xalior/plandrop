@@ -4,10 +4,12 @@
       This is the inner HTML of a doc's <main class="container py-4">…</main>.
       It is template-agnostic, URL-free planning markup (sprint backlog with
       checkboxes; milestone / RACI / risk-register / sign-off tables; DoD;
-      acceptance criteria; dependencies; alerts; cards; a code block; a progress
-      bar; badges; blockquotes) wrapped around a deliberately ridiculous fake
-      "Project Bigdrop" plan. scripts/gen-showcase.mjs splices this into every
-      theme's scaffold to produce the all-themes showcase set.
+      acceptance criteria; dependencies; alerts; cards; syntax-highlighted code
+      blocks; mermaid diagrams (a sequence diagram and a flowchart, rendered by
+      the shared enhancer); a progress bar; badges; blockquotes) wrapped around
+      a deliberately ridiculous fake "Project Bigdrop" plan.
+      scripts/gen-showcase.mjs splices this into every theme's scaffold to
+      produce the all-themes showcase set.
 
       Companies and people here are fictional; "Frontier AI Lab" is a generic
       stand-in. No real hostnames, IPs, or URLs appear in this file.
@@ -354,7 +356,7 @@
             runs &mdash; note how it is indistinguishable from the open-source CLI,
             because it is the open-source CLI.
           </p>
-          <pre class="border rounded p-3 bg-body-tertiary"><code># Provision a tenant on the "Bigdrop Cloud" (it's the same control plane)
+          <pre><code class="language-bash"># Provision a tenant on the "Bigdrop Cloud" (it's the same control plane)
 npx plandrop create --name acme-q3-plan
 
 # Push your finished plan. This is the product.
@@ -385,6 +387,40 @@ npx plandrop a1b2c3d4 enrich --model bigdrop-turbo --magic=true
             <dt class="col-sm-3">Data moat</dt>
             <dd class="col-sm-9">A <code>vectors</code> table with one row in it (a test row).</dd>
           </dl>
+
+          <h3 class="h5 mt-4">The enrichment call, end to end</h3>
+          <p>
+            The full request lifecycle of our flagship AI feature, as a sequence
+            diagram the intern drew and the deck now calls
+            <mark>&ldquo;proprietary multi-stage orchestration.&rdquo;</mark>
+          </p>
+          <pre class="mermaid">
+sequenceDiagram
+    participant Cust as Customer
+    participant CLI as plandrop CLI
+    participant CP as Control plane
+    participant AI as AI layer
+    Cust->>CLI: enrich --model bigdrop-turbo
+    CLI->>CP: POST /enrich (plan.html)
+    CP->>AI: think(plan.html)
+    Note over AI: spinner, 4 seconds (load-bearing)
+    AI-->>CP: plan.html (byte-identical, by design)
+    CP-->>CLI: 200 OK + plan.html
+    CP->>Cust: invoice (tokens: yes)
+          </pre>
+          <p class="small text-body-secondary">
+            Fig.&nbsp;1 &mdash; value being added. Each arrow is a slide in the deck.
+          </p>
+          <p>
+            Engineering has since implemented the engine in full. Code review took
+            nine seconds and raised one comment (&ldquo;nice&rdquo;):
+          </p>
+          <pre><code class="language-javascript">// bigdrop-turbo: the enrichment engine (patent pending)
+export async function enrich(file, meter) {
+  await sleep(4_000);          // the thinking (see AC-2: spinner for 4+ seconds)
+  meter.tokens += file.length; // the business model
+  return file;                 // byte-identical, by design (see AC-4)
+}</code></pre>
         </section>
 
         <!-- RACI matrix -->
@@ -619,6 +655,29 @@ npx plandrop a1b2c3d4 enrich --model bigdrop-turbo --magic=true
             <li>Answer the &ldquo;quick coffee&rdquo; email within four minutes.</li>
             <li>Negotiate as if we have other offers (we do not).</li>
           </ol>
+
+          <p>
+            As a flowchart, for the board pack. Note that every failure path
+            leads back to the blog post; this is called
+            <em>strategic resilience</em>.
+          </p>
+          <pre class="mermaid">
+flowchart TD
+    A["Agents publish through us, by default"] --> B["Thoughtful blog post about agent-authored artifacts"]
+    B --> C{"Did the right people read it?"}
+    C -- no --> D["Make sure they do"]
+    D --> C
+    C -- yes --> E["The quick-coffee email arrives"]
+    E --> F["Reply within four minutes"]
+    F --> G{"Term sheet?"}
+    G -- yes --> H["Exit"]
+    G -- no --> I["Emphasise the brand and the 27 themes"]
+    I --> B
+          </pre>
+          <p class="small text-body-secondary">
+            Fig.&nbsp;2 &mdash; the funnel. The &ldquo;no&rdquo; edges carry most
+            of our traffic.
+          </p>
 
           <div class="alert alert-danger" role="alert">
             <strong>Failure mode:</strong> they realize they could rebuild this in an

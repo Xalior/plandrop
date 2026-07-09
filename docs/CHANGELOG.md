@@ -2,6 +2,28 @@
 
 ## [Unreleased] — 0.4.0
 
+### Added
+
+- **Mermaid diagrams and syntax highlighting, preinstalled** — every scaffolded document can
+  simply write `<pre class="mermaid">…</pre>` (or a `language-mermaid` code block) and fenced
+  `<pre><code class="language-…">` blocks; a new shared enhancer
+  (`.plandrop/shared/js/enhance.js`) renders them on load with **mermaid** and
+  **highlight.js**, served self-hosted from `.plandrop/shared/vendor/` (no runtime CDN). The
+  enhancer is lazy — a document with no diagrams or code blocks fetches nothing beyond the
+  ~2KB scan — and theme-aware: both renderers follow `data-bs-theme`, the bootstrap5 toggle
+  re-renders diagrams and flips the highlight stylesheet live, and a self-update body swap
+  re-enhances the fresh content. The bundles are vendored from the pinned npm packages
+  (licenses included) by the template generator.
+- **The scaffolded starter speaks to agents** — the template body is now a single HTML
+  comment addressed to the authoring agent, spelling out what is preinstalled and automatic
+  (Bootstrap 5, mermaid, highlighting) and inviting it to replace the comment with the
+  document. The rest of the template markup is bare — no comments; the generator recognises
+  the theme-toggle block by its `data-bs-theme-toggle` attribute rather than marker comments.
+- **The showcase plan demos the enhancers** — Project Bigdrop's plan gains a sequence
+  diagram of the "AI enrichment" call, its exit funnel as a flowchart, and
+  syntax-highlighted bash/JavaScript blocks, so every theme's showcase doc exercises
+  mermaid and highlight.js.
+
 ### Changed
 
 - **Inline code is calm green, not angry pink** — a new shared, theme-neutral override

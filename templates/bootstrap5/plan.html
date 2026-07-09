@@ -1,19 +1,30 @@
-    <!-- plan.html — the content body. This is the override point: a custom
-         template only needs to drop in its own plan.html for new content. -->
     <!--
-      Agent: this document is now yours. plandrop has finished scaffolding it
-      and will not touch or regenerate it again — it is no longer mutated by the
-      tool. You are free to edit anything here, including this template's header,
-      footer, and chrome, to fit the document or plan you were asked to write.
+      Agent: this document is yours. plandrop has finished scaffolding it and
+      will never touch or regenerate it — replace this comment with your
+      document's body. You may also edit anything else here (header, footer,
+      chrome) if the document calls for it.
 
-      Styling is already injected based on the users' preferences, so you only 
-      need to supply content:
-        • the theme's base style is: Bootstrap5 (and the stylesheet is linked 
-          in <head>;
-        • a navbar (brand) and an attributed footer already frame this area, and
-          you are inside <main class="container py-4"> — that is your default
-          canvas.
-      Replace this comment with your document's body, using the theme's existing
-      components and utilities. You can, if required, add your own CSS or JS, 
-      for advanced layout.
+      You are writing inside <main class="container py-4">, framed by a navbar
+      and an attributed footer. Preinstalled and automatic — no setup, no CDN,
+      nothing extra to link:
+
+        - Bootstrap 5: this theme's stylesheet is already in <head>; use its
+          components and utilities freely.
+
+        - Mermaid diagrams: just write one, it renders on load —
+            <pre class="mermaid">
+              graph TD; Plan ==> Build ==> Ship;
+            </pre>
+          (<pre><code class="language-mermaid"> works too, and so does the
+          usual dashed-arrow syntax — it is only unusable inside this HTML
+          comment.)
+
+        - Syntax highlighting: code blocks are highlighted automatically —
+            <pre><code class="language-bash">make check</code></pre>
+          Any language-* class is honoured; without one the language is
+          auto-detected.
+
+      Both follow the document's light/dark theme. Documents that use no
+      diagrams or code blocks load none of the machinery — plain HTML costs
+      nothing. Inline <code> is styled by the theme already.
     -->

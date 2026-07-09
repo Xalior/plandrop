@@ -9,7 +9,10 @@ plandrop-*.tgz
 
 # Generated template themes — built from the bootstrap5 skeleton at image-build
 # time (and by the generator locally). Only the skeleton and the shared,
-# theme-neutral assets (selfupdate.js) are tracked.
+# theme-neutral assets (enhance.js, selfupdate.js, plandrop.css) are tracked;
+# the shared vendor bundles (mermaid, highlight.js) are copied from the pinned
+# npm packages by the same generator run.
 templates/*/
 !templates/bootstrap5/
 !templates/shared/
+templates/shared/vendor/

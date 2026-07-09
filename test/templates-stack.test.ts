@@ -82,9 +82,10 @@ describe('ingress static template serving', () => {
     const html = res.body.toString();
     expect(html.trimStart().startsWith('<!DOCTYPE html>')).toBe(true);
     expect(html).toContain('.plandrop/bootstrap5/css/bootstrap.min.css');
-    // self-update and the override CSS are referenced by the shared,
-    // theme-neutral paths, not per-theme.
+    // self-update, the enhancer, and the override CSS are referenced by the
+    // shared, theme-neutral paths, not per-theme.
     expect(html).toContain('.plandrop/shared/js/selfupdate.js');
+    expect(html).toContain('.plandrop/shared/js/enhance.js');
     expect(html).toContain('.plandrop/shared/css/plandrop.css');
   });
 
@@ -112,6 +113,34 @@ describe('ingress static template serving', () => {
     expect(res.headers['content-type']).toMatch(/text\/css/);
     // The calm-green inline-code override rides on Bootstrap's custom property.
     expect(res.body.toString()).toContain('--bs-code-color');
+  });
+
+  it('serves the shared document enhancer and its vendored bundles', async () => {
+    const enhancer = await httpRequest({
+      port: ingressPort,
+      method: 'GET',
+      path: '/.plandrop/shared/js/enhance.js',
+      hostHeader: domain,
+    });
+    expect(enhancer.status).toBe(200);
+    expect(enhancer.headers['content-type']).toMatch(/javascript/);
+
+    // The lazy-loaded vendor bundles resolve alongside it.
+    for (const [path, type] of [
+      ['/.plandrop/shared/vendor/mermaid/mermaid.min.js', /javascript/],
+      ['/.plandrop/shared/vendor/highlight/highlight.min.js', /javascript/],
+      ['/.plandrop/shared/vendor/highlight/styles/github.min.css', /text\/css/],
+      ['/.plandrop/shared/vendor/highlight/styles/github-dark.min.css', /text\/css/],
+    ] as const) {
+      const res = await httpRequest({
+        port: ingressPort,
+        method: 'GET',
+        path,
+        hostHeader: domain,
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(type);
+    }
   });
 });
 

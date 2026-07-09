@@ -30,3 +30,13 @@ export function renderFooter(skeletonFooter: string, theme: string): string;
 export function generateTheme(theme: string, options: GenerateOptions): string;
 export function bootswatchThemes(bootswatchDir: string): string[];
 export function generateAll(options: GenerateOptions): string[];
+
+export interface VendorOptions {
+  /** The node_modules root holding the pinned vendor packages. */
+  modulesDir: string;
+  /** The templates root; bundles land under <outDir>/shared/vendor/. */
+  outDir: string;
+}
+
+/** Copy the shared enhancement bundles (mermaid, highlight.js) into place. */
+export function vendorSharedAssets(options: VendorOptions): void;
