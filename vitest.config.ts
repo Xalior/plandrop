@@ -1,6 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 
+const { version } = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as { version: string };
+
 export default defineConfig({
+  // Mirrors tsup's define (tsup.config.ts) so tests see the same
+  // __PLANDROP_VERSION__ literal (src/version.d.ts) the built bundle carries,
+  // without a real build step.
+  define: { __PLANDROP_VERSION__: JSON.stringify(version) },
   test: {
     include: ['test/**/*.test.ts'],
     // Brings up the throwaway stack (Apache + control plane) over an ephemeral

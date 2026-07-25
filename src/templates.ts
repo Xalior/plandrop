@@ -30,6 +30,16 @@ export async function fetchTemplates(base: string): Promise<TemplatesResponse> {
 export const DEFAULT_TEMPLATE = 'bootstrap5';
 
 /**
+ * plandrop's own version (public/package.json's "version"), baked into the
+ * bundle at build time by tsup's `define` (the literal is declared ambiently
+ * in src/version.d.ts). `typeof` never throws on a bare identifier that turns
+ * out not to be defined, so a build that hasn't wired the define through yet
+ * degrades to a sentinel instead of crashing every /api/templates response.
+ */
+const CONTROL_PLANE_VERSION =
+  typeof __PLANDROP_VERSION__ !== 'undefined' ? __PLANDROP_VERSION__ : '0.0.0-unknown';
+
+/**
  * Build the /api/templates payload from the names found in the theme volume.
  * Pure so the listing logic is unit-testable without a filesystem: enumeration
  * happens at request time (a static manifest would go stale the moment an
@@ -40,7 +50,7 @@ export function buildTemplatesResponse(
   defaultTemplate: string = DEFAULT_TEMPLATE,
 ): TemplatesResponse {
   const templates = [...entries].sort((a, b) => a.localeCompare(b));
-  return { default: defaultTemplate, templates };
+  return { default: defaultTemplate, templates, version: CONTROL_PLANE_VERSION };
 }
 
 /** The alias that resolves to whatever the server currently calls the default. */

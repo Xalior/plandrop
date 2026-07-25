@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { main } from '../src/app';
-import { COMMANDS, parseArgs, UsageError } from '../src/dispatch';
+import { COMMANDS, parseArgs, UsageError, VersionRequested } from '../src/dispatch';
 
 describe('parseArgs', () => {
   it('treats a < 8-char arg 1 as the command (command path)', () => {
@@ -56,6 +56,20 @@ describe('parseArgs', () => {
     });
     expect(parseArgs(['abcdef123456', 'upload', '--help']).params).toEqual(['upload']);
   });
+
+  it.each([[['-v']], [['--version']], [['--version', 'newdoc']], [['upload', '--version']]])(
+    'routes %j to a version request',
+    (argv) => {
+      expect(() => parseArgs(argv)).toThrow(VersionRequested);
+    },
+  );
+
+  it('treats an unrecognized flag at arg 1 as an unknown command, unaffected by --version/-h', () => {
+    // --bogus is 7 chars, short of the hash threshold, so it falls to the
+    // ordinary command lookup rather than being swallowed as a hash override.
+    expect(() => parseArgs(['--bogus'])).toThrow(UsageError);
+    expect(() => parseArgs(['--bogus'])).toThrow(/unknown command: --bogus/);
+  });
 });
 
 describe('main', () => {
@@ -80,5 +94,14 @@ describe('main', () => {
     expect(code).toBe(0);
     expect(written).toMatch(/Usage:/);
     expect(written).toMatch(/plandrop help <command>/);
+  });
+
+  it.each([['--version'], ['-v']])('%s prints exactly the version and exits 0', async (flag) => {
+    const out = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+    const code = await main([flag]);
+    const written = out.mock.calls.map((call) => String(call[0])).join('');
+    out.mockRestore();
+    expect(code).toBe(0);
+    expect(written).toBe(`${__PLANDROP_VERSION__}\n`);
   });
 });

@@ -7,7 +7,7 @@ import { run as remove } from './commands/remove';
 import { run as rotate } from './commands/rotate';
 import { run as server } from './commands/server';
 import { run as upload } from './commands/upload';
-import { parseArgs, UsageError, type CommandName, type Dispatch } from './dispatch';
+import { parseArgs, UsageError, VersionRequested, type CommandName, type Dispatch } from './dispatch';
 
 type Handler = (dispatch: Dispatch) => number | Promise<number>;
 
@@ -29,6 +29,10 @@ export async function main(argv: readonly string[]): Promise<number> {
   try {
     dispatch = parseArgs(argv);
   } catch (error) {
+    if (error instanceof VersionRequested) {
+      process.stdout.write(`${__PLANDROP_VERSION__}\n`);
+      return 0;
+    }
     if (error instanceof UsageError) {
       process.stderr.write(`${error.message}\n`);
       return 2;

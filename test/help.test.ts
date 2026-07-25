@@ -40,6 +40,10 @@ describe('usage registry', () => {
     }
   });
 
+  it('shows its own version in the overview header', () => {
+    expect(overviewText()).toContain(`plandrop ${__PLANDROP_VERSION__} —`);
+  });
+
   it('composes the usage line from the synopsis', () => {
     expect(usageLine('upload')).toBe('usage: plandrop upload <path> [remote-path]');
     expect(usageLine('rotate')).toBe('usage: plandrop rotate');

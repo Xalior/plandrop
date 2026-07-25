@@ -11,12 +11,23 @@ describe('buildTemplatesResponse', () => {
   });
 
   it('handles an empty theme volume', () => {
-    expect(buildTemplatesResponse([])).toEqual({ default: DEFAULT_TEMPLATE, templates: [] });
+    expect(buildTemplatesResponse([])).toEqual({
+      default: DEFAULT_TEMPLATE,
+      templates: [],
+      version: __PLANDROP_VERSION__,
+    });
   });
 
   it('honours an explicit default override', () => {
     const res = buildTemplatesResponse(['bootstrap5', 'darkly'], 'darkly');
     expect(res.default).toBe('darkly');
+  });
+
+  // Matches public/package.json's "version": tsup's `define` bakes the same
+  // literal into the built bundle (mirrored for tests by vitest's own
+  // `define`, see vitest.config.ts) — no route reads package.json at runtime.
+  it("reports the control plane's own version, matching package.json", () => {
+    expect(buildTemplatesResponse(['bootstrap5']).version).toBe(__PLANDROP_VERSION__);
   });
 });
 
