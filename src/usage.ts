@@ -73,9 +73,11 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
 
   A directory upload always preserves its internal structure; the remote
   argument names the destination folder its contents land in — omitted,
-  the directory's own name is used. \`.\` is the explicit way to flatten a
-  directory's contents into the host root. Trailing slashes never change
-  the outcome.`,
+  the directory's own name is used. Uploading the current directory itself
+  (\`upload .\`) publishes its contents to the host root — "what's here",
+  not a folder named after the cwd. \`.\` as the remote argument is the
+  explicit way to flatten any directory's contents into the host root.
+  Trailing slashes never change the outcome.`,
     examples: [
       'plandrop upload docs/plans/x.html',
       'plandrop upload plan.html index.html',

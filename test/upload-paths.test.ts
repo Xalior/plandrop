@@ -66,6 +66,16 @@ describe('remoteBaseForDirectory', () => {
   it('spills the contents into the host root when the base is `.`', () => {
     expect(remoteBaseForDirectory('/work/proj/evidence', '.')).toBe('');
   });
+
+  it('maps the bare cwd to the host root, not the cwd basename', () => {
+    expect(remoteBaseForDirectory('.', undefined)).toBe('');
+    expect(remoteBaseForDirectory('./', undefined)).toBe('');
+    expect(remoteBaseForDirectory(process.cwd(), undefined)).toBe('');
+  });
+
+  it('still names a cwd-resolving directory given an explicit remote', () => {
+    expect(remoteBaseForDirectory('.', 'photos')).toBe('photos');
+  });
 });
 
 describe('remoteForEntry', () => {

@@ -103,8 +103,16 @@ export function remoteForEntry(localDir: string, file: string, remoteBase: strin
  * names that collection; without one the directory's own name is used, so
  * `upload ./evidence` publishes `evidence/…`. `.` names the host root — the
  * explicit way to spill a directory's contents into it.
+ *
+ * The cwd itself is the exception to the own-name default: `upload .` means
+ * "publish what's here", and the cwd's basename is incidental — the user never
+ * typed it — so it maps to the host root rather than minting a folder named
+ * after wherever the command happened to run.
  */
 export function remoteBaseForDirectory(localDir: string, remoteArg: string | undefined): string {
+  if (remoteArg === undefined && resolve(localDir) === process.cwd()) {
+    return '';
+  }
   return toRemoteBase(remoteArg ?? basename(resolve(localDir)));
 }
 

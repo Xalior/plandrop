@@ -217,6 +217,7 @@ remote argument, if given, names the destination folder they land in:
 | `npx plandrop upload ./evidence` | `/evidence/…` — the directory's own name |
 | `npx plandrop upload ./evidence photos` | `/photos/…` — the named destination |
 | `npx plandrop upload ./evidence .` | `/…` — `.` is the explicit way to flatten a directory's contents into the host root |
+| `npx plandrop upload .` | `/…` — the current directory publishes *what's here* to the host root; its own name is incidental and never becomes a folder |
 
 Trailing slashes on either argument never change the outcome, and each uploaded file
 prints its own shareable URL.

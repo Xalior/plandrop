@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1 — 2026-07-25
+
+### Fixed
+
+- **`upload .` publishes to the host root** — uploading the current directory itself
+  lands its contents at `/…`, not under a folder named after the cwd's incidental
+  basename. Named directories (`upload ./evidence`) keep defaulting to their own name;
+  an explicit remote argument still wins.
+
 ## 0.4.0 — 2026-07-25
 
 ### Added
