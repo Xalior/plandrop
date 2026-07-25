@@ -27,6 +27,7 @@ npx plandrop upload ./planfile.html
 | `remove` | Delete the host and its content, and remove the local `.plandrop`. |
 | `init` | Record your default domain (and template) in a config file the other commands resolve. |
 | `server` | Stand up a local plandrop server (Docker) via the plandrop.dev starter script. |
+| `hooks [path]` | Install or update the autosync hook in the current project, without minting a host. |
 | `help` | List every command, or show one command's usage and examples. |
 
 `plandrop help <command>` (or `plandrop <command> --help`) prints any command's detailed
@@ -110,6 +111,25 @@ holds your passphrase.
 If a `.plandrop` already exists in this directory, `create` refuses unless you pass
 `--force` (which mints a new host and replaces the file).
 
+### Autosync hook
+
+At a terminal, `create` offers to scaffold a Claude Code `PostToolUse` hook that
+republishes a saved HTML document via `upload` whenever it matches the watched glob:
+
+```
+Set up a Claude Code hook that auto-publishes saved HTML documents? [Y/n]:
+```
+
+The default is **yes** — a bare Enter accepts it; only an answer starting with `n`
+declines. Accepting prompts for the path to watch, defaulting to `docs/**/*.html`, so
+plans in subfolders are covered as well as ones at the top level. The generated hook
+uploads a saved file by its path relative to the project root, so it lands at the same
+mirrored remote path a manual `upload` would (see [upload](#upload)). `--hook` takes the
+offer without asking, `--no-hook` skips it (and its prompt), and `--hook-path <glob>`
+sets the watched glob non-interactively (and implies `--hook`). A non-interactive
+`create` with none of those flags sets up nothing. See [hooks](#hooks) to install the
+same hook in a project whose host already exists.
+
 ### Where the domain comes from
 
 You can give the domain explicitly, or let the client resolve it. Precedence, highest first:
@@ -162,24 +182,49 @@ auto-detects if the class is omitted). Both follow the document's light/dark the
 lazily — a document using neither fetches neither. The starter's single HTML comment explains
 the same to whoever (or whatever) writes the document body.
 
+### The bundled themes
+
+The set is `bootstrap5` (stock Bootstrap, the default), `f1terminal` (Fanny's First
+Terminal, plandrop's own — a phosphor CRT in dark, a teletype printout in light), and the
+full Bootswatch set. A theme
+that offers both appearances scaffolds with a **light / dark toggle** in the navbar; a
+single-appearance theme renders in the one its designer built. `GET /api/templates` lists
+whatever your server actually has, including any operator templates dropped into the
+`user/` mount, and the [theme gallery](https://plandrop.dev/templates/) shows the same plan
+in every bundled one.
+
 ## upload
 
-Upload a single file (served at its name under the host root):
+Upload a single file. With no remote path it publishes where you keep it — the same
+subpath it occupies under the current directory — and prints the full shareable URL of
+the file it just published:
 
 ```sh
-npx plandrop upload ./planfile.html            # → /planfile.html
-npx plandrop upload ./planfile.html index.html # → /index.html (served at the bare URL)
+npx plandrop upload ./planfile.html              # → /planfile.html
+npx plandrop upload docs/plans/x.html            # → /docs/plans/x.html
+npx plandrop upload ./planfile.html index.html   # → /index.html (explicit remote wins)
 ```
 
-Upload a whole directory, preserving its structure verbatim:
+Any missing collections along the way are created. A path outside the current directory
+(absolute, or escaping via `../`) has no mirror image on the host, so it falls back to
+its bare name.
 
-```sh
-npx plandrop upload ./site
-```
+Upload a directory and its contents preserve their internal structure verbatim; the
+remote argument, if given, names the destination folder they land in:
+
+| Command | Contents land at |
+|---------|-------------------|
+| `npx plandrop upload ./evidence` | `/evidence/…` — the directory's own name |
+| `npx plandrop upload ./evidence photos` | `/photos/…` — the named destination |
+| `npx plandrop upload ./evidence .` | `/…` — `.` is the explicit way to flatten a directory's contents into the host root |
+
+Trailing slashes on either argument never change the outcome, and each uploaded file
+prints its own shareable URL.
 
 It's a plain static host: files are served at their paths, and `index.html` answers the
 bare directory URL. There is no client-side renaming or index magic — what you upload is
-what's served.
+what's served. A directory with no `index.html` answers with a themed listing (folders
+first, file-type icons) wrapped in the server's default-template chrome, at any depth.
 
 ## rotate
 
@@ -200,6 +245,22 @@ npx plandrop remove
 Deletes the host (its content and credentials) and removes the local `.plandrop`. After
 this, the host URL returns 404 and writes are rejected. Wrong credentials change nothing.
 
+## hooks
+
+Install (or update) the autosync hook in the current project without minting a host —
+for a project that already has one:
+
+```sh
+npx plandrop hooks                     # watches docs/**/*.html (the default)
+npx plandrop hooks "plans/**/*.html"   # a different glob, positional or --hook-path
+```
+
+It merges the same hook `create`'s offer scaffolds (see [Autosync hook](#autosync-hook))
+into `.claude/settings.json`, preserving every other setting and hook, and publishes to
+the host in the nearest `.plandrop` — it never mints one, and refuses clearly if no host
+resolves. Re-running with the same watch path changes nothing: an equivalent hook already
+present is left alone.
+
 ## The `.plandrop` file
 
 A small JSON file written at mode `0600` in the directory where you ran `create`:
@@ -215,7 +276,8 @@ A small JSON file written at mode `0600` in the directory where you ran `create`
 Subsequent commands (`upload`, `rotate`, `remove`) find the nearest `.plandrop` by walking
 up from the current directory — so you can run them from anywhere inside the project.
 
-> **Do not commit `.plandrop`.** It holds your host's passphrase. Add it to `.gitignore`.
+> `.plandrop` holds your host's passphrase and grants write access to it — treat it as
+> a credential when deciding whether to commit it.
 
 ### Targeting another host explicitly
 

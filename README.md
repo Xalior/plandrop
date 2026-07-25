@@ -10,10 +10,15 @@ npx plandrop upload ./planfile.html                          # push it over auth
 ```
 
 `upload`, `rotate`, and `remove` find the nearest `.plandrop` by walking up from the
-current directory. The `.plandrop` file holds your passphrase — **don't commit it.**
+current directory. The `.plandrop` file holds your passphrase and grants write access
+to the host — treat it as a credential.
 
 Start from a themed template instead of a blank file with `npx plandrop newdoc plan.html`
-(works with no host — it defaults to the public template gallery on plandrop.dev).
+(works with no host — it defaults to the public template gallery on plandrop.dev). Pick from
+stock Bootstrap, plandrop's own dual-appearance `f1terminal` (Fanny's First Terminal) theme,
+or the full Bootswatch set.
+Every template ships with mermaid diagrams and syntax highlighting preinstalled and
+self-hosted: write `<pre class="mermaid">` or a `language-*` code block and it renders on load.
 
 **Try it locally:** `npx plandrop server` brings up a full plandrop stack on your own
 machine (Docker) with no domain or DNS — see the [Quickstart](docs/quickstart.md).

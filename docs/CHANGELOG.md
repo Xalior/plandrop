@@ -1,8 +1,21 @@
 # Changelog
 
-## [Unreleased] — 0.4.0
+## 0.4.0 — 2026-07-25
 
 ### Added
+
+- **`f1terminal` (Fanny's First Terminal) — plandrop's own theme, and a way to write more** — a hand-made, dual-appearance
+  Bootstrap 5 theme: a phosphor CRT in dark (near-black glass, soft green text, a prompt and
+  a blinking block cursor on the navbar brand, raster lines across the chrome only) and a
+  teletype printout in light (warm paper, near-black ink, deep ink accents). Sharp corners,
+  monospace throughout, both palettes meeting WCAG AA. It scaffolds, seeds, self-updates and
+  enhances like every other theme, and carries the navbar light/dark toggle. Hand-authored
+  themes live in `themes/<name>/` as a manifest plus a stylesheet; the generator renders each
+  into a full template folder — the skeleton's chrome over stock Bootstrap with the theme's
+  layer appended — so regeneration reproduces them instead of clobbering them, and a change
+  to the shared chrome reaches them automatically. A theme's `theme.json` declares its
+  appearances (which decides the toggle) and its credit, which replaces the Bootswatch
+  attribution in the document footer. See `themes/README.md`.
 
 - **Mermaid diagrams and syntax highlighting, preinstalled** — every scaffolded document can
   simply write `<pre class="mermaid">…</pre>` (or a `language-mermaid` code block) and fenced
@@ -23,8 +36,19 @@
   diagram of the "AI enrichment" call, its exit funnel as a flowchart, and
   syntax-highlighted bash/JavaScript blocks, so every theme's showcase doc exercises
   mermaid and highlight.js.
+- **`hooks` command** — `plandrop hooks [path] [--hook-path <glob>]` installs or updates
+  the autosync hook in the current project without minting a host, for a project whose
+  host already exists. It reuses the same merge `create`'s offer scaffolds with (preserves
+  every other setting and hook, no-ops when an equivalent hook is already present) and
+  refuses clearly when no host resolves from the nearest `.plandrop`.
 
 ### Changed
+
+- **Directory listings look like the theme, not like 1996** — the autoindex table is styled
+  by the shared stylesheet (full-width, hoverable rows, quiet monospace date/size columns,
+  file-type glyphs for folders/images/documents), riding Bootstrap's CSS custom properties so
+  it follows every theme and scheme. `mod_autoindex` gains `FoldersFirst`, `IgnoreCase`,
+  `SuppressRules`, `NameWidth=*`, and `Charset=UTF-8`.
 
 - **Inline code is calm green, not angry pink** — a new shared, theme-neutral override
   stylesheet (`.plandrop/shared/css/plandrop.css`, loaded after every theme's
@@ -35,6 +59,70 @@
   `data-plandrop-theme="<name>"` attribute so the override sheet can make per-theme exceptions:
   quartz (nominally light, but its signature surface is saturated purple glass) takes the
   dark-scheme green.
+
+- **`upload` mirrors where you keep a file** — a single-file upload with no remote path
+  now publishes to the same subpath it occupies under the current directory
+  (`upload docs/plans/x.html` → `/docs/plans/x.html`, creating any missing collections
+  along the way) instead of collapsing to its basename at the host root. A path outside
+  the current directory (absolute, or escaping via `../`) still falls back to its
+  basename, and an explicit remote path still wins outright. Every uploaded file — from
+  a single-file upload, or each one in a directory upload — now prints its own full
+  shareable URL; a directory upload no longer prints only the host root.
+
+- **A directory upload's remote argument names a destination, not a root** —
+  `upload <dir>` with no remote argument now lands the directory's contents under its
+  own name (`upload ./evidence` → `/evidence/…`) rather than the host root; a remote
+  argument still names the destination explicitly (`upload ./evidence photos` →
+  `/photos/…`), and `.` is the explicit way to flatten a directory's contents into the
+  host root (`upload ./evidence .` → `/…`). A remote argument that resolves to or above
+  the root (`.`, `..`, or an escaping path) is treated as the root, so a directory upload
+  can never address a collection outside the host.
+
+- **The autosync hook offer defaults to yes** — `create`'s interactive prompt is now
+  `Set up a Claude Code hook that auto-publishes saved HTML documents? [Y/n]`; a bare
+  Enter opts in, and only an answer starting with `n` declines. `--hook`, `--no-hook`,
+  and `--hook-path` are unchanged.
+
+- **The autosync hook watches nested plans by default** — `DEFAULT_WATCH_GLOB` is now
+  `docs/**/*.html` (was `docs/*.html`), and the generated hook command uploads a saved
+  file by its path relative to the project root rather than flattening it to
+  `<watch-dir>/<basename>`, so a save now republishes to the same mirrored path `upload`
+  would use for that file.
+
+### Fixed
+
+- **Subdirectory listings are no longer unstyled** — the seeded autoindex chrome's asset
+  links are absolutized (`/.plandrop/…`); the previous document-relative links only resolved
+  at the host root, so any listing below it rendered as bare HTML.
+
+- **WebDAV directory creation no longer chases Apache's own redirect** — `makeDir`
+  addresses every collection with its trailing slash (`MKCOL /docs/`, not `/docs`), so it
+  never triggers Apache's DirectorySlash redirect in the first place; the WebDAV client's
+  underlying fetch is patched to follow only same-origin redirects itself, refusing — with
+  a clear error naming both origins — to follow one that would take the request off the
+  endpoint the client addressed. That case previously surfaced as an opaque connection
+  failure to an internal address nobody typed.
+
+- **Apache's self-referential URLs now match the origin the client used, not the
+  container's own listen socket** — the trailing-slash redirect for a directory URL is
+  now issued from `mod_rewrite`'s fixup phase (ahead of `mod_dir`'s handler) using the
+  request's forwarded scheme (`X-Forwarded-Proto`, falling back to the connection's own)
+  and `Host`, instead of Apache's `ServerName`/port; `mod_dav`'s `201 Created` `Location`
+  header is stripped down to a path via `mod_headers`. Both now resolve correctly behind
+  a TLS proxy, behind a plain-HTTP one, or with no proxy in front at all.
+
+### Documentation
+
+- The README notes that every template ships with mermaid and syntax highlighting
+  preinstalled; the [client usage guide](usage.md) documents the enhancers under `newdoc`
+  and the themed directory listing under `upload`; the manual-testing checklist covers the
+  green inline code, the enhancer render checks, and the styled listing.
+- The [client usage guide](usage.md) documents `upload`'s subpath-mirroring and
+  destination-folder rules, the `hooks` command, and the default-yes autosync offer; the
+  README and usage guide describe `.plandrop` neutrally — what it holds and that it's a
+  credential — rather than instructing on committing it; the manual-testing checklist
+  gains a nested-upload, directory-destination, default-yes-prompt, and standalone-`hooks`
+  checklist.
 
 ## 0.3.0 — 2026-07-08
 
