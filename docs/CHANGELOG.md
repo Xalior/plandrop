@@ -2,6 +2,17 @@
 
 ## [Unreleased] — 0.6.0
 
+## 0.5.1 — 2026-07-25
+
+### Fixed
+
+- **The error log is quiet again** — the theme namespace's read-only guard relied on a
+  nested `Dav Off`, which mod_dav cannot honour inside a DAV-enabled location and
+  answered with an `AH00578` log line on every request that walked it — near-every page
+  view once documents began resolving their theme through `/.plandrop/`. The line is
+  gone; the method gate (`Require all denied` on every non-read method) was always the
+  operative guard, and every write-refusal test holds unchanged.
+
 ## 0.5.0 — 2026-07-25
 
 ### Added
