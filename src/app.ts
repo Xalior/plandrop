@@ -1,5 +1,6 @@
 import { run as create } from './commands/create';
 import { run as help } from './commands/help';
+import { run as hooks } from './commands/hooks';
 import { run as init } from './commands/init';
 import { run as newdoc } from './commands/newdoc';
 import { run as remove } from './commands/remove';
@@ -18,6 +19,7 @@ const HANDLERS: Record<CommandName, Handler> = {
   remove,
   init,
   server,
+  hooks,
   help,
 };
 

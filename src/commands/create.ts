@@ -64,17 +64,27 @@ export async function run(dispatch: Dispatch): Promise<number> {
     template: flags.template ?? existingConfig?.template ?? DEFAULT_ALIAS,
   });
   process.stdout.write(`created ${hostUrl(domain, created.host)}\n`);
-  process.stdout.write(`wrote ${path} (mode 0600) — it holds your passphrase; don't commit it\n`);
+  process.stdout.write(`wrote ${path} (mode 0600) — it holds your passphrase\n`);
 
   await offerAutosyncHook(cwd, flags);
   return 0;
 }
 
 /**
- * Offer (opt-in) to scaffold the Claude Code auto-publish hook for the new
- * host. --hook/--hook-path take it without a prompt, --no-hook declines;
- * otherwise it is offered only at a terminal — a scripted create without
- * flags sets up nothing.
+ * The hook offer is default-yes: a bare Enter accepts it, only an answer
+ * starting with `n` declines. A closed stdin (undefined — no answer at all,
+ * rather than an empty one) declines too, so a prompt the user walked away
+ * from writes nothing.
+ */
+export function hookOfferAccepted(answer: string | undefined): boolean {
+  return answer !== undefined && !answer.trim().toLowerCase().startsWith('n');
+}
+
+/**
+ * Offer to scaffold the Claude Code auto-publish hook for the new host.
+ * --hook/--hook-path take it without a prompt, --no-hook declines; otherwise
+ * it is offered only at a terminal — a scripted create without flags sets up
+ * nothing.
  */
 async function offerAutosyncHook(cwd: string, flags: CreateFlags): Promise<void> {
   let glob: string | undefined;
@@ -85,9 +95,9 @@ async function offerAutosyncHook(cwd: string, flags: CreateFlags): Promise<void>
     glob = normalizeWatchGlob(flags.hookPath ?? DEFAULT_WATCH_GLOB);
   } else if (process.stdin.isTTY === true) {
     const wanted = await promptLine(
-      'Set up a Claude Code hook that auto-publishes saved HTML documents? [y/N]: ',
+      'Set up a Claude Code hook that auto-publishes saved HTML documents? [Y/n]: ',
     );
-    if (wanted === undefined || !wanted.trim().toLowerCase().startsWith('y')) {
+    if (!hookOfferAccepted(wanted)) {
       return;
     }
     const answer = await promptLine(`Path to watch [${DEFAULT_WATCH_GLOB}]: `);

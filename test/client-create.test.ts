@@ -123,8 +123,15 @@ describe('client create', () => {
   });
 
   it('scaffolds the autosync hook with --hook, none without', () => {
-    // Non-interactive create sets up no hook unless asked.
+    // Non-interactive create sets up no hook unless asked, and --no-hook
+    // declines it however create is run.
     expect(runCli(['create', '--domain', controlAddr], { cwd, env: env() }).status).toBe(0);
+    expect(existsSync(join(cwd, '.claude', 'settings.json'))).toBe(false);
+
+    expect(
+      runCli(['create', '--force', '--domain', controlAddr, '--no-hook'], { cwd, env: env() })
+        .status,
+    ).toBe(0);
     expect(existsSync(join(cwd, '.claude', 'settings.json'))).toBe(false);
 
     const hooked = runCli(
@@ -136,8 +143,11 @@ describe('client create', () => {
       hooks: { PostToolUse: { matcher: string; hooks: { command: string }[] }[] };
     };
     expect(settings.hooks.PostToolUse[0]?.matcher).toBe('Write|Edit');
+    // The saved file publishes at its project-relative path, not a flattened
+    // basename under the watched directory.
+    expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain('case "$f" in */plans/*.html)');
     expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain(
-      'plandrop upload "plans/$(basename "$f")"',
+      'plandrop upload "${f#"$PWD"/}"',
     );
   });
 });

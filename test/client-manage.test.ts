@@ -68,13 +68,28 @@ describe('client upload', () => {
 
     const result = runCli(['upload', 'index.html'], { cwd, env: env() });
     expect(result.status).toBe(0);
-    // A single-file upload reports the exact file URL, not the host root.
-    expect(result.stdout).toContain(`uploaded to ${hostBaseUri(proxyBase, dotfile.host)}/index.html`);
+    // Every uploaded file reports its own URL.
+    expect(result.stdout).toContain(
+      `uploaded index.html → ${hostBaseUri(proxyBase, dotfile.host)}/index.html`,
+    );
 
     const res = await davGet(dotfile.host, '/');
     expect(res.status).toBe(200);
     expect(String(res.headers['content-type'])).toMatch(/text\/html/);
     expect(res.body.toString()).toContain('hi from upload');
+  });
+
+  it('publishes a nested file at its own path, creating the collections', async () => {
+    const dotfile = createHost();
+    mkdirSync(join(cwd, 'docs', 'plans'), { recursive: true });
+    writeFileSync(join(cwd, 'docs', 'plans', 'x.html'), 'nested plan');
+
+    const result = runCli(['upload', join('docs', 'plans', 'x.html')], { cwd, env: env() });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(
+      `uploaded docs/plans/x.html → ${hostBaseUri(proxyBase, dotfile.host)}/docs/plans/x.html`,
+    );
+    expect((await davGet(dotfile.host, '/docs/plans/x.html')).body.toString()).toBe('nested plan');
   });
 
   it('reports the explicit remote path of a single-file upload', async () => {
@@ -84,12 +99,12 @@ describe('client upload', () => {
     const result = runCli(['upload', 'plan.html', 'published.html'], { cwd, env: env() });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain(
-      `uploaded to ${hostBaseUri(proxyBase, dotfile.host)}/published.html`,
+      `uploaded plan.html → ${hostBaseUri(proxyBase, dotfile.host)}/published.html`,
     );
     expect((await davGet(dotfile.host, '/published.html')).body.toString()).toBe('renamed remote');
   });
 
-  it('uploads a nested directory, preserving structure and reporting the root', async () => {
+  it('uploads a directory under its own name, preserving structure', async () => {
     const dotfile = createHost();
     mkdirSync(join(cwd, 'site', 'sub'), { recursive: true });
     writeFileSync(join(cwd, 'site', 'index.html'), 'root page');
@@ -97,8 +112,22 @@ describe('client upload', () => {
 
     const result = runCli(['upload', 'site'], { cwd, env: env() });
     expect(result.status).toBe(0);
-    // A directory spans many files, so the trailing-slash host root is the link.
-    expect(result.stdout).toContain(`uploaded to ${hostBaseUri(proxyBase, dotfile.host)}/\n`);
+    expect(result.stdout).toContain(
+      `uploaded site/index.html → ${hostBaseUri(proxyBase, dotfile.host)}/site/index.html`,
+    );
+
+    expect((await davGet(dotfile.host, '/site/index.html')).body.toString()).toBe('root page');
+    expect((await davGet(dotfile.host, '/site/sub/a.txt')).body.toString()).toBe('nested bytes');
+  });
+
+  it('spills a directory into the host root when the remote base is `.`', async () => {
+    const dotfile = createHost();
+    mkdirSync(join(cwd, 'site', 'sub'), { recursive: true });
+    writeFileSync(join(cwd, 'site', 'index.html'), 'root page');
+    writeFileSync(join(cwd, 'site', 'sub', 'a.txt'), 'nested bytes');
+
+    const result = runCli(['upload', 'site', '.'], { cwd, env: env() });
+    expect(result.status).toBe(0);
 
     expect((await davGet(dotfile.host, '/index.html')).body.toString()).toBe('root page');
     expect((await davGet(dotfile.host, '/sub/a.txt')).body.toString()).toBe('nested bytes');

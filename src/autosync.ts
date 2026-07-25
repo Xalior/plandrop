@@ -5,11 +5,12 @@ import { join } from 'node:path';
  * The Claude Code autosync hook: a PostToolUse hook on Write|Edit that
  * republishes a saved HTML document via `plandrop upload` when it lands under
  * the watched path — the publish-on-every-change loop a person otherwise runs
- * by hand. Scaffolded (opt-in) by `create`; merged into the project's
- * .claude/settings.json without disturbing other settings or hooks.
+ * by hand. Offered by `create` and installed on demand by `hooks`; merged into
+ * the project's .claude/settings.json without disturbing other settings or
+ * hooks.
  */
 
-export const DEFAULT_WATCH_GLOB = 'docs/*.html';
+export const DEFAULT_WATCH_GLOB = 'docs/**/*.html';
 
 /** The hook command entry shape Claude Code expects. */
 interface HookCommand {
@@ -27,8 +28,8 @@ interface HookMatcher {
 
 /**
  * Normalize a user-supplied watch path to a `<dir>/<pattern>` glob. A bare
- * directory (no wildcard, no extension) watches its HTML files; leading `./`
- * and stray slashes are trimmed; empty input means the default.
+ * directory (no wildcard, no extension) watches its HTML files at any depth;
+ * leading `./` and stray slashes are trimmed; empty input means the default.
  */
 export function normalizeWatchGlob(input: string): string {
   const trimmed = input
@@ -40,28 +41,30 @@ export function normalizeWatchGlob(input: string): string {
   }
   const last = trimmed.split('/').pop() ?? '';
   if (!last.includes('*') && !last.includes('.')) {
-    return `${trimmed}/*.html`;
+    return `${trimmed}/**/*.html`;
   }
   return trimmed;
 }
 
 /**
  * The shell command the hook runs: read the saved file's path from the hook
- * payload, and if it matches the watched glob, upload it under the watched
- * directory. The trailing `|| true` keeps a failed publish from failing the
- * edit; jq extracts the path (Write reports tool_input.file_path, Edit's
- * response carries filePath).
+ * payload, and if it matches the watched glob, upload it by its path relative
+ * to the project root — `upload` mirrors that path remotely, so a document
+ * publishes where it is kept. A file outside the project keeps its absolute
+ * path, which `upload` places at the host root by basename. The trailing
+ * `|| true` keeps a failed publish from failing the edit; jq extracts the path
+ * (Write reports tool_input.file_path, Edit's response carries filePath).
  */
 export function autosyncCommand(watchGlob: string): string {
   const glob = normalizeWatchGlob(watchGlob);
-  const slash = glob.lastIndexOf('/');
-  const dir = slash === -1 ? '' : glob.slice(0, slash);
-  const casePattern = `*/${glob}`;
-  const uploadPath = dir === '' ? '$(basename "$f")' : `${dir}/$(basename "$f")`;
+  // `*` spans `/` in a shell case pattern, so a recursive `**/` marker is
+  // redundant there — dropping it keeps a file directly in the watched
+  // directory matching as well as one nested below it.
+  const casePattern = `*/${glob.replace(/\*\*\//g, '')}`;
   return (
     `jq -r '.tool_input.file_path // .tool_response.filePath' | ` +
     `{ read -r f; case "$f" in ${casePattern}) ` +
-    `cd "\${CLAUDE_PROJECT_DIR:-.}" && npx -y plandrop upload "${uploadPath}";; esac; } ` +
+    `cd "\${CLAUDE_PROJECT_DIR:-.}" && npx -y plandrop upload "\${f#"$PWD"/}";; esac; } ` +
     `2>/dev/null || true`
   );
 }

@@ -21,9 +21,11 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     summary: 'mint a new host (hostname + passphrase)',
     synopsis: '[--domain <uri>] [--template <name>] [--force] [--hook | --no-hook] [--hook-path <glob>]',
     detail: `  Mints a new host on the control plane and writes a .plandrop file here
-  (mode 0600) holding the domain, host label, and passphrase — don't commit
-  it. At a terminal it then offers to scaffold a Claude Code hook that
-  republishes watched HTML documents whenever they are saved.
+  (mode 0600) holding the domain, host label, and passphrase — it grants
+  write access to the host, so treat it as a credential. At a terminal it
+  then offers ([Y/n], default yes — a bare Enter opts in) to scaffold a
+  Claude Code hook that republishes watched HTML documents whenever they
+  are saved.
 
     --domain <uri>      the plandrop server; otherwise resolved from
                         PLANDROP_DOMAIN, the nearest .plandrop, the user or
@@ -32,7 +34,7 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     --force             replace an existing .plandrop here
     --hook              scaffold the auto-publish hook without asking
     --no-hook           skip the hook (and its prompt)
-    --hook-path <glob>  what the hook watches (default docs/*.html; implies --hook)`,
+    --hook-path <glob>  what the hook watches (default docs/**/*.html; implies --hook)`,
     examples: [
       'plandrop create --domain https://plandrop.example.com',
       'plandrop create --hook --hook-path plans/*.html',
@@ -60,13 +62,26 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     summary: 'push a file or directory over authed WebDAV',
     synopsis: '<path> [remote-path]',
     detail: `  Pushes a file (or a directory, recursively) to the host in the nearest
-  .plandrop. A single file uploads to its basename unless a remote path is
-  given, and the full shareable URL of the uploaded file is printed; a
-  directory upload preserves structure and prints the host root.`,
+  .plandrop, printing every uploaded file's full shareable URL.
+
+  A single file with no remote path publishes where you keep it: uploading
+  docs/plans/x.html lands at /docs/plans/x.html, creating any collections
+  needed along the way. A path outside the current directory (absolute, or
+  escaping via ../) has no mirror on the host, so it falls back to its
+  bare name. Naming a remote path explicitly always wins and is used
+  exactly as given.
+
+  A directory upload always preserves its internal structure; the remote
+  argument names the destination folder its contents land in — omitted,
+  the directory's own name is used. \`.\` is the explicit way to flatten a
+  directory's contents into the host root. Trailing slashes never change
+  the outcome.`,
     examples: [
-      'plandrop upload plan.html',
+      'plandrop upload docs/plans/x.html',
       'plandrop upload plan.html index.html',
-      'plandrop upload ./site',
+      'plandrop upload ./evidence',
+      'plandrop upload ./evidence photos',
+      'plandrop upload ./evidence .',
     ],
   },
   rotate: {
@@ -119,6 +134,19 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
   compose files are kept. Equivalent to:
     curl -fsSL https://plandrop.dev/start.sh | sh`,
     examples: ['plandrop server'],
+  },
+  hooks: {
+    summary: 'install the auto-publish hook in this project',
+    synopsis: '[path] [--hook-path <glob>]',
+    detail: `  Merges the Claude Code hook that republishes watched HTML documents
+  whenever they are saved into this project's .claude/settings.json,
+  keeping every other setting and hook. Publishes to the host in the
+  nearest .plandrop — it does not mint one, and refuses clearly if none
+  resolves. Re-running with the same watch path changes nothing.
+
+    --hook-path <glob>  what the hook watches (default docs/**/*.html); the
+                        same value may be given as a positional argument`,
+    examples: ['plandrop hooks', 'plandrop hooks "plans/**/*.html"'],
   },
   help: {
     summary: 'show this overview, or a command\'s usage',

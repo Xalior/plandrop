@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeRemote, remoteForEntry, toRemoteBase } from '../src/commands/upload';
+import {
+  mirrorRemote,
+  normalizeRemote,
+  remoteBaseForDirectory,
+  remoteForEntry,
+  toRemoteBase,
+} from '../src/commands/upload';
 
 describe('normalizeRemote', () => {
   it('adds a single leading slash and collapses duplicates', () => {
@@ -14,6 +20,52 @@ describe('toRemoteBase', () => {
     expect(toRemoteBase(undefined)).toBe('');
     expect(toRemoteBase('/foo/bar/')).toBe('foo/bar');
   });
+
+  it('reads a base resolving to or above the root as the root', () => {
+    expect(toRemoteBase('.')).toBe('');
+    expect(toRemoteBase('./')).toBe('');
+    expect(toRemoteBase('/')).toBe('');
+    expect(toRemoteBase('..')).toBe('');
+    expect(toRemoteBase('../elsewhere')).toBe('');
+  });
+});
+
+describe('mirrorRemote', () => {
+  it('mirrors a nested cwd-relative path', () => {
+    expect(mirrorRemote('/work/proj', 'docs/plans/x.html')).toBe('/docs/plans/x.html');
+    expect(mirrorRemote('/work/proj', './docs/plans/x.html')).toBe('/docs/plans/x.html');
+  });
+
+  it('keeps a basename-only path at the root', () => {
+    expect(mirrorRemote('/work/proj', 'x.html')).toBe('/x.html');
+  });
+
+  it('mirrors an absolute path that lies inside the cwd', () => {
+    expect(mirrorRemote('/work/proj', '/work/proj/docs/x.html')).toBe('/docs/x.html');
+  });
+
+  it('falls back to the basename for a path escaping the cwd', () => {
+    expect(mirrorRemote('/work/proj', '../elsewhere/x.html')).toBe('/x.html');
+    expect(mirrorRemote('/work/proj', 'docs/../../elsewhere/x.html')).toBe('/x.html');
+    expect(mirrorRemote('/work/proj', '/tmp/probe.jpg')).toBe('/probe.jpg');
+  });
+});
+
+describe('remoteBaseForDirectory', () => {
+  it('defaults to the uploaded directory own name', () => {
+    expect(remoteBaseForDirectory('/work/proj/evidence', undefined)).toBe('evidence');
+    expect(remoteBaseForDirectory('/work/proj/evidence/', undefined)).toBe('evidence');
+  });
+
+  it('takes the named remote base instead', () => {
+    expect(remoteBaseForDirectory('/work/proj/evidence', 'photos')).toBe('photos');
+    expect(remoteBaseForDirectory('/work/proj/evidence', 'photos/')).toBe('photos');
+    expect(remoteBaseForDirectory('/work/proj/evidence', '/photos/2026/')).toBe('photos/2026');
+  });
+
+  it('spills the contents into the host root when the base is `.`', () => {
+    expect(remoteBaseForDirectory('/work/proj/evidence', '.')).toBe('');
+  });
 });
 
 describe('remoteForEntry', () => {
@@ -24,5 +76,13 @@ describe('remoteForEntry', () => {
 
   it('places entries under a remote base when given', () => {
     expect(remoteForEntry('/local/site', '/local/site/css/a.css', 'dest')).toBe('/dest/css/a.css');
+  });
+
+  it('publishes a directory under its own name by default', () => {
+    const base = remoteBaseForDirectory('/local/evidence', undefined);
+    expect(remoteForEntry('/local/evidence', '/local/evidence/a.jpg', base)).toBe('/evidence/a.jpg');
+    expect(remoteForEntry('/local/evidence', '/local/evidence/inner/b.jpg', base)).toBe(
+      '/evidence/inner/b.jpg',
+    );
   });
 });

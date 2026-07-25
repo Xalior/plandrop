@@ -34,14 +34,19 @@ describe('normalizeWatchGlob', () => {
     expect(normalizeWatchGlob('  ')).toBe(DEFAULT_WATCH_GLOB);
   });
 
-  it('turns a bare directory into its HTML glob', () => {
-    expect(normalizeWatchGlob('plans')).toBe('plans/*.html');
-    expect(normalizeWatchGlob('./plans/')).toBe('plans/*.html');
+  it('watches HTML at any depth below a bare directory', () => {
+    expect(normalizeWatchGlob('plans')).toBe('plans/**/*.html');
+    expect(normalizeWatchGlob('./plans/')).toBe('plans/**/*.html');
   });
 
   it('keeps an explicit glob as given', () => {
+    expect(normalizeWatchGlob('docs/**/*.html')).toBe('docs/**/*.html');
     expect(normalizeWatchGlob('docs/*.html')).toBe('docs/*.html');
     expect(normalizeWatchGlob('a/b/*.html')).toBe('a/b/*.html');
+  });
+
+  it('defaults to watching HTML at any depth under docs', () => {
+    expect(DEFAULT_WATCH_GLOB).toBe('docs/**/*.html');
   });
 });
 
@@ -51,15 +56,24 @@ describe('autosyncCommand', () => {
     expect(command).toBe(
       'jq -r \'.tool_input.file_path // .tool_response.filePath\' | ' +
         '{ read -r f; case "$f" in */docs/*.html) ' +
-        'cd "${CLAUDE_PROJECT_DIR:-.}" && npx -y plandrop upload "docs/$(basename "$f")";; esac; } ' +
+        'cd "${CLAUDE_PROJECT_DIR:-.}" && npx -y plandrop upload "${f#"$PWD"/}";; esac; } ' +
         '2>/dev/null || true',
     );
   });
 
-  it('uploads at the top level for a root glob', () => {
-    const command = autosyncCommand('*.html');
-    expect(command).toContain('case "$f" in */*.html)');
-    expect(command).toContain('plandrop upload "$(basename "$f")"');
+  it('uploads the saved file by its project-relative path, not a flat basename', () => {
+    const command = autosyncCommand('plans/**/*.html');
+    expect(command).toContain('plandrop upload "${f#"$PWD"/}"');
+    expect(command).not.toContain('basename');
+  });
+
+  it('drops the recursive marker from the case gate, which already spans /', () => {
+    expect(autosyncCommand('docs/**/*.html')).toContain('case "$f" in */docs/*.html)');
+    expect(autosyncCommand('**/*.html')).toContain('case "$f" in */*.html)');
+  });
+
+  it('gates on a root glob without a directory', () => {
+    expect(autosyncCommand('*.html')).toContain('case "$f" in */*.html)');
   });
 });
 
@@ -144,6 +158,8 @@ describe('writeAutosyncHook', () => {
       readFileSync(join(workdir, '.claude', 'settings.json'), 'utf8'),
     ) as Settings;
     expect(settings.env).toEqual({ A: '1' });
-    expect(settings.hooks?.PostToolUse?.[0]?.hooks?.[0]?.command).toContain('plans/$(basename "$f")');
+    expect(settings.hooks?.PostToolUse?.[0]?.hooks?.[0]?.command).toContain(
+      'case "$f" in */plans/*.html)',
+    );
   });
 });
