@@ -1,0 +1,715 @@
+/*!
+ * plandrop terminal theme
+ * Copyright (c) plandrop contributors — https://plandrop.dev/
+ * Licensed under the GNU Lesser General Public License v3.0 only.
+ *
+ * A CRT in dark, a teletype printout in light. Layered on stock Bootstrap 5:
+ * everything it can express as a Bootstrap CSS custom property is expressed as
+ * one, so navbars, cards, tables, badges, alerts and code inherit the palette
+ * without a document ever asking for it. Selectors appear only where Bootstrap
+ * compiled a literal colour that no variable reaches (`.btn-*`, `.text-bg-*`,
+ * `.form-check-input`), or where the terminal look needs shape as well as hue.
+ *
+ * Both appearances are first class. :root matches whichever scheme is live, so
+ * the light block and the [data-bs-theme=dark] block declare the SAME variable
+ * list — a value present in only one of them would leak across the toggle.
+ * Scheme-independent values (type, radii, motion) sit in the neutral :root
+ * block below and are never repeated.
+ *
+ * --bs-code-color is deliberately absent: the shared override sheet
+ * (.plandrop/shared/css/plandrop.css) loads after this file and tunes inline
+ * code to a calm green. Both palettes here clear 4.5:1 against both of its
+ * greens (#11632a on paper, #7ec699 on phosphor), so it needs no exception.
+ */
+
+/* Scheme-independent: type, geometry, motion. */
+:root {
+  /* One readable monospace stack for the whole document — the look depends on
+   * it, so the fallbacks stay wide rather than betting on a webfont plandrop
+   * would have to vendor and license. */
+  --pd-font-mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono",
+    "Cascadia Mono", "Fira Mono", Menlo, Consolas, "DejaVu Sans Mono",
+    "Liberation Mono", monospace;
+  --bs-font-monospace: var(--pd-font-mono);
+  --bs-body-font-family: var(--pd-font-mono);
+  /* Monospace runs wide and tall; a notch under 1rem with a generous leading
+   * keeps a long plan comfortable to read rather than merely authentic. */
+  --bs-body-font-size: 0.9375rem;
+  --bs-body-line-height: 1.7;
+
+  /* Terminals have corners, not curves. */
+  --bs-border-radius: 0;
+  --bs-border-radius-sm: 0;
+  --bs-border-radius-lg: 0;
+  --bs-border-radius-xl: 0;
+  --bs-border-radius-xxl: 0;
+  --bs-border-radius-2xl: 0;
+  --bs-border-radius-pill: 0;
+
+  /* Flat panels, hard edges: depth comes from the surface steps, not blur. */
+  --bs-box-shadow: none;
+  --bs-box-shadow-sm: none;
+  --bs-box-shadow-lg: none;
+  --bs-box-shadow-inset: none;
+
+  --bs-focus-ring-width: 2px;
+  --bs-focus-ring-opacity: 1;
+}
+
+/* Light — a teletype printout: warm paper, near-black ink, deep ink accents. */
+:root,
+[data-bs-theme="light"] {
+  color-scheme: light;
+
+  --bs-body-color: #1e241f;
+  --bs-body-color-rgb: 30, 36, 31;
+  --bs-body-bg: #f4f1e6;
+  --bs-body-bg-rgb: 244, 241, 230;
+  --bs-emphasis-color: #0b0f0c;
+  --bs-emphasis-color-rgb: 11, 15, 12;
+  --bs-secondary-color: #57655a;
+  --bs-secondary-color-rgb: 87, 101, 90;
+  --bs-secondary-bg: #e6e0cf;
+  --bs-secondary-bg-rgb: 230, 224, 207;
+  --bs-tertiary-color: #5e6b62;
+  --bs-tertiary-color-rgb: 94, 107, 98;
+  --bs-tertiary-bg: #fbf9f2;
+  --bs-tertiary-bg-rgb: 251, 249, 242;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: #cfc7b0;
+  --bs-border-color-translucent: rgba(11, 15, 12, 0.16);
+
+  --bs-link-color: #0f6b3d;
+  --bs-link-color-rgb: 15, 107, 61;
+  --bs-link-hover-color: #0b4d2c;
+  --bs-link-hover-color-rgb: 11, 77, 44;
+
+  --bs-highlight-color: var(--bs-emphasis-color);
+  --bs-highlight-bg: #f0e4b4;
+
+  --bs-primary: #0f6b3d;
+  --bs-primary-rgb: 15, 107, 61;
+  --bs-primary-text-emphasis: #0a4527;
+  --bs-primary-bg-subtle: #dfeee4;
+  --bs-primary-border-subtle: #b3d6c1;
+  --bs-secondary: #57655a;
+  --bs-secondary-rgb: 87, 101, 90;
+  --bs-secondary-text-emphasis: #37413a;
+  --bs-secondary-bg-subtle: #e7e6dc;
+  --bs-secondary-border-subtle: #c6c8bf;
+  --bs-success: #3d6b16;
+  --bs-success-rgb: 61, 107, 22;
+  --bs-success-text-emphasis: #2a4b0f;
+  --bs-success-bg-subtle: #e6eeda;
+  --bs-success-border-subtle: #c7d9ad;
+  --bs-info: #0b6673;
+  --bs-info-rgb: 11, 102, 115;
+  --bs-info-text-emphasis: #07454e;
+  --bs-info-bg-subtle: #dceaec;
+  --bs-info-border-subtle: #aed0d5;
+  --bs-warning: #8a5a06;
+  --bs-warning-rgb: 138, 90, 6;
+  --bs-warning-text-emphasis: #5c3c04;
+  --bs-warning-bg-subtle: #f2e8d3;
+  --bs-warning-border-subtle: #ddc79a;
+  --bs-danger: #a52222;
+  --bs-danger-rgb: 165, 34, 34;
+  --bs-danger-text-emphasis: #6e1717;
+  --bs-danger-bg-subtle: #f3dede;
+  --bs-danger-border-subtle: #dcb3b3;
+  --bs-light: #eae5d5;
+  --bs-light-rgb: 234, 229, 213;
+  --bs-light-text-emphasis: #57655a;
+  --bs-light-bg-subtle: #fbf9f2;
+  --bs-light-border-subtle: #dfd8c3;
+  --bs-dark: #1e241f;
+  --bs-dark-rgb: 30, 36, 31;
+  --bs-dark-text-emphasis: #37413a;
+  --bs-dark-bg-subtle: #c9c5b6;
+  --bs-dark-border-subtle: #9aa096;
+
+  --bs-form-valid-color: var(--bs-success-text-emphasis);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger-text-emphasis);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* Ink on a solid fill: paper. Every solid here is a dark ink, so one value
+   * serves them all and clears 5.2:1 on the lightest of them. */
+  --pd-on-fill: #f4f1e6;
+  --pd-on-light: #1e241f;
+  --pd-on-dark: #f4f1e6;
+
+  --pd-primary-hover: #0d5b34;
+  --pd-primary-active: #0b4d2c;
+  --pd-secondary-hover: #4a564d;
+  --pd-secondary-active: #3f4941;
+  --pd-success-hover: #345b13;
+  --pd-success-active: #2c4d10;
+  --pd-info-hover: #095762;
+  --pd-info-active: #084953;
+  --pd-warning-hover: #754d05;
+  --pd-warning-active: #634104;
+  --pd-danger-hover: #8c1d1d;
+  --pd-danger-active: #771818;
+
+  --pd-cap-bg: #efebdc;
+  --pd-code-bg: #fbf9f2;
+  /* Print has no scanlines and no phosphor bloom. */
+  --pd-scanlines: none;
+  --pd-brand-glow: none;
+  /* A white tick reads on every one of the dark ink fills. */
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23f4f1e6' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+/* Dark — a phosphor CRT: near-black glass, soft green text, bright accents. */
+[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  --bs-body-color: #cbe0d2;
+  --bs-body-color-rgb: 203, 224, 210;
+  --bs-body-bg: #0a0f0d;
+  --bs-body-bg-rgb: 10, 15, 13;
+  --bs-emphasis-color: #e9f7ee;
+  --bs-emphasis-color-rgb: 233, 247, 238;
+  --bs-secondary-color: #8fa79a;
+  --bs-secondary-color-rgb: 143, 167, 154;
+  --bs-secondary-bg: #17211c;
+  --bs-secondary-bg-rgb: 23, 33, 28;
+  --bs-tertiary-color: #6d8578;
+  --bs-tertiary-color-rgb: 109, 133, 120;
+  --bs-tertiary-bg: #121a16;
+  --bs-tertiary-bg-rgb: 18, 26, 22;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: #22302a;
+  --bs-border-color-translucent: rgba(203, 224, 210, 0.18);
+
+  --bs-link-color: #34d17f;
+  --bs-link-color-rgb: 52, 209, 127;
+  --bs-link-hover-color: #6fe3a4;
+  --bs-link-hover-color-rgb: 111, 227, 164;
+
+  --bs-highlight-color: #06120c;
+  --bs-highlight-bg: #e0a53a;
+
+  --bs-primary: #34d17f;
+  --bs-primary-rgb: 52, 209, 127;
+  --bs-primary-text-emphasis: #9fe9c3;
+  --bs-primary-bg-subtle: #0d2a1b;
+  --bs-primary-border-subtle: #1c5238;
+  --bs-secondary: #7d9488;
+  --bs-secondary-rgb: 125, 148, 136;
+  --bs-secondary-text-emphasis: #c3d3c9;
+  --bs-secondary-bg-subtle: #1a211d;
+  --bs-secondary-border-subtle: #37443d;
+  --bs-success: #7bc74d;
+  --bs-success-rgb: 123, 199, 77;
+  --bs-success-text-emphasis: #c2e59c;
+  --bs-success-bg-subtle: #1b2a0e;
+  --bs-success-border-subtle: #3d5a1e;
+  --bs-info: #46c9d6;
+  --bs-info-rgb: 70, 201, 214;
+  --bs-info-text-emphasis: #a3e4ec;
+  --bs-info-bg-subtle: #0b262a;
+  --bs-info-border-subtle: #1c4f57;
+  --bs-warning: #e0a53a;
+  --bs-warning-rgb: 224, 165, 58;
+  --bs-warning-text-emphasis: #f0d095;
+  --bs-warning-bg-subtle: #2a1f08;
+  --bs-warning-border-subtle: #574118;
+  --bs-danger: #ef5d5d;
+  --bs-danger-rgb: 239, 93, 93;
+  --bs-danger-text-emphasis: #f7b1b1;
+  --bs-danger-bg-subtle: #2c1212;
+  --bs-danger-border-subtle: #5c2626;
+  --bs-light: #d7e5db;
+  --bs-light-rgb: 215, 229, 219;
+  --bs-light-text-emphasis: #cbe0d2;
+  --bs-light-bg-subtle: #17211c;
+  --bs-light-border-subtle: #2c3a33;
+  --bs-dark: #0f1613;
+  --bs-dark-rgb: 15, 22, 19;
+  --bs-dark-text-emphasis: #8fa79a;
+  --bs-dark-bg-subtle: #060a08;
+  --bs-dark-border-subtle: #1c2621;
+
+  --bs-form-valid-color: var(--bs-success);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* Ink on a solid fill: the glass itself. Every solid here is a bright
+   * accent, so one value serves them all and clears 5.8:1 on the darkest. */
+  --pd-on-fill: #06120c;
+  --pd-on-light: #06120c;
+  --pd-on-dark: #cbe0d2;
+
+  --pd-primary-hover: #2fba71;
+  --pd-primary-active: #2aa163;
+  --pd-secondary-hover: #6f8479;
+  --pd-secondary-active: #607369;
+  --pd-success-hover: #6db145;
+  --pd-success-active: #5f993d;
+  --pd-info-hover: #3fb3be;
+  --pd-info-active: #379ba4;
+  --pd-warning-hover: #c69335;
+  --pd-warning-active: #ab802f;
+  --pd-danger-hover: #d45453;
+  --pd-danger-active: #b64a49;
+
+  --pd-cap-bg: #17211c;
+  --pd-code-bg: #0d1411;
+  /* Raster lines across the chrome only — never across the prose. */
+  --pd-scanlines: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.22) 0 1px,
+    transparent 1px 4px
+  );
+  --pd-brand-glow: 0 0 12px rgba(52, 209, 127, 0.45);
+  /* A dark tick reads on every one of the bright accent fills. */
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%2306120c' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+/* ---------------------------------------------------------------------------
+ * Type
+ * ------------------------------------------------------------------------- */
+
+/* Monospace headings pull wide; tightening the tracking keeps a long title on
+ * one line and reads like fixed-cell output rather than a display face. */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--pd-font-mono);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h1, .h1 { font-size: 2.125rem; }
+h2, .h2 { font-size: 1.625rem; }
+h3, .h3 { font-size: 1.35rem; }
+h4, .h4 { font-size: 1.15rem; }
+h5, .h5 { font-size: 1.02rem; }
+h6, .h6 { font-size: 0.9375rem; }
+
+.display-1 { font-size: 4rem; }
+.display-2 { font-size: 3.5rem; }
+.display-3 { font-size: 3rem; }
+.display-4 { font-size: 2.5rem; }
+.display-5 { font-size: 2.125rem; }
+.display-6 { font-size: 1.75rem; }
+
+.display-1, .display-2, .display-3,
+.display-4, .display-5, .display-6 {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* The page title carries a rule the width of the column — the header line a
+ * terminal report would print under its heading. The navbar brand wears .h1
+ * for its size alone and is excluded: a rule under it would read as a stray
+ * underline on a link. */
+h1:not(.navbar-brand),
+.h1:not(.navbar-brand) {
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.lead {
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+hr {
+  border-top: 1px solid var(--bs-border-color);
+  opacity: 1;
+}
+
+::selection {
+  background-color: var(--bs-primary);
+  color: var(--pd-on-fill);
+}
+
+/* ---------------------------------------------------------------------------
+ * Chrome: navbar + footer
+ * ------------------------------------------------------------------------- */
+
+.navbar {
+  position: relative;
+  --bs-navbar-brand-color: var(--bs-primary);
+  --bs-navbar-brand-hover-color: var(--bs-link-hover-color);
+  --bs-navbar-padding-y: 0.6rem;
+  box-shadow: inset 0 -2px 0 -1px rgba(var(--bs-primary-rgb), 0.35);
+}
+
+/* The chrome is the CRT: raster lines ride over the navbar and nothing else,
+ * so the document's prose is never printed through a grille. Light has no
+ * scanlines at all (--pd-scanlines: none). */
+.navbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--pd-scanlines);
+}
+
+/* A shell prompt and a block cursor, drawn rather than typed: no glyph means
+ * no dependency on a box-drawing character being in the user's mono font. */
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: var(--pd-brand-glow);
+  /* The prompt and the cursor are pseudo-elements: let the brand wrap and a
+   * narrow viewport strands the cursor on a line of its own. */
+  white-space: nowrap;
+}
+
+.navbar-brand::before {
+  content: "$\00a0";
+  color: var(--bs-secondary-color);
+  text-shadow: none;
+}
+
+.navbar-brand::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1.05em;
+  margin-left: 0.25em;
+  vertical-align: -0.18em;
+  background-color: var(--bs-primary);
+  animation: pd-cursor-blink 1.15s step-end infinite;
+}
+
+@keyframes pd-cursor-blink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0.05; }
+  100% { opacity: 1; }
+}
+
+/* A cursor that sits steady is still a cursor. */
+@media (prefers-reduced-motion: reduce) {
+  .navbar-brand::after {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons — Bootstrap compiles literal colours into every .btn-* variant, so
+ * each one is re-pointed at the palette. The per-variant rules carry only the
+ * three colours; the shared rules below spend them.
+ * ------------------------------------------------------------------------- */
+
+.btn {
+  font-family: var(--pd-font-mono);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.btn-primary, .btn-outline-primary {
+  --pd-btn: var(--bs-primary);
+  --pd-btn-hover: var(--pd-primary-hover);
+  --pd-btn-active: var(--pd-primary-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+.btn-secondary, .btn-outline-secondary {
+  --pd-btn: var(--bs-secondary);
+  --pd-btn-hover: var(--pd-secondary-hover);
+  --pd-btn-active: var(--pd-secondary-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+}
+.btn-success, .btn-outline-success {
+  --pd-btn: var(--bs-success);
+  --pd-btn-hover: var(--pd-success-hover);
+  --pd-btn-active: var(--pd-success-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-success-rgb);
+}
+.btn-info, .btn-outline-info {
+  --pd-btn: var(--bs-info);
+  --pd-btn-hover: var(--pd-info-hover);
+  --pd-btn-active: var(--pd-info-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-info-rgb);
+}
+.btn-warning, .btn-outline-warning {
+  --pd-btn: var(--bs-warning);
+  --pd-btn-hover: var(--pd-warning-hover);
+  --pd-btn-active: var(--pd-warning-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-warning-rgb);
+}
+.btn-danger, .btn-outline-danger {
+  --pd-btn: var(--bs-danger);
+  --pd-btn-hover: var(--pd-danger-hover);
+  --pd-btn-active: var(--pd-danger-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-danger-rgb);
+}
+.btn-light, .btn-outline-light {
+  --pd-btn: var(--bs-light);
+  --pd-btn-hover: var(--bs-light);
+  --pd-btn-active: var(--bs-light);
+  --bs-btn-focus-shadow-rgb: var(--bs-light-rgb);
+}
+.btn-dark, .btn-outline-dark {
+  --pd-btn: var(--bs-dark);
+  --pd-btn-hover: var(--bs-dark);
+  --pd-btn-active: var(--bs-dark);
+  --bs-btn-focus-shadow-rgb: var(--bs-dark-rgb);
+}
+
+.btn-primary, .btn-secondary, .btn-success,
+.btn-info, .btn-warning, .btn-danger {
+  --bs-btn-color: var(--pd-on-fill);
+  --bs-btn-bg: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-hover-color: var(--pd-on-fill);
+  --bs-btn-hover-bg: var(--pd-btn-hover);
+  --bs-btn-hover-border-color: var(--pd-btn-hover);
+  --bs-btn-active-color: var(--pd-on-fill);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-on-fill);
+  --bs-btn-disabled-bg: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+}
+
+.btn-light {
+  --bs-btn-color: var(--pd-on-light);
+  --bs-btn-bg: var(--bs-light);
+  --bs-btn-border-color: var(--bs-light);
+  --bs-btn-hover-color: var(--pd-on-light);
+  --bs-btn-hover-bg: var(--bs-light-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-light);
+  --bs-btn-active-color: var(--pd-on-light);
+  --bs-btn-active-bg: var(--bs-light-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-light);
+}
+
+.btn-dark {
+  --bs-btn-color: var(--pd-on-dark);
+  --bs-btn-bg: var(--bs-dark);
+  --bs-btn-border-color: var(--bs-dark);
+  --bs-btn-hover-color: var(--pd-on-dark);
+  --bs-btn-hover-bg: var(--bs-dark-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-dark);
+  --bs-btn-active-color: var(--pd-on-dark);
+  --bs-btn-active-bg: var(--bs-dark-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-dark);
+}
+
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success,
+.btn-outline-info, .btn-outline-warning, .btn-outline-danger {
+  --bs-btn-color: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-bg: transparent;
+  --bs-btn-hover-color: var(--pd-on-fill);
+  --bs-btn-hover-bg: var(--pd-btn);
+  --bs-btn-hover-border-color: var(--pd-btn);
+  --bs-btn-active-color: var(--pd-on-fill);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+}
+
+.btn-link {
+  --bs-btn-color: var(--bs-link-color);
+  --bs-btn-hover-color: var(--bs-link-hover-color);
+  --bs-btn-active-color: var(--bs-link-hover-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Solid colour chips — .text-bg-* also compiles its foreground, and a white
+ * label on a bright phosphor fill is unreadable.
+ * ------------------------------------------------------------------------- */
+
+.text-bg-primary, .text-bg-secondary, .text-bg-success,
+.text-bg-info, .text-bg-warning, .text-bg-danger {
+  color: var(--pd-on-fill);
+}
+.text-bg-light { color: var(--pd-on-light); }
+.text-bg-dark { color: var(--pd-on-dark); }
+
+/* Status chips read as terminal output: fixed cell, shouted, kerned open. */
+.badge {
+  font-family: var(--pd-font-mono);
+  font-weight: 600;
+  font-size: 0.7em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.4em 0.6em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Surfaces: cards, alerts, list groups
+ * ------------------------------------------------------------------------- */
+
+.card {
+  --bs-card-bg: var(--bs-tertiary-bg);
+  --bs-card-cap-bg: var(--pd-cap-bg);
+  --bs-card-border-color: var(--bs-border-color);
+  --bs-card-title-color: var(--bs-emphasis-color);
+}
+
+.card-header {
+  font-family: var(--pd-font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* Alerts wear a heavy left rule — the margin mark of a printed exception. */
+.alert {
+  border-left-width: 3px;
+}
+
+.list-group {
+  --bs-list-group-bg: var(--bs-tertiary-bg);
+  --bs-list-group-border-color: var(--bs-border-color);
+  --bs-list-group-action-hover-bg: var(--bs-secondary-bg);
+  --bs-list-group-active-bg: var(--bs-primary);
+  --bs-list-group-active-border-color: var(--bs-primary);
+  --bs-list-group-active-color: var(--pd-on-fill);
+}
+
+blockquote,
+.blockquote {
+  padding-left: 1rem;
+  border-left: 3px solid var(--bs-primary);
+  color: var(--bs-secondary-color);
+}
+
+.blockquote-footer {
+  color: var(--bs-tertiary-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables — column output. The head is a shouted label row over an accent rule.
+ * ------------------------------------------------------------------------- */
+
+.table {
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--bs-border-color);
+  --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.04);
+  --bs-table-striped-color: var(--bs-body-color);
+  --bs-table-hover-bg: rgba(var(--bs-primary-rgb), 0.1);
+  --bs-table-hover-color: var(--bs-emphasis-color);
+  --bs-table-active-bg: rgba(var(--bs-primary-rgb), 0.16);
+  --bs-table-active-color: var(--bs-emphasis-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.table > thead > tr > th {
+  color: var(--bs-emphasis-color);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Code — the one place a terminal theme must not blink
+ * ------------------------------------------------------------------------- */
+
+pre {
+  background-color: var(--pd-code-bg);
+  border: 1px solid var(--bs-border-color);
+  border-left: 3px solid rgba(var(--bs-primary-rgb), 0.55);
+  padding: 0.9rem 1rem;
+  color: var(--bs-body-color);
+}
+
+/* highlight.js links its stylesheet at runtime, after this file, and paints a
+ * background of its own on the <code>. Two classes out-specify it so the block
+ * keeps this theme's surface while the token colours stay upstream's. */
+pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
+
+/* A mermaid diagram is an image, not a listing: it gets the surface, not the
+ * accent rule. */
+pre.mermaid {
+  border-left: 1px solid var(--bs-border-color);
+  text-align: center;
+}
+
+kbd {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-emphasis-color);
+  border: 1px solid var(--bs-border-color);
+  border-bottom-width: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Forms + focus — the caret has to be obvious on a screen this dark
+ * ------------------------------------------------------------------------- */
+
+.form-control,
+.form-select {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+  color: var(--bs-body-color);
+  font-family: var(--pd-font-mono);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-primary);
+  color: var(--bs-body-color);
+}
+
+.form-check-input {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input:checked[type="checkbox"] {
+  --bs-form-check-bg-image: var(--pd-check-image);
+}
+
+/* Keyboard focus is a hard accent rule, visible against both surfaces. */
+:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+/* Bootstrap zeroes the outline on controls and paints a soft ring in its
+ * place, which all but vanishes on the dark surface; the rule replaces it,
+ * matching Bootstrap's own specificity so it lands. */
+.btn:focus-visible,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.focus-ring:focus {
+  --bs-focus-ring-color: var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Progress
+ * ------------------------------------------------------------------------- */
+
+.progress,
+.progress-stacked {
+  --bs-progress-bg: var(--bs-secondary-bg);
+  --bs-progress-bar-bg: var(--bs-primary);
+  --bs-progress-bar-color: var(--pd-on-fill);
+  --bs-progress-font-size: 0.7rem;
+  border: 1px solid var(--bs-border-color);
+}

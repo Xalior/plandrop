@@ -57,6 +57,18 @@ if [ -z "$DEFAULT_TEMPLATE" ] || [ ! -d "$THEME_DIR/$DEFAULT_TEMPLATE" ]; then
   DEFAULT_TEMPLATE=bootstrap5
 fi
 cp -R "$THEME_DIR/$DEFAULT_TEMPLATE" "$THEME_DIR/default"
+# The autoindex chrome is served at ANY directory depth, so its asset links
+# must be absolute — a relative .plandrop/… resolves against the listed
+# directory and 404s below the docroot, leaving the listing unstyled. The
+# chrome's <body> also gains a marker class: mod_autoindex's table markup
+# carries no ids or classes, so the shared stylesheet scopes the listing
+# styling off the marker. Only this seeded copy is transformed; the theme
+# folders keep their document-relative links.
+sed -i \
+  -e 's|="\.plandrop/|="/.plandrop/|g' \
+  -e 's|<body>|<body class="plandrop-autoindex">|' \
+  "$THEME_DIR/default/header.html"
+sed -i 's|="\.plandrop/|="/.plandrop/|g' "$THEME_DIR/default/footer.html"
 
 # Render the nginx config from its template (nginx does not interpolate env).
 envsubst '${PLANDROP_INGRESS_PORT} ${PLANDROP_THEME_DIR} ${PLANDROP_USER_THEME_DIR} ${PLANDROP_CONTROL_HOST} ${PLANDROP_CONTROL_PORT}' \

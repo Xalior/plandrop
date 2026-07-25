@@ -23,3 +23,81 @@
 [data-plandrop-theme="quartz"] {
   --bs-code-color: #7ec699;
 }
+
+/* Directory listings. The seeded autoindex chrome (ingress/seed.sh) stamps
+ * class="plandrop-autoindex" on <body>; mod_autoindex's table markup carries
+ * no ids or classes of its own, so all listing styling scopes off that marker
+ * — documents never carry it. Colours ride Bootstrap's CSS custom properties,
+ * so the listing follows whichever theme (and scheme) the chrome loads. */
+.plandrop-autoindex main table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+.plandrop-autoindex main th,
+.plandrop-autoindex main td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+.plandrop-autoindex main th {
+  text-align: left;
+}
+/* mod_autoindex's icon column is always empty here (no AddIcon directives);
+ * the glyphs below live on the name links instead. */
+.plandrop-autoindex main th:first-child,
+.plandrop-autoindex main td:first-child {
+  display: none;
+}
+.plandrop-autoindex main tr:hover td {
+  background-color: var(--bs-tertiary-bg);
+}
+.plandrop-autoindex main a {
+  text-decoration: none;
+}
+.plandrop-autoindex main td a:hover {
+  text-decoration: underline;
+}
+/* The sort links in the column headings read as headings, not links. */
+.plandrop-autoindex main th a {
+  color: var(--bs-emphasis-color);
+}
+/* Last-modified and size columns (mod_autoindex marks them align="right"):
+ * quiet, tabular, never wrapped. */
+.plandrop-autoindex main td[align="right"] {
+  color: var(--bs-secondary-color);
+  font-family: var(--bs-font-monospace);
+  font-size: 0.875em;
+  white-space: nowrap;
+}
+/* File-type glyphs, keyed on the link target: folders, images, documents.
+ * Inline-SVG silhouettes applied as masks over currentColor, so they tint to
+ * each theme's link colour and never depend on an emoji font being present. */
+.plandrop-autoindex {
+  --plandrop-icon-file: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M4 0h6l4 4v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1zm6 1v3h3z'/%3E%3C/svg%3E");
+  --plandrop-icon-folder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 2h4.9l2 2h6.1A1.5 1.5 0 0 1 16 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2z'/%3E%3C/svg%3E");
+  --plandrop-icon-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1 2h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm3.5 2a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zM2 12l3.5-4 2.5 3 3-4 3 5z'/%3E%3C/svg%3E");
+}
+.plandrop-autoindex main td a::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.5em;
+  vertical-align: -0.125em;
+  background-color: currentColor;
+  -webkit-mask: var(--plandrop-icon-file) center / contain no-repeat;
+  mask: var(--plandrop-icon-file) center / contain no-repeat;
+}
+.plandrop-autoindex main td a[href$="/"]::before {
+  -webkit-mask-image: var(--plandrop-icon-folder);
+  mask-image: var(--plandrop-icon-folder);
+}
+.plandrop-autoindex main td a[href$=".png" i]::before,
+.plandrop-autoindex main td a[href$=".jpg" i]::before,
+.plandrop-autoindex main td a[href$=".jpeg" i]::before,
+.plandrop-autoindex main td a[href$=".gif" i]::before,
+.plandrop-autoindex main td a[href$=".webp" i]::before,
+.plandrop-autoindex main td a[href$=".svg" i]::before {
+  -webkit-mask-image: var(--plandrop-icon-image);
+  mask-image: var(--plandrop-icon-image);
+}

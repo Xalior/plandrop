@@ -5,17 +5,23 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   bootswatchThemes,
+  customThemes,
   generateAll,
   nativeScheme,
+  readThemeSpec,
   vendorSharedAssets,
 } from '../scripts/gen-templates.mjs';
 
 /** Bootswatch themes we assert render in their native DARK scheme. */
 const NATIVE_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero', 'vapor'];
 
+/** The hand-authored themes shipped under themes/. */
+const CUSTOM = ['f1terminal'];
+
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const skeletonDir = join(repoRoot, 'templates', 'bootstrap5');
 const bootswatchDir = join(repoRoot, 'node_modules', 'bootswatch');
+const customDir = join(repoRoot, 'themes');
 
 let outDir: string;
 
@@ -28,10 +34,14 @@ afterEach(() => {
 });
 
 describe('template generator', () => {
-  it('emits one folder per pinned Bootswatch theme', () => {
-    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
+  it('emits one folder per pinned Bootswatch theme and per hand-authored theme', () => {
+    const themes = generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
     expect(themes.length).toBeGreaterThan(0);
-    expect(themes).toEqual(bootswatchThemes(bootswatchDir));
+    expect(themes).toEqual(
+      [...bootswatchThemes(bootswatchDir), ...customThemes(customDir)].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    );
     for (const theme of themes) {
       expect(existsSync(join(outDir, theme))).toBe(true);
     }
@@ -54,7 +64,8 @@ describe('template generator', () => {
   });
 
   it('pins each Bootswatch theme to its native data-bs-theme and drops the toggle', () => {
-    const themes = generateAll({ skeletonDir, bootswatchDir, outDir });
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    const themes = bootswatchThemes(bootswatchDir);
     // The detected dark set must match the hardcoded list exactly.
     const detectedDark = themes.filter((t) => nativeScheme(t) === 'dark').sort();
     expect(detectedDark).toEqual([...NATIVE_DARK].sort());
@@ -140,13 +151,123 @@ describe('template generator', () => {
     expect(css.length).toBeGreaterThan(10_000);
   });
 
-  it('credits Bootswatch, Bootstrap and plandrop in every theme footer', () => {
-    generateAll({ skeletonDir, bootswatchDir, outDir });
-    for (const theme of readdirSync(outDir)) {
+  it('credits Bootswatch, Bootstrap and plandrop in every Bootswatch theme footer', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    for (const theme of bootswatchThemes(bootswatchDir)) {
       const footer = readFileSync(join(outDir, theme, 'footer.html'), 'utf8');
       expect(footer).toContain('Bootswatch');
       expect(footer).toContain('Bootstrap');
       expect(footer).toContain('plandrop.dev');
     }
   });
+
+  it('credits Bootstrap and plandrop in every generated footer', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    for (const theme of readdirSync(outDir)) {
+      const footer = readFileSync(join(outDir, theme, 'footer.html'), 'utf8');
+      expect(footer).toContain('Bootstrap');
+      expect(footer).toContain('plandrop.dev');
+    }
+  });
 });
+
+// A hand-authored theme is generated from themes/<name>/ on every run, exactly
+// as a Bootswatch theme is generated from the pinned package — which is what
+// makes regeneration reproduce it rather than clobber or omit it.
+describe('hand-authored themes', () => {
+  it('ships the expected set, each with a manifest and a stylesheet', () => {
+    expect(customThemes(customDir)).toEqual(CUSTOM);
+    for (const theme of CUSTOM) {
+      expect(existsSync(join(customDir, theme, 'theme.json'))).toBe(true);
+      expect(existsSync(join(customDir, theme, 'theme.css'))).toBe(true);
+    }
+  });
+
+  it('survives a full regeneration alongside the Bootswatch set', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    const first = readFileSync(join(outDir, 'f1terminal', 'css', 'bootstrap.min.css'), 'utf8');
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    const second = readFileSync(join(outDir, 'f1terminal', 'css', 'bootstrap.min.css'), 'utf8');
+    expect(second).toBe(first);
+    expect(existsSync(join(outDir, 'f1terminal', 'header.html'))).toBe(true);
+  });
+
+  it('gives f1terminal the skeleton chrome over Bootstrap plus its own layer', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    for (const file of ['header.html', 'plan.html', 'footer.html', 'css/bootstrap.min.css']) {
+      expect(existsSync(join(outDir, 'f1terminal', file))).toBe(true);
+    }
+    const css = readFileSync(join(outDir, 'f1terminal', 'css', 'bootstrap.min.css'), 'utf8');
+    // Stock Bootstrap first, the theme's own layer after it, so source order
+    // alone decides the cascade.
+    expect(css).toContain('Bootstrap  v5');
+    expect(css).toContain('plandrop terminal theme');
+    expect(css.indexOf('plandrop terminal theme')).toBeGreaterThan(css.indexOf('Bootstrap  v5'));
+    // It vendors Bootstrap, so it carries the attribution.
+    expect(readFileSync(join(outDir, 'f1terminal', 'NOTICE'), 'utf8')).toContain('Bootstrap');
+  });
+
+  it('keeps the toggle on a dual-appearance theme and opens in its first scheme', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    const header = readFileSync(join(outDir, 'f1terminal', 'header.html'), 'utf8');
+    const footer = readFileSync(join(outDir, 'f1terminal', 'footer.html'), 'utf8');
+    const spec = readThemeSpec('f1terminal', customDir);
+    expect(spec.appearance).toEqual(['dark', 'light']);
+    expect(header).toContain(`data-bs-theme="${spec.appearance[0]}"`);
+    expect(header).toContain('data-bs-theme-toggle');
+    expect(footer).toContain("getAttribute('data-bs-theme')");
+    // The navbar is NOT pinned: it inherits from <html> so the toggle flips the
+    // chrome along with the page.
+    expect(header).toContain('<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">');
+    // Assets are retargeted at the theme's own tree; the shared ones are not.
+    expect(header).toContain('.plandrop/f1terminal/css/bootstrap.min.css');
+    expect(header).toContain('data-plandrop-theme="f1terminal"');
+    expect(header).toContain('.plandrop/shared/css/plandrop.css');
+    expect(header).not.toContain('.plandrop/bootstrap5/');
+  });
+
+  it('credits the theme author in place of the Bootswatch attribution', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    const footer = readFileSync(join(outDir, 'f1terminal', 'footer.html'), 'utf8');
+    const { credit, label } = readThemeSpec('f1terminal', customDir);
+    expect(footer).toContain(label);
+    expect(footer).toContain(credit.name);
+    expect(footer).toContain(credit.license);
+    expect(footer).not.toContain('Bootswatch');
+    // Bootstrap is still vendored, so it is still credited.
+    expect(footer).toContain('Bootstrap');
+  });
+
+  it('declares both appearances in full, so neither leaks into the other', () => {
+    // :root matches whichever scheme is live: a custom property set only in the
+    // light block would survive into dark. The two appearance blocks must
+    // therefore declare exactly the same variable names.
+    const css = readFileSync(join(customDir, 'f1terminal', 'theme.css'), 'utf8');
+    const light = varsOfBlock(css, ':root,\n[data-bs-theme="light"]');
+    expect(light.length).toBeGreaterThan(40);
+    expect(light).toEqual(varsOfBlock(css, '[data-bs-theme="dark"]'));
+  });
+
+  it('leaves the shared calm-green inline-code override alone', () => {
+    // The shared sheet loads after every theme and owns --bs-code-color; a theme
+    // setting it would be overridden anyway, and silently.
+    const css = readFileSync(join(customDir, 'f1terminal', 'theme.css'), 'utf8');
+    expect(css).not.toMatch(/^\s*--bs-code-color:/m);
+  });
+
+  it('gives its animated flourish a still fallback', () => {
+    const css = readFileSync(join(customDir, 'f1terminal', 'theme.css'), 'utf8');
+    expect(css).toContain('@keyframes pd-cursor-blink');
+    expect(css).toContain('@media (prefers-reduced-motion: reduce)');
+  });
+});
+
+/** The custom-property names declared by the rule with the given selector. */
+function varsOfBlock(css: string, selector: string): string[] {
+  const start = css.indexOf(`${selector} {`);
+  if (start === -1) {
+    throw new Error(`no rule found for selector ${selector}`);
+  }
+  const body = css.slice(start, css.indexOf('}', start));
+  return [...body.matchAll(/^\s*(--[\w-]+):/gm)].map((match) => match[1] as string).sort();
+}

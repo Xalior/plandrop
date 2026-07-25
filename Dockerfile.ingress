@@ -5,10 +5,11 @@
 # and reverse-proxies /api/* to the control plane. Coupled to and versioned with
 # the control plane as one managed unit.
 #
-# Stage 1 generates the full template set from the pinned bootswatch package:
-# the committed bootstrap5 skeleton + one folder per Bootswatch theme, each with
-# that theme's compiled CSS vendored and self-hosted (no runtime CDN). The
-# generated set is bundled into the runtime image and seeded to the theme volume.
+# Stage 1 generates the full template set: the committed bootstrap5 skeleton,
+# one folder per theme of the pinned bootswatch package, and one per hand-authored
+# theme under themes/ — each with its CSS vendored and self-hosted (no runtime
+# CDN). The generated set is bundled into the runtime image and seeded to the
+# theme volume.
 # Pinned to the builder platform: it only emits text/CSS (platform-independent),
 # so it runs natively rather than under emulation for each target arch.
 FROM --platform=$BUILDPLATFORM node:22-slim AS gen
@@ -17,9 +18,11 @@ RUN corepack enable
 # Manifests first so the install layer caches across source changes.
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
-# The committed templates (the bootstrap5 skeleton + the Bootswatch LICENSE) and
-# the generator; output the full set in place alongside the skeleton.
+# The committed templates (the bootstrap5 skeleton + the Bootswatch LICENSE),
+# the hand-authored theme sources, and the generator; output the full set in
+# place alongside the skeleton.
 COPY templates ./templates
+COPY themes ./themes
 COPY scripts ./scripts
 RUN node scripts/gen-templates.mjs --out ./templates
 

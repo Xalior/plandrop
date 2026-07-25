@@ -4,13 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest';
-import { bootswatchThemes } from '../scripts/gen-templates.mjs';
+import { bootswatchThemes, customThemes } from '../scripts/gen-templates.mjs';
 import { runCli } from './helpers/cli';
 import { httpRequest } from './helpers/http';
 
 const { ingressPort, apachePort, domain, proxyBase, tenantA } = inject('stack');
 
 const bootswatchDir = fileURLToPath(new URL('../node_modules/bootswatch', import.meta.url));
+const customDir = fileURLToPath(new URL('../themes', import.meta.url));
 
 interface TemplatesBody {
   default: string;
@@ -32,7 +33,7 @@ describe('ingress /api/templates (proxied, dynamic)', () => {
     expect(body.templates).toContain('bootstrap5');
   });
 
-  it('lists the full pinned Bootswatch set plus bootstrap5', async () => {
+  it('lists the full pinned Bootswatch set, the hand-authored themes and bootstrap5', async () => {
     const res = await httpRequest({
       port: ingressPort,
       method: 'GET',
@@ -41,13 +42,14 @@ describe('ingress /api/templates (proxied, dynamic)', () => {
     });
     expect(res.status).toBe(200);
     const body = JSON.parse(res.body.toString()) as TemplatesBody;
-    const expected = bootswatchThemes(bootswatchDir);
+    const expected = [...bootswatchThemes(bootswatchDir), ...customThemes(customDir)];
     for (const theme of expected) {
       expect(body.templates).toContain(theme);
     }
-    // The full set is the Bootswatch themes plus the bootstrap5 skeleton, plus
-    // any namespaced operator user/<name> templates the harness drops in. The
-    // built-in count is therefore the bootswatch set + 1; user/* are extra.
+    // The full set is the Bootswatch themes and the hand-authored ones plus the
+    // bootstrap5 skeleton, plus any namespaced operator user/<name> templates
+    // the harness drops in. The built-in count is therefore that set + 1;
+    // user/* are extra.
     const builtins = body.templates.filter((name) => !name.startsWith('user/'));
     expect(builtins).toHaveLength(expected.length + 1);
   });
@@ -55,7 +57,7 @@ describe('ingress /api/templates (proxied, dynamic)', () => {
 
 describe('ingress serves each generated theme starter', () => {
   it('serves template.html for a sample of generated themes', async () => {
-    for (const theme of ['cerulean', 'darkly', 'zephyr']) {
+    for (const theme of ['cerulean', 'darkly', 'zephyr', 'f1terminal']) {
       const res = await httpRequest({
         port: ingressPort,
         method: 'GET',
@@ -87,6 +89,38 @@ describe('ingress static template serving', () => {
     expect(html).toContain('.plandrop/shared/js/selfupdate.js');
     expect(html).toContain('.plandrop/shared/js/enhance.js');
     expect(html).toContain('.plandrop/shared/css/plandrop.css');
+  });
+
+  it('serves the hand-authored f1terminal starter with both appearances', async () => {
+    const res = await httpRequest({
+      port: ingressPort,
+      method: 'GET',
+      path: '/.plandrop/f1terminal/template.html',
+      hostHeader: domain,
+    });
+    expect(res.status).toBe(200);
+    const html = res.body.toString();
+    // Dual-appearance: opens dark, and carries the toggle button + its script.
+    expect(html).toContain('data-bs-theme="dark"');
+    expect(html).toContain('data-bs-theme-toggle');
+    expect(html).toContain("getAttribute('data-bs-theme')");
+    // Its own credit, not the Bootswatch one.
+    expect(html).toContain('LGPL-3.0-only');
+    expect(html).not.toContain('Bootswatch');
+
+    // The assembled stylesheet resolves and carries both Bootstrap and the
+    // theme's own layer, with a palette declared for each appearance.
+    const css = await httpRequest({
+      port: ingressPort,
+      method: 'GET',
+      path: '/.plandrop/f1terminal/css/bootstrap.min.css',
+      hostHeader: domain,
+    });
+    expect(css.status).toBe(200);
+    expect(css.headers['content-type']).toMatch(/text\/css/);
+    const sheet = css.body.toString();
+    expect(sheet).toContain('plandrop terminal theme');
+    expect(sheet).toContain('[data-bs-theme="dark"]');
   });
 
   it('serves the shared, theme-neutral self-update JS once at /.plandrop/shared/', async () => {
@@ -217,6 +251,58 @@ describe('apache autoindex', () => {
     expect(listing.headers['content-type']).toMatch(/text\/html/);
     expect(listing.body.toString()).toContain('notes.txt');
   });
+
+  it('serves styled chrome at any directory depth (absolute assets + marker class)', async () => {
+    const created = await httpRequest({
+      port: ingressPort,
+      method: 'POST',
+      path: '/api/hosts',
+      hostHeader: domain,
+    });
+    expect(created.status).toBe(201);
+    const { host, passphrase } = JSON.parse(created.body.toString()) as {
+      host: string;
+      passphrase: string;
+    };
+    const tenantHost = `${host}.${domain}`;
+    const auth = { user: host, pass: passphrase };
+
+    // A file one level down: MKCOL the collection, then PUT into it.
+    const mkcol = await httpRequest({
+      port: apachePort,
+      method: 'MKCOL',
+      path: '/docs/',
+      hostHeader: tenantHost,
+      auth,
+    });
+    expect(mkcol.status).toBe(201);
+    const put = await httpRequest({
+      port: apachePort,
+      method: 'PUT',
+      path: '/docs/deep.txt',
+      hostHeader: tenantHost,
+      auth,
+      body: 'hello from below',
+    });
+    expect(put.status).toBe(201);
+
+    // The subdirectory listing must carry the default chrome with ABSOLUTE
+    // asset links — a relative .plandrop/… resolves against /docs/ and 404s,
+    // rendering the listing unstyled — plus the marker class the shared
+    // stylesheet scopes the listing table styling on.
+    const listing = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/docs/',
+      hostHeader: tenantHost,
+    });
+    expect(listing.status).toBe(200);
+    const html = listing.body.toString();
+    expect(html).toContain('deep.txt');
+    expect(html).toContain('href="/.plandrop/');
+    expect(html).not.toContain('href=".plandrop/');
+    expect(html).toContain('class="plandrop-autoindex"');
+  });
 });
 
 describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => {
@@ -296,6 +382,20 @@ describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => 
     const over = readFileSync(join(cwd, 'over.html'), 'utf8');
     expect(over).toContain('.plandrop/cerulean/css/bootstrap.min.css');
     expect(over).not.toContain('.plandrop/darkly/');
+  });
+
+  it('scaffolds from a hand-authored theme like any other', () => {
+    expect(runCli(['create', '--domain', proxyBase], { cwd, env: env() }).status).toBe(0);
+    expect(
+      runCli(['newdoc', 'term.html', '--template', 'f1terminal'], { cwd, env: env() }).status,
+    ).toBe(0);
+    const doc = readFileSync(join(cwd, 'term.html'), 'utf8');
+    expect(doc).toContain('.plandrop/f1terminal/css/bootstrap.min.css');
+    expect(doc).toContain('data-plandrop-theme="f1terminal"');
+    // The enhancers ship with it exactly as they do with every other theme.
+    expect(doc).toContain('.plandrop/shared/js/enhance.js');
+    expect(doc).toContain('.plandrop/shared/js/selfupdate.js');
+    expect(doc).not.toContain('.plandrop/bootstrap5/');
   });
 
   it('the written doc renders its assets when published via Apache', async () => {

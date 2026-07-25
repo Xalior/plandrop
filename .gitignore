@@ -8,10 +8,12 @@ plandrop-*.tgz
 /data/
 
 # Generated template themes — built from the bootstrap5 skeleton at image-build
-# time (and by the generator locally). Only the skeleton and the shared,
-# theme-neutral assets (enhance.js, selfupdate.js, plandrop.css) are tracked;
-# the shared vendor bundles (mermaid, highlight.js) are copied from the pinned
-# npm packages by the same generator run.
+# time (and by the generator locally), one folder per Bootswatch theme and one
+# per hand-authored theme in themes/ (which IS tracked: it is the source, this
+# is the output). Only the skeleton and the shared, theme-neutral assets
+# (enhance.js, selfupdate.js, plandrop.css) are tracked here; the shared vendor
+# bundles (mermaid, highlight.js) are copied from the pinned npm packages by the
+# same generator run.
 templates/*/
 !templates/bootstrap5/
 !templates/shared/
