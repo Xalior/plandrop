@@ -1,5 +1,88 @@
 # Changelog
 
+## 0.5.0 — 2026-07-25
+
+### Added
+
+- **Configurable publish root for the autosync hook** — `create` and `hooks` gain
+  `--hook-root <dir>` (publish relative to `<dir>` under the project root rather than
+  mirroring the full project path) and `--hook-flat` (publish every watched file flat at
+  the host root, by its own basename), alongside the existing project-mirror default — the
+  silent, no-flags behaviour is unchanged. All three modes are the same idea: the
+  generated hook `cd`s to a root and uploads the saved file's path relative to it, exactly
+  as a manual `upload` from that root would; a save outside the configured root falls back
+  to `upload`'s own bare-basename behaviour. Interactively, `create`'s accepted hook offer
+  and an interactive `hooks` run both ask where to publish after asking what to watch,
+  defaulting to "relative to the watched directory". Every hook-taking flag
+  (`--hook-path`, `--hook-root`, `--hook-flat`) implies `--hook`.
+- **The autosync hook is recognized and upgraded, not duplicated** — an existing plandrop
+  hook is found by a durable fingerprint (its status message and/or a command that invokes
+  `plandrop upload`), not by exact text, so a hook from an older client version or a
+  hand-edited one is replaced in place — printing the watch/root change — instead of being
+  left beside a second one. A hook that already matches the wanted shape is untouched.
+- **The watch glob and publish root are recorded in `.plandrop`** — `hookWatch`,
+  `hookPublish`, and (in root mode) `hookRoot` are written alongside the domain and
+  template whenever `create` or `hooks` sets up the hook. A later interactive run defaults
+  from them (Enter keeps them); a bare `plandrop hooks` with no arguments re-applies them
+  silently, upgrading an older hook shape without needing to be told the settings again.
+- **`.plandrop` carries a `version` field** — every write or merge (`create`, `init
+  --local`, `rotate`, hook-field recording) stamps the plandrop client version that wrote
+  it, refreshed each time.
+- **`--version`/`-v`** — prints the CLI's own version and exits. `plandrop help`'s
+  overview now shows the version in its header line too.
+- **`/api/templates` reports the control plane's own version** — a `version` field (e.g.
+  `"0.5.0"`) baked from `package.json` at build time, alongside `default` and
+  `templates`. plandrop.dev's static mirror carries the same field, sourced from the
+  vendored public checkout's package.json at generation time.
+
+### Changed
+
+- **Scaffolded documents reference their theme assets by root-absolute path** —
+  `newdoc` now writes `/.plandrop/…` links (previously document-relative
+  `.plandrop/…`), so a freshly scaffolded document resolves its theme, the shared
+  stylesheet, self-update and enhancer scripts against the host root directly,
+  independent of the subpath it's published at. The any-depth alias below remains
+  in place for documents already published with the older relative links.
+
+### Security
+
+- **Nothing hidden is ever published** — `upload` skips every dot-prefixed name it walks:
+  dot-files one line each, dot-directories pruned whole and never descended into, so a
+  `.git` costs a single line rather than thousands. Every omission is printed
+  (`skipped .git/ (hidden)`), so the author sees what did not go. Naming one explicitly is
+  refused rather than obeyed, with the `.plandrop*` family called out for what it is — the
+  host's passphrase, and the write key to everything published there. Previously `upload .`
+  from the directory holding `.plandrop` published that passphrase world-readable at
+  `/.plandrop`. Two hidden names are exempt, because they are content you publish on
+  purpose: `.header.html` and `.footer.html`, the chrome your directory listings are
+  wrapped in. They upload at any depth, and are exact names — a `.header.html.bak` is not
+  one of them.
+- **The server refuses the reserved name too** — apache denies every WebDAV write method
+  (PUT, DELETE, MKCOL, COPY, MOVE, PROPPATCH, LOCK) against the exact path segment
+  `.plandrop`, at any depth, in both shapes it can take: the collection the theme tree
+  would shadow, and the plain file that is a credential. A COPY or MOVE whose destination
+  names one is refused with it. No client — plandrop's or anyone else's — can put a
+  credential file on a host.
+- **The bundled front proxy drops dotted paths at the door** — the self-contained stack's
+  proxy answers 403 to any request whose URI carries a dot-prefixed path segment, whatever
+  the method and reads included, saving the backend hop and putting a passive floor under
+  anything already uploaded. It makes the same three exceptions the client does: the shared
+  theme namespace `.plandrop/` at any depth (but not the bare `.plandrop`), and the exact
+  names `.header.html` and `.footer.html`. A deployment fronted by an external proxy (NPM,
+  Cloudflare, …) does not inherit this layer — apache's guard is the authoritative one.
+
+### Fixed
+
+- **A document published below the host root reaches its theme** — `.plandrop/` is a
+  reserved namespace at *every* depth, not just the host root: apache maps
+  `…/.plandrop/…` onto the same read-only theme tree wherever it appears, so the relative
+  asset links every scaffolded document ships with resolve from the subpath the document
+  is published at. A doc at `/plans/deep/x.html` now styles itself and self-updates
+  exactly as one at the root does — with no change to already-published documents. The
+  namespace is reserved, so it shadows a tenant path segment named `.plandrop` at any
+  depth; writes into it (and creating a collection of that name) are refused rather than
+  landing where no read could reach them.
+
 ## 0.4.1 — 2026-07-25
 
 ### Fixed

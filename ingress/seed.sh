@@ -47,7 +47,7 @@ done
 # autoindex chrome fallback. Apache's mod_rewrite serves default/header.html /
 # footer.html when a tenant has no local .header.html / .footer.html. An unknown
 # configured value falls back to bootstrap5 so the chrome always exists. The
-# header's asset links stay concrete (e.g. .plandrop/bootstrap5/...), which
+# header's asset links stay concrete (e.g. /.plandrop/bootstrap5/...), which
 # Apache aliases, so the chrome's CSS resolves. No doc ever references default/.
 DEFAULT_TEMPLATE="${PLANDROP_DEFAULT_TEMPLATE:-}"
 if [ -z "$DEFAULT_TEMPLATE" ] || [ ! -d "$THEME_DIR/$DEFAULT_TEMPLATE" ]; then
@@ -58,12 +58,15 @@ if [ -z "$DEFAULT_TEMPLATE" ] || [ ! -d "$THEME_DIR/$DEFAULT_TEMPLATE" ]; then
 fi
 cp -R "$THEME_DIR/$DEFAULT_TEMPLATE" "$THEME_DIR/default"
 # The autoindex chrome is served at ANY directory depth, so its asset links
-# must be absolute — a relative .plandrop/… resolves against the listed
-# directory and 404s below the docroot, leaving the listing unstyled. The
+# must be root-absolute — a document-relative .plandrop/… resolves against the
+# listed directory and 404s below the docroot, leaving the listing unstyled.
+# The skeleton already emits root-absolute /.plandrop/… refs, so this sed only
+# matches a bare document-relative form (="\.plandrop/, no leading slash) and
+# is a no-op here — kept as a defensive normalization in case a template's
+# header ever ships one, not a functional rewrite of the built-in themes. The
 # chrome's <body> also gains a marker class: mod_autoindex's table markup
 # carries no ids or classes, so the shared stylesheet scopes the listing
-# styling off the marker. Only this seeded copy is transformed; the theme
-# folders keep their document-relative links.
+# styling off the marker.
 sed -i \
   -e 's|="\.plandrop/|="/.plandrop/|g' \
   -e 's|<body>|<body class="plandrop-autoindex">|' \

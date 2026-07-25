@@ -31,6 +31,38 @@ http {
   # starts even if ingress/apache are not yet registered in DNS.
   resolver 127.0.0.11 ipv6=off valid=10s;
 
+  # Dot-prefixed path segments die at the front door, whatever the method: a
+  # hidden name is configuration or private data by convention (.git, .env,
+  # .ssh, the CLI's own .plandrop credential file), and nothing a plandrop host
+  # publishes is meant to be either. Refusing here saves the backend hop
+  # entirely and puts a passive floor under whatever has already been uploaded.
+  #
+  # Three exceptions, each an exact shape rather than a pattern:
+  #
+  #   .plandrop/  — the shared theme NAMESPACE, excepted at ANY depth, which is
+  #                 load-bearing: a document whose asset links are
+  #                 document-relative asks for them from its own directory, so
+  #                 they arrive as /plans/.plandrop/<theme>/… , which Apache
+  #                 folds back onto the one shared tree. The bare `.plandrop`,
+  #                 with no trailing slash, is deliberately NOT excepted — that
+  #                 shape is the credential file, never the namespace.
+  #   .header.html
+  #   .footer.html — the tenant's own autoindex chrome. Apache names these as
+  #                  dotfiles (HeaderName/ReadmeName) so they stay out of the
+  #                  listing they decorate, but they are content a tenant
+  #                  publishes on purpose, so both the upload and the read have
+  #                  to survive this rule. Excepted at any depth, since the
+  #                  chrome is per-directory, and only as whole basenames — a
+  #                  `.header.html.bak` is still refused.
+  #
+  # A bonus layer, not the boundary. An operator who fronts the stack with their
+  # own proxy (NPM, Cloudflare, …) inherits none of this, so Apache remains the
+  # authoritative guard against WebDAV writes into the reserved name.
+  map $uri $plandrop_hidden_path {
+    default 0;
+    "~/[.](?!plandrop/)(?!header[.]html$)(?!footer[.]html$)" 1;
+  }
+
   # Tenants upload via WebDAV (PUT) — don't cap the body, and preserve the Host
   # header so Apache's mod_vhost_alias resolves the per-tenant docroot.
   client_max_body_size 0;
@@ -42,6 +74,10 @@ http {
   server {
     listen ${PLANDROP_PROXY_PORT};
     server_name ${PLANDROP_PROXY_DOMAIN};
+
+    if ($plandrop_hidden_path) {
+      return 403;
+    }
 
     location / {
       set $upstream "${PLANDROP_INGRESS_HOST}:${PLANDROP_INGRESS_PORT}";
@@ -55,6 +91,10 @@ http {
   server {
     listen ${PLANDROP_PROXY_PORT} default_server;
     server_name _;
+
+    if ($plandrop_hidden_path) {
+      return 403;
+    }
 
     location / {
       set $upstream "${PLANDROP_APACHE_HOST}:${PLANDROP_APACHE_PORT}";

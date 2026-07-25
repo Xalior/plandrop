@@ -19,13 +19,19 @@ export interface CommandUsage {
 export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
   create: {
     summary: 'mint a new host (hostname + passphrase)',
-    synopsis: '[--domain <uri>] [--template <name>] [--force] [--hook | --no-hook] [--hook-path <glob>]',
+    synopsis:
+      '[--domain <uri>] [--template <name>] [--force] [--hook | --no-hook] ' +
+      '[--hook-path <glob>] [--hook-root <dir> | --hook-flat]',
     detail: `  Mints a new host on the control plane and writes a .plandrop file here
   (mode 0600) holding the domain, host label, and passphrase — it grants
   write access to the host, so treat it as a credential. At a terminal it
   then offers ([Y/n], default yes — a bare Enter opts in) to scaffold a
   Claude Code hook that republishes watched HTML documents whenever they
-  are saved.
+  are saved, asking what to watch and then where to publish it (mirroring
+  the project path, relative to the watched directory — the default — or
+  flat at the host root); a re-run defaults both answers from whatever was
+  recorded last time. The chosen watch glob and publish mode are recorded
+  into .plandrop either way.
 
     --domain <uri>      the plandrop server; otherwise resolved from
                         PLANDROP_DOMAIN, the nearest .plandrop, the user or
@@ -34,10 +40,16 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     --force             replace an existing .plandrop here
     --hook              scaffold the auto-publish hook without asking
     --no-hook           skip the hook (and its prompt)
-    --hook-path <glob>  what the hook watches (default docs/**/*.html; implies --hook)`,
+    --hook-path <glob>  what the hook watches (default docs/**/*.html; implies --hook)
+    --hook-root <dir>   publish relative to <dir> (under the project root)
+                        instead of mirroring the full project path; implies
+                        --hook; mutually exclusive with --hook-flat
+    --hook-flat         publish every watched file flat at the host root, by
+                        its own basename; mutually exclusive with --hook-root`,
     examples: [
       'plandrop create --domain https://plandrop.example.com',
       'plandrop create --hook --hook-path plans/*.html',
+      'plandrop create --hook --hook-path docs/**/*.html --hook-root docs',
     ],
   },
   newdoc: {
@@ -138,17 +150,35 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     examples: ['plandrop server'],
   },
   hooks: {
-    summary: 'install the auto-publish hook in this project',
-    synopsis: '[path] [--hook-path <glob>]',
+    summary: 'install (or upgrade) the auto-publish hook in this project',
+    synopsis: '[path] [--hook-path <glob>] [--hook-root <dir> | --hook-flat]',
     detail: `  Merges the Claude Code hook that republishes watched HTML documents
   whenever they are saved into this project's .claude/settings.json,
   keeping every other setting and hook. Publishes to the host in the
   nearest .plandrop — it does not mint one, and refuses clearly if none
-  resolves. Re-running with the same watch path changes nothing.
+  resolves. An existing plandrop hook is recognized however it's shaped
+  (not just by exact match) and replaced in place if it differs, printing
+  what changed; re-running with settings that already match changes
+  nothing. Any flag given is recorded into .plandrop; whichever isn't is
+  filled in from what was last recorded, or the defaults if nothing was.
+
+  With no path/flags at all: at a terminal it asks what to watch and where
+  to publish (defaulting from what's recorded); otherwise it silently
+  re-applies the recorded settings — a bare \`plandrop hooks\` upgrades an
+  older hook shape in place without needing to be told the settings again.
 
     --hook-path <glob>  what the hook watches (default docs/**/*.html); the
-                        same value may be given as a positional argument`,
-    examples: ['plandrop hooks', 'plandrop hooks "plans/**/*.html"'],
+                        same value may be given as a positional argument
+    --hook-root <dir>   publish relative to <dir> (under the project root)
+                        instead of mirroring the full project path;
+                        mutually exclusive with --hook-flat
+    --hook-flat         publish every watched file flat at the host root, by
+                        its own basename; mutually exclusive with --hook-root`,
+    examples: [
+      'plandrop hooks',
+      'plandrop hooks "plans/**/*.html"',
+      'plandrop hooks docs/**/*.html --hook-root docs',
+    ],
   },
   help: {
     summary: 'show this overview, or a command\'s usage',
@@ -172,7 +202,7 @@ export function overviewText(): string {
   const list = COMMANDS.map(
     (name) => `  ${name.padEnd(width)}  ${COMMAND_USAGE[name].summary}`,
   ).join('\n');
-  return `plandrop — push a static HTML document to a unique, secure hostname.
+  return `plandrop ${__PLANDROP_VERSION__} — push a static HTML document to a unique, secure hostname.
 
 Usage:
   plandrop <command> [params]

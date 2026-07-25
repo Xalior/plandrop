@@ -6,7 +6,7 @@
 // compiled, self-hosted CSS vendored in. The header references its CSS by the
 // concrete theme name, so a doc built from a theme links into that theme's tree;
 // the self-update JS is the one exception — shared and theme-neutral at
-// .plandrop/shared/js/selfupdate.js, not copied per theme.
+// /.plandrop/shared/js/selfupdate.js, not copied per theme.
 //
 // Appearance policy — honour each theme's NATIVE mode:
 //   * bootstrap5 (the skeleton) is the one genuinely dual-mode design — stock
@@ -34,7 +34,7 @@
 //
 // Alongside the themes, the run also vendors the shared document-enhancement
 // libraries (mermaid, highlight.js) from their pinned npm packages into
-// templates/shared/vendor/, served at .plandrop/shared/vendor/ and lazy-loaded
+// templates/shared/vendor/, served at /.plandrop/shared/vendor/ and lazy-loaded
 // by shared/js/enhance.js only when a document actually uses them.
 //
 // Usage:
@@ -175,15 +175,17 @@ export function stripToggle(html) {
  * tree, pin data-bs-theme to the scheme it opens in, and (for a single-appearance
  * theme) strip the toggle button.
  *
- * Asset links stay CONCRETE (the theme's own name, never `default`) so changing
- * the configured default theme later never breaks an existing document; the
- * `.plandrop/shared/…` paths are theme-neutral and are deliberately left alone.
+ * Asset links are root-absolute (`/.plandrop/…`) so a document published at any
+ * subpath resolves them against the host root rather than its own location, and
+ * stay CONCRETE (the theme's own name, never `default`) so changing the
+ * configured default theme later never breaks an existing document; the
+ * `/.plandrop/shared/…` paths are theme-neutral and are deliberately left alone.
  */
 export function renderHeader(skeletonHeader, theme, spec) {
   const { scheme, dual } = appearanceOf(theme, spec);
   let header = skeletonHeader.replaceAll(
-    `.plandrop/${SKELETON_NAME}/`,
-    `.plandrop/${theme}/`,
+    `/.plandrop/${SKELETON_NAME}/`,
+    `/.plandrop/${theme}/`,
   );
   // The concrete theme name on <html>, as a styling hook for the shared
   // cross-theme overrides (shared/css/plandrop.css) — data-bs-theme alone can't
@@ -279,7 +281,8 @@ function writeSkeleton(theme, { skeletonDir, outDir, spec }) {
 
   // plan.html carries no template-name paths and no toggle, so it copies as-is.
   // No per-theme js/: selfupdate.js is shared and theme-neutral, seeded once to
-  // .plandrop/shared/js/ (the header references that bare path, not a per-theme one).
+  // /.plandrop/shared/js/ (the header references that root-absolute path, not a
+  // per-theme one).
   cpSync(join(skeletonDir, 'plan.html'), join(dest, 'plan.html'));
   return dest;
 }
@@ -287,7 +290,7 @@ function writeSkeleton(theme, { skeletonDir, outDir, spec }) {
 /**
  * The shared vendor assets: browser bundles copied verbatim (licenses included)
  * from the pinned npm packages into shared/vendor/, served at
- * .plandrop/shared/vendor/. enhance.js lazy-loads them, so a document that uses
+ * /.plandrop/shared/vendor/. enhance.js lazy-loads them, so a document that uses
  * no diagrams or code blocks never fetches them.
  */
 const VENDOR_ASSETS = [

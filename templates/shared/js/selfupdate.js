@@ -7,7 +7,7 @@
  * conditional requests (ETag / Last-Modified). A discrete file (not inline) so
  * the swap strategy can be changed later without touching every document.
  *
- * Shared, theme-neutral: one copy lives at .plandrop/shared/js/selfupdate.js and
+ * Shared, theme-neutral: one copy lives at /.plandrop/shared/js/selfupdate.js and
  * every template's header references it (no per-theme duplication). It also ships
  * with the statically-scaffolded templates on plandrop.dev, which is why the
  * file:// guard below matters.

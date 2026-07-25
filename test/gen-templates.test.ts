@@ -103,6 +103,14 @@ describe('template generator', () => {
     expect(header).toContain(
       '<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">',
     );
+    // Asset refs are root-absolute so a document published at any subpath
+    // resolves them against the host root, not its own location.
+    expect(header).toContain('href="/.plandrop/bootstrap5/css/bootstrap.min.css"');
+    expect(header).toContain('href="/.plandrop/shared/css/plandrop.css"');
+    expect(header).toContain('src="/.plandrop/shared/js/selfupdate.js"');
+    expect(header).toContain('src="/.plandrop/shared/js/enhance.js"');
+    expect(header).not.toMatch(/href="\.plandrop/);
+    expect(header).not.toMatch(/src="\.plandrop/);
   });
 
   it('rewrites the CSS path to the concrete theme name, leaves shared assets neutral', () => {
@@ -119,6 +127,11 @@ describe('template generator', () => {
     // per-theme exceptions (e.g. quartz) on this attribute.
     expect(header).toContain('data-plandrop-theme="darkly"');
     expect(header).not.toContain('data-plandrop-theme="bootstrap5"');
+    // The retarget preserves the root-absolute form: the theme CSS and the
+    // shared refs both stay rooted at /.plandrop/, never document-relative.
+    expect(header).toContain('href="/.plandrop/darkly/css/bootstrap.min.css"');
+    expect(header).toContain('href="/.plandrop/shared/css/plandrop.css"');
+    expect(header).toContain('src="/.plandrop/shared/js/selfupdate.js"');
   });
 
   it('vendors the shared enhancement bundles with their licenses', () => {
@@ -167,6 +180,21 @@ describe('template generator', () => {
       const footer = readFileSync(join(outDir, theme, 'footer.html'), 'utf8');
       expect(footer).toContain('Bootstrap');
       expect(footer).toContain('plandrop.dev');
+    }
+  });
+
+  it('gives every generated theme root-absolute asset refs, never document-relative', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    for (const theme of readdirSync(outDir)) {
+      const header = readFileSync(join(outDir, theme, 'header.html'), 'utf8');
+      const hrefs = [...header.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1] ?? '');
+      const plandropRefs = hrefs.filter((href) => href.includes('.plandrop/'));
+      expect(plandropRefs.length).toBeGreaterThan(0);
+      for (const href of plandropRefs) {
+        // A document published at any subpath must resolve these against the
+        // host root, not its own location — root-absolute, not relative.
+        expect(href.startsWith('/.plandrop/')).toBe(true);
+      }
     }
   });
 });
@@ -224,6 +252,13 @@ describe('hand-authored themes', () => {
     expect(header).toContain('data-plandrop-theme="f1terminal"');
     expect(header).toContain('.plandrop/shared/css/plandrop.css');
     expect(header).not.toContain('.plandrop/bootstrap5/');
+    // Root-absolute, same as every Bootswatch theme: a hand-authored theme is
+    // rendered through the same skeleton, so it gets the same asset-path form.
+    expect(header).toContain('href="/.plandrop/f1terminal/css/bootstrap.min.css"');
+    expect(header).toContain('href="/.plandrop/shared/css/plandrop.css"');
+    expect(header).toContain('src="/.plandrop/shared/js/selfupdate.js"');
+    expect(header).not.toMatch(/href="\.plandrop/);
+    expect(header).not.toMatch(/src="\.plandrop/);
   });
 
   it('credits the theme author in place of the Bootswatch attribution', () => {

@@ -31,7 +31,8 @@ npx plandrop upload ./planfile.html
 | `help` | List every command, or show one command's usage and examples. |
 
 `plandrop help <command>` (or `plandrop <command> --help`) prints any command's detailed
-usage; a bare `plandrop` prints the overview.
+usage; a bare `plandrop` prints the overview. `plandrop --version` (or `-v`) prints the
+CLI's own version and exits.
 
 ## init
 
@@ -121,14 +122,37 @@ Set up a Claude Code hook that auto-publishes saved HTML documents? [Y/n]:
 ```
 
 The default is **yes** — a bare Enter accepts it; only an answer starting with `n`
-declines. Accepting prompts for the path to watch, defaulting to `docs/**/*.html`, so
-plans in subfolders are covered as well as ones at the top level. The generated hook
-uploads a saved file by its path relative to the project root, so it lands at the same
-mirrored remote path a manual `upload` would (see [upload](#upload)). `--hook` takes the
-offer without asking, `--no-hook` skips it (and its prompt), and `--hook-path <glob>`
-sets the watched glob non-interactively (and implies `--hook`). A non-interactive
-`create` with none of those flags sets up nothing. See [hooks](#hooks) to install the
-same hook in a project whose host already exists.
+declines. Accepting prompts for the path to watch, defaulting to `docs/**/*.html` (or
+whatever was recorded last time), so plans in subfolders are covered as well as ones at
+the top level. It then asks where to publish:
+
+```
+Publish [m]irroring the project path, [r]elative to docs (default), or [f]lat at the host root? [r]:
+```
+
+Three publish roots, all built from the same idea — the hook `cd`s to a root and uploads
+the saved file's path relative to it, exactly as a manual `upload` run from that root
+would:
+
+- **mirror the project path** (the silent default — no flags, no prompt): a save at
+  `docs/plans/x.html` publishes to `/docs/plans/x.html`.
+- **relative to `<dir>`** (`--hook-root <dir>`): with `--hook-root docs`, that same save
+  publishes to `/plans/x.html`.
+- **flat at the host root** (`--hook-flat`): that same save publishes to `/x.html`
+  regardless of where under the watched glob it lives.
+
+A save outside the configured root falls back naturally to `upload`'s own behaviour: no
+mirror image inside the host, so it publishes by bare basename.
+
+`--hook` takes the offer without asking, `--no-hook` skips it (and its prompt), and
+`--hook-path <glob>` sets the watched glob non-interactively. Every hook-taking flag
+(`--hook-path`, `--hook-root`, `--hook-flat`) implies `--hook`; `--hook-root` and
+`--hook-flat` are mutually exclusive. A non-interactive `create` with none of those flags
+sets up nothing. Whichever way the glob and publish root are settled, they're recorded
+into `.plandrop` (see [The `.plandrop` file](#the-plandrop-file)) so a later re-run —
+interactive or via `hooks` — defaults from them; Enter keeps them. See [hooks](#hooks) to
+install the same hook in a project whose host already exists, or to upgrade one already
+installed.
 
 ### Where the domain comes from
 
@@ -222,10 +246,44 @@ remote argument, if given, names the destination folder they land in:
 Trailing slashes on either argument never change the outcome, and each uploaded file
 prints its own shareable URL.
 
+Nothing hidden is ever published. A directory upload skips every dot-prefixed name it
+walks — dot-files one line each, dot-directories pruned whole and never descended into, so
+a `.git` costs a single line rather than thousands — and prints what it left behind:
+
+```
+skipped .plandrop (plandrop credential file)
+skipped .git/ (hidden)
+skipped .env (hidden)
+```
+
+Naming one explicitly is refused rather than obeyed: `upload .plandrop` would hand the
+host's passphrase — the write key for everything published there — to anyone who can reach
+the page. Rename the file if you really mean to publish something of that name. Only the
+leading dot is reserved: `x.plandrop`, `plandrop.html`, and a `config.json` that happens to
+hold plandrop settings all publish normally.
+
+Two hidden names are the exception, because they are content you publish on purpose:
+**`.header.html`** and **`.footer.html`**, the chrome a directory listing is wrapped in
+(see below). They upload like any other file, at any depth — the chrome is per-directory —
+and they are exact names: `.header.html.bak` is not one of them.
+
+The server does not take the client's word for it. Apache refuses every WebDAV write method
+against the exact path segment `.plandrop` at any depth, so no client can put a credential
+file on a host. Where a deployment runs the bundled proxy, it goes further and refuses any
+request for a dot-prefixed path segment outright, reads included — making the same three
+exceptions: the theme namespace `.plandrop/`, `.header.html`, and `.footer.html`.
+
 It's a plain static host: files are served at their paths, and `index.html` answers the
 bare directory URL. There is no client-side renaming or index magic — what you upload is
 what's served. A directory with no `index.html` answers with a themed listing (folders
 first, file-type icons) wrapped in the server's default-template chrome, at any depth.
+
+A scaffolded document carries root-absolute `/.plandrop/…` links to its theme, so it
+resolves them against the host root wherever you publish it, root or ten folders down. The
+server also answers `.plandrop/…` from the shared theme tree **at every depth**, which keeps
+an already-published document's relative links working too. The flip side: on a plandrop
+host `.plandrop` is a reserved path segment. A directory of that name is not yours to
+publish — the server refuses to create one and serves the theme tree in its place.
 
 ## rotate
 
@@ -248,19 +306,31 @@ this, the host URL returns 404 and writes are rejected. Wrong credentials change
 
 ## hooks
 
-Install (or update) the autosync hook in the current project without minting a host —
-for a project that already has one:
+Install, update, or upgrade the autosync hook in the current project without minting a
+host — for a project that already has one:
 
 ```sh
-npx plandrop hooks                     # watches docs/**/*.html (the default)
-npx plandrop hooks "plans/**/*.html"   # a different glob, positional or --hook-path
+npx plandrop hooks                                   # uses recorded settings, or the defaults
+npx plandrop hooks "plans/**/*.html"                 # a different glob, positional or --hook-path
+npx plandrop hooks docs/**/*.html --hook-root docs   # publish relative to docs, not the project
 ```
 
 It merges the same hook `create`'s offer scaffolds (see [Autosync hook](#autosync-hook))
 into `.claude/settings.json`, preserving every other setting and hook, and publishes to
 the host in the nearest `.plandrop` — it never mints one, and refuses clearly if no host
-resolves. Re-running with the same watch path changes nothing: an equivalent hook already
-present is left alone.
+resolves.
+
+A plandrop hook already in place is recognized however it's shaped — by its status
+message and/or a command that invokes `plandrop upload` — not by exact text, so an older
+or hand-edited hook is found and upgraded rather than left beside a second one. One that
+already matches the wanted watch glob and publish root is left alone; one that differs is
+replaced in place, printing what changed.
+
+With no path or `--hook-root`/`--hook-flat` given: at a terminal it asks what to watch and
+where to publish, defaulting both from whatever was recorded last time; otherwise — a bare
+`plandrop hooks` run from a script — it silently re-applies the recorded settings, which is
+how a client version bump upgrades an older hook shape without needing to be told the
+settings again.
 
 ## The `.plandrop` file
 
@@ -270,12 +340,21 @@ A small JSON file written at mode `0600` in the directory where you ran `create`
 {
   "domain": "https://plandrop.example.com",
   "host": "<generated-label>",
-  "passphrase": "<generated-passphrase>"
+  "passphrase": "<generated-passphrase>",
+  "hookWatch": "docs/**/*.html",
+  "hookPublish": "mirror",
+  "version": "0.5.0"
 }
 ```
 
 Subsequent commands (`upload`, `rotate`, `remove`) find the nearest `.plandrop` by walking
 up from the current directory — so you can run them from anywhere inside the project.
+
+`hookWatch` and `hookPublish` (plus `hookRoot`, present only when `hookPublish` is
+`"root"`) record the autosync hook's watch glob and publish root the last time `create` or
+`hooks` set one up — read back as defaults on a later interactive run, or applied silently
+by a bare `plandrop hooks`. `version` records the plandrop client version that last wrote
+the file, refreshed on every write.
 
 > `.plandrop` holds your host's passphrase and grants write access to it — treat it as
 > a credential when deciding whether to commit it.

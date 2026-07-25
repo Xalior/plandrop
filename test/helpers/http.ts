@@ -10,6 +10,12 @@ export interface HttpOptions {
   port: number;
   method: string;
   path: string;
+  /**
+   * The address to connect to, independent of the Host header. Defaults to
+   * 127.0.0.1 (apache, ingress); the front proxy publishes on ::1, where
+   * *.localhost tenant hosts resolve.
+   */
+  connectHost?: string;
   /** The Host header selects the dynamic vhost (tenant), independent of the connection. */
   hostHeader: string;
   auth?: { user: string; pass: string };
@@ -42,7 +48,7 @@ export function httpRequest(options: HttpOptions): Promise<HttpResult> {
 
     const req = http.request(
       {
-        host: '127.0.0.1',
+        host: options.connectHost ?? '127.0.0.1',
         port: options.port,
         method: options.method,
         path: options.path,

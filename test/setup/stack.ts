@@ -45,6 +45,14 @@ export interface Stack {
   authFile: string;
   /** Base URI of the in-process host-router: localhost -> ingress, *.localhost -> apache. */
   proxyBase: string;
+  /** The front proxy's published port, for requests aimed at it directly. */
+  proxyPort: number;
+  /**
+   * The address the front proxy is published on. *.localhost resolves to ::1,
+   * so the proxy binds there and a request to it must connect there — unlike
+   * apache and the ingress, which are published on 127.0.0.1.
+   */
+  proxyHost: string;
   /** Pre-seeded fixture tenants for the Apache matrix. */
   tenantA: Tenant;
   tenantB: Tenant;
@@ -195,6 +203,8 @@ export default async function setup(project: TestProject): Promise<() => void> {
     dataDir,
     authFile,
     proxyBase: `http://localhost:${PROXY_PORT}`,
+    proxyPort: PROXY_PORT,
+    proxyHost: '::1',
     tenantA: TENANT_A,
     tenantB: TENANT_B,
     userTemplate: USER_TEMPLATE,

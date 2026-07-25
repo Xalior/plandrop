@@ -1,14 +1,15 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, inject, it } from 'vitest';
 import { bootswatchThemes, customThemes } from '../scripts/gen-templates.mjs';
 import { runCli } from './helpers/cli';
 import { httpRequest } from './helpers/http';
 
-const { ingressPort, apachePort, domain, proxyBase, tenantA } = inject('stack');
+const { ingressPort, apachePort, domain, proxyBase, proxyPort, proxyHost, tenantA } =
+  inject('stack');
 
 const bootswatchDir = fileURLToPath(new URL('../node_modules/bootswatch', import.meta.url));
 const customDir = fileURLToPath(new URL('../themes', import.meta.url));
@@ -211,6 +212,448 @@ describe('apache shared /.plandrop serving', () => {
       hostHeader: tenantHost,
     });
     expect(check.status).toBe(404);
+  });
+});
+
+// A document publishes at the subpath it occupies locally and links its theme
+// relatively, so `.plandrop/` has to resolve from the document's own directory,
+// not only from the host root — otherwise every document below the root renders
+// unstyled and never self-updates.
+describe('apache shared /.plandrop at any depth', () => {
+  let tenantHost: string;
+  let auth: { user: string; pass: string };
+
+  beforeAll(async () => {
+    const created = await httpRequest({
+      port: ingressPort,
+      method: 'POST',
+      path: '/api/hosts',
+      hostHeader: domain,
+    });
+    expect(created.status).toBe(201);
+    const { host, passphrase } = JSON.parse(created.body.toString()) as {
+      host: string;
+      passphrase: string;
+    };
+    tenantHost = `${host}.${domain}`;
+    auth = { user: host, pass: passphrase };
+
+    for (const dir of ['/plans/', '/plans/deep/']) {
+      const mkcol = await httpRequest({
+        port: apachePort,
+        method: 'MKCOL',
+        path: dir,
+        hostHeader: tenantHost,
+        auth,
+      });
+      expect(mkcol.status).toBe(201);
+    }
+    const put = await httpRequest({
+      port: apachePort,
+      method: 'PUT',
+      path: '/plans/deep/x.html',
+      hostHeader: tenantHost,
+      auth,
+      body: '<!DOCTYPE html><html><head>'
+        + '<link rel="stylesheet" href=".plandrop/bootstrap5/css/bootstrap.min.css">'
+        + '</head><body>deep</body></html>',
+    });
+    expect(put.status).toBe(201);
+  });
+
+  it('serves theme and shared assets relative to a nested document', async () => {
+    const doc = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/plans/deep/x.html',
+      hostHeader: tenantHost,
+    });
+    expect(doc.status).toBe(200);
+
+    for (const [path, type] of [
+      ['/plans/deep/.plandrop/bootstrap5/css/bootstrap.min.css', /text\/css/],
+      ['/plans/deep/.plandrop/shared/js/selfupdate.js', /javascript/],
+      ['/plans/deep/.plandrop/shared/css/plandrop.css', /text\/css/],
+      // One level down resolves the same way as three.
+      ['/plans/.plandrop/f1terminal/css/bootstrap.min.css', /text\/css/],
+    ] as const) {
+      const res = await httpRequest({
+        port: apachePort,
+        method: 'GET',
+        path,
+        hostHeader: tenantHost,
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(type);
+    }
+  });
+
+  it('still serves the namespace at the host root', async () => {
+    const res = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/.plandrop/bootstrap5/css/bootstrap.min.css',
+      hostHeader: tenantHost,
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/css/);
+  });
+
+  it('404s an asset that does not exist, rather than reaching tenant content', async () => {
+    const res = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/plans/deep/.plandrop/nosuchtheme/css/bootstrap.min.css',
+      hostHeader: tenantHost,
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('denies a tenant write anywhere in the .plandrop namespace', async () => {
+    const put = await httpRequest({
+      port: apachePort,
+      method: 'PUT',
+      path: '/plans/deep/.plandrop/evil.txt',
+      hostHeader: tenantHost,
+      auth,
+      body: 'should not land',
+    });
+    expect(put.status).toBe(403);
+
+    // Nothing landed: the path reads as the (read-only) theme tree, which has
+    // no such file — the write did not fall through into the tenant tree.
+    const check = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/plans/deep/.plandrop/evil.txt',
+      hostHeader: tenantHost,
+    });
+    expect(check.status).toBe(404);
+  });
+
+  it('denies a COPY or MOVE that lands in the namespace, leaving the source alone', async () => {
+    const put = await httpRequest({
+      port: apachePort,
+      method: 'PUT',
+      path: '/plans/src.txt',
+      hostHeader: tenantHost,
+      auth,
+      body: 'movable',
+    });
+    expect(put.status).toBe(201);
+
+    for (const method of ['MOVE', 'COPY']) {
+      const res = await httpRequest({
+        port: apachePort,
+        method,
+        path: '/plans/src.txt',
+        hostHeader: tenantHost,
+        auth,
+        extraHeaders: { Destination: `http://${tenantHost}/plans/.plandrop/landed.txt` },
+      });
+      expect(res.status, method).toBe(403);
+    }
+
+    const source = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/plans/src.txt',
+      hostHeader: tenantHost,
+    });
+    expect(source.status).toBe(200);
+  });
+
+  it('denies MKCOL of a .plandrop collection, with or without its trailing slash', async () => {
+    for (const path of ['/plans/.plandrop/', '/plans/.plandrop', '/.plandrop']) {
+      const mkcol = await httpRequest({
+        port: apachePort,
+        method: 'MKCOL',
+        path,
+        hostHeader: tenantHost,
+        auth,
+      });
+      expect(mkcol.status).toBe(403);
+    }
+
+    // The namespace still resolves to the theme tree afterwards.
+    const asset = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/plans/.plandrop/bootstrap5/css/bootstrap.min.css',
+      hostHeader: tenantHost,
+    });
+    expect(asset.status).toBe(200);
+  });
+});
+
+// `.plandrop` is the CLI's credential dotfile as well as the theme namespace.
+// Everything a tenant publishes is world-readable, so a file of that name
+// landing on a host would hand its passphrase — the write key — to every
+// reader. Apache is the authoritative guard: it refuses every write method
+// against that name at any depth, whatever route the request took to get there.
+describe('apache refuses writes to the reserved .plandrop name', () => {
+  let tenantHost: string;
+  let auth: { user: string; pass: string };
+
+  beforeAll(async () => {
+    const created = await httpRequest({
+      port: ingressPort,
+      method: 'POST',
+      path: '/api/hosts',
+      hostHeader: domain,
+    });
+    expect(created.status).toBe(201);
+    const { host, passphrase } = JSON.parse(created.body.toString()) as {
+      host: string;
+      passphrase: string;
+    };
+    tenantHost = `${host}.${domain}`;
+    auth = { user: host, pass: passphrase };
+
+    const mkcol = await httpRequest({
+      port: apachePort,
+      method: 'MKCOL',
+      path: '/sub/',
+      hostHeader: tenantHost,
+      auth,
+    });
+    expect(mkcol.status).toBe(201);
+  });
+
+  // Direct to Apache and through the front proxy: the denial has to reach a
+  // client whichever hop it came in on, since a proxy is the shape every real
+  // deployment has. Apache's own guard is proven by the direct route; the
+  // proxied route proves what a client actually sees.
+  const routes = [
+    { name: 'apache', port: apachePort, connectHost: undefined },
+    { name: 'front proxy', port: proxyPort, connectHost: proxyHost },
+  ] as const;
+
+  describe.each(routes)('via $name', ({ port, connectHost }) => {
+    it.each(['PUT', 'DELETE', 'MKCOL', 'PROPPATCH', 'LOCK'])(
+      'refuses %s of the bare name at the root and below',
+      async (method) => {
+        for (const path of ['/.plandrop', '/sub/.plandrop']) {
+          const res = await httpRequest({
+            port,
+            connectHost,
+            method,
+            path,
+            hostHeader: tenantHost,
+            auth,
+            body: method === 'PUT' ? '{"passphrase":"leaked"}' : undefined,
+          });
+          expect(res.status, `${method} ${path}`).toBe(403);
+        }
+      },
+    );
+
+    it('refuses a COPY or MOVE landing on the name, leaving the source alone', async () => {
+      const source = `/sub/movable-${port}.txt`;
+      const put = await httpRequest({
+        port,
+        connectHost,
+        method: 'PUT',
+        path: source,
+        hostHeader: tenantHost,
+        auth,
+        body: 'movable',
+      });
+      expect(put.status).toBe(201);
+
+      for (const method of ['MOVE', 'COPY']) {
+        for (const target of ['/.plandrop', '/sub/.plandrop']) {
+          const res = await httpRequest({
+            port,
+            connectHost,
+            method,
+            path: source,
+            hostHeader: tenantHost,
+            auth,
+            extraHeaders: { Destination: `http://${tenantHost}${target}` },
+          });
+          expect(res.status, `${method} -> ${target}`).toBe(403);
+        }
+      }
+
+      const still = await httpRequest({
+        port,
+        connectHost,
+        method: 'GET',
+        path: source,
+        hostHeader: tenantHost,
+      });
+      expect(still.status).toBe(200);
+    });
+  });
+
+  it('leaves nothing of that name behind', async () => {
+    for (const path of ['/.plandrop', '/sub/.plandrop']) {
+      const res = await httpRequest({
+        port: apachePort,
+        method: 'GET',
+        path,
+        hostHeader: tenantHost,
+      });
+      // Neither write landed: /.plandrop is the shared theme mount (a directory
+      // with no index), /sub/.plandrop simply does not exist.
+      expect([403, 404]).toContain(res.status);
+    }
+  });
+
+  // Apache's rule is on the exact segment, deliberately: the broad ban on
+  // dotted paths belongs to the front proxy, which not every deployment has.
+  it('reserves the exact segment only — a lookalike is an ordinary tenant write', async () => {
+    for (const path of ['/.plandrop.bak', '/sub/x.plandrop', '/sub/plandrop']) {
+      const put = await httpRequest({
+        port: apachePort,
+        method: 'PUT',
+        path,
+        hostHeader: tenantHost,
+        auth,
+        body: 'ordinary content',
+      });
+      expect(put.status, path).toBe(201);
+    }
+  });
+});
+
+// A dot-prefixed path segment is configuration or private data by convention,
+// so the front proxy refuses one outright — every method, reads included —
+// before a backend is troubled with it. The exceptions are the shared theme
+// namespace in its `.plandrop/` form, and the two autoindex chrome names a
+// tenant publishes on purpose.
+describe('front proxy refuses hidden paths', () => {
+  const tenantHost = `${tenantA.label}.${domain}`;
+
+  function viaProxy(method: string, path: string, hostHeader = tenantHost) {
+    return httpRequest({ port: proxyPort, connectHost: proxyHost, method, path, hostHeader });
+  }
+
+  it('serves the theme namespace at the host root and at any depth', async () => {
+    // The depth case is why the exception exists: a document whose asset links
+    // are document-relative asks for them from its own directory.
+    for (const path of [
+      '/.plandrop/bootstrap5/css/bootstrap.min.css',
+      '/plans/.plandrop/bootstrap5/css/bootstrap.min.css',
+      '/plans/deep/.plandrop/shared/js/selfupdate.js',
+    ]) {
+      const res = await viaProxy('GET', path);
+      expect(res.status, path).toBe(200);
+    }
+  });
+
+  it('serves the theme namespace on the parent domain too', async () => {
+    const res = await viaProxy('GET', '/.plandrop/bootstrap5/template.html', 'localhost');
+    expect(res.status).toBe(200);
+  });
+
+  it('refuses the bare name, which is the credential file and not the namespace', async () => {
+    for (const path of ['/.plandrop', '/sub/.plandrop']) {
+      const res = await viaProxy('GET', path);
+      expect(res.status, path).toBe(403);
+    }
+  });
+
+  it.each(['/.git/config', '/sub/.env', '/.ssh/id_rsa', '/plans/.plandrop/.evil'])(
+    'refuses a read of %s',
+    async (path) => {
+      expect((await viaProxy('GET', path)).status).toBe(403);
+    },
+  );
+
+  it.each(['PUT', 'DELETE', 'MKCOL', 'PROPFIND'])('refuses %s of a dotted path', async (method) => {
+    expect((await viaProxy(method, '/sub/.env')).status).toBe(403);
+  });
+
+  it('leaves a name that merely contains a dot alone', async () => {
+    for (const path of ['/x.plandrop', '/index.html', '/plandrop.html']) {
+      const res = await viaProxy('GET', path);
+      expect(res.status, path).not.toBe(403);
+    }
+  });
+
+  // Without this exception a self-contained stack's own client could not
+  // publish the chrome it is allowed to publish: the upload rides this proxy.
+  it('passes the tenant autoindex chrome through, written and read, at any depth', async () => {
+    const created = await httpRequest({
+      port: ingressPort,
+      method: 'POST',
+      path: '/api/hosts',
+      hostHeader: domain,
+    });
+    expect(created.status).toBe(201);
+    const { host, passphrase } = JSON.parse(created.body.toString()) as {
+      host: string;
+      passphrase: string;
+    };
+    const chromeHost = `${host}.${domain}`;
+    const auth = { user: host, pass: passphrase };
+
+    const mkcol = await httpRequest({
+      port: proxyPort,
+      connectHost: proxyHost,
+      method: 'MKCOL',
+      path: '/sub/',
+      hostHeader: chromeHost,
+      auth,
+    });
+    expect(mkcol.status).toBe(201);
+
+    for (const path of ['/.header.html', '/.footer.html', '/sub/.header.html', '/sub/.footer.html']) {
+      const put = await httpRequest({
+        port: proxyPort,
+        connectHost: proxyHost,
+        method: 'PUT',
+        path,
+        hostHeader: chromeHost,
+        auth,
+        body: `<!-- chrome ${path} -->`,
+      });
+      expect(put.status, `PUT ${path}`).toBe(201);
+
+      const get = await httpRequest({
+        port: proxyPort,
+        connectHost: proxyHost,
+        method: 'GET',
+        path,
+        hostHeader: chromeHost,
+      });
+      expect(get.status, `GET ${path}`).toBe(200);
+      expect(get.body.toString()).toContain(`chrome ${path}`);
+    }
+
+    // The exception is the two whole basenames, nothing shaped like them, and
+    // it buys the neighbouring dotted names nothing.
+    for (const path of [
+      '/.header.html.bak',
+      '/sub/.footer.html~',
+      '/.header.htm',
+      '/.headers.html',
+      '/sub/.env',
+    ]) {
+      const put = await httpRequest({
+        port: proxyPort,
+        connectHost: proxyHost,
+        method: 'PUT',
+        path,
+        hostHeader: chromeHost,
+        auth,
+        body: 'should not land',
+      });
+      expect(put.status, `PUT ${path}`).toBe(403);
+      expect((await viaProxy('GET', path, chromeHost)).status, `GET ${path}`).toBe(403);
+    }
+  });
+
+  it('is the proxy rule, not Apache: the same path reaching Apache directly is a plain 404', async () => {
+    const res = await httpRequest({
+      port: apachePort,
+      method: 'GET',
+      path: '/.git/config',
+      hostHeader: tenantHost,
+    });
+    expect(res.status).toBe(404);
   });
 });
 
@@ -434,6 +877,156 @@ describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => 
       hostHeader: tenantHost,
     });
     expect(asset.status).toBe(200);
+  });
+
+  it('every asset the written doc references resolves at the host root when published at a subpath, without the depth alias', async () => {
+    expect(runCli(['create', '--domain', proxyBase], { cwd, env: env() }).status).toBe(0);
+    expect(runCli(['newdoc', 'plan.html'], { cwd, env: env() }).status).toBe(0);
+
+    const dotfile = JSON.parse(readFileSync(join(cwd, '.plandrop'), 'utf8')) as {
+      host: string;
+      passphrase: string;
+    };
+    const tenantHost = `${dotfile.host}.${domain}`;
+    const auth = { user: dotfile.host, pass: dotfile.passphrase };
+    const doc = readFileSync(join(cwd, 'plan.html'), 'utf8');
+
+    // Every asset ref the scaffold ships with is root-absolute — never
+    // document-relative — so it survives being published at any subpath.
+    const refs = [...doc.matchAll(/(?:href|src)="([^"]*\.plandrop\/[^"]+)"/g)]
+      .map((m) => m[1])
+      .filter((ref): ref is string => ref !== undefined);
+    expect(refs.length).toBeGreaterThan(2);
+    for (const ref of refs) {
+      expect(ref.startsWith('/.plandrop/')).toBe(true);
+    }
+
+    // Publish it two levels down, where `upload plans` puts a document kept in
+    // ./plans/deep/.
+    for (const dir of ['/plans/', '/plans/deep/']) {
+      const mkcol = await httpRequest({
+        port: apachePort,
+        method: 'MKCOL',
+        path: dir,
+        hostHeader: tenantHost,
+        auth,
+      });
+      expect(mkcol.status).toBe(201);
+    }
+    const put = await httpRequest({
+      port: apachePort,
+      method: 'PUT',
+      path: '/plans/deep/plan.html',
+      hostHeader: tenantHost,
+      auth,
+      body: doc,
+    });
+    expect(put.status).toBe(201);
+
+    // Every ref resolves straight off the HOST ROOT (not "/plans/deep" + ref) —
+    // proving the scaffold does not lean on the any-depth alias to render
+    // correctly once published below the root.
+    for (const ref of refs) {
+      const res = await httpRequest({
+        port: apachePort,
+        method: 'GET',
+        path: ref,
+        hostHeader: tenantHost,
+      });
+      expect(res.status, ref).toBe(200);
+    }
+  });
+});
+
+// `upload .` is run from the very directory the credential dotfile lives in —
+// the ordinary case, and the one that would leak the host's passphrase if the
+// walker published everything it found.
+describe('upload leaves hidden files behind (CLI -> proxy -> apache)', () => {
+  let cwd: string;
+  let configHome: string;
+
+  beforeEach(() => {
+    // A hidden working directory on purpose: `upload .` names the cwd, whose
+    // own basename is incidental, so the hidden-name refusal must not fire on it.
+    cwd = mkdtempSync(join(tmpdir(), '.plandrop-upload-'));
+    configHome = mkdtempSync(join(tmpdir(), 'plandrop-cfg-'));
+  });
+
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true });
+    rmSync(configHome, { recursive: true, force: true });
+  });
+
+  function env(): NodeJS.ProcessEnv {
+    return { ...process.env, XDG_CONFIG_HOME: configHome, PLANDROP_DOMAIN: '' };
+  }
+
+  it('publishes the tree without them, says so, and lands nothing hidden on the host', async () => {
+    expect(runCli(['create', '--domain', proxyBase], { cwd, env: env() }).status).toBe(0);
+
+    const dotfile = JSON.parse(readFileSync(join(cwd, '.plandrop'), 'utf8')) as {
+      host: string;
+      passphrase: string;
+    };
+    const tenantHost = `${dotfile.host}.${domain}`;
+
+    // A tree that looks like real work: a document, a subdirectory, a nested
+    // project carrying a second credential dotfile, an .env, and a repo.
+    writeFileSync(join(cwd, 'index.html'), '<h1>plan</h1>');
+    writeFileSync(join(cwd, '.env'), 'API_KEY=secret');
+    // The tenant's own listing chrome: hidden, but published on purpose.
+    writeFileSync(join(cwd, '.header.html'), '<header>MY-CHROME</header>');
+    writeFileSync(join(cwd, '.footer.html'), '<footer>MY-CHROME</footer>');
+    mkdirSync(join(cwd, 'sub'), { recursive: true });
+    writeFileSync(join(cwd, 'sub', 'note.txt'), 'notes');
+    writeFileSync(join(cwd, 'sub', '.plandrop'), '{"passphrase":"nested-secret"}');
+    mkdirSync(join(cwd, '.git', 'objects', 'ab'), { recursive: true });
+    writeFileSync(join(cwd, '.git', 'config'), 'url = private');
+    writeFileSync(join(cwd, '.git', 'objects', 'ab', 'cdef'), 'blob');
+
+    const uploaded = runCli(['upload', '.'], { cwd, env: env() });
+    expect(uploaded.status).toBe(0);
+    expect(uploaded.stdout).toContain('index.html');
+    expect(uploaded.stdout).toContain('sub/note.txt');
+    // One visible line per omission, at both depths, naming the credential
+    // family as such and the rest as merely hidden.
+    expect(uploaded.stdout).toMatch(/^skipped \.plandrop \(plandrop credential file\)$/m);
+    expect(uploaded.stdout).toMatch(/^skipped sub[/\\]\.plandrop \(plandrop credential file\)$/m);
+    expect(uploaded.stdout).toMatch(/^skipped \.env \(hidden\)$/m);
+    // The repo is one line, not one per object, and nothing inside it is named.
+    expect(uploaded.stdout).toMatch(/^skipped \.git[/\\] \(hidden\)$/m);
+    expect(uploaded.stdout).not.toContain('cdef');
+    // The passphrase is never even named as uploaded.
+    expect(uploaded.stdout).not.toContain(dotfile.passphrase);
+
+    // The chrome went, silently and without a skip line, like ordinary content.
+    expect(uploaded.stdout).not.toMatch(/^skipped .*\.(header|footer)\.html/m);
+
+    for (const path of ['/index.html', '/sub/note.txt', '/.header.html', '/.footer.html']) {
+      const res = await httpRequest({
+        port: apachePort,
+        method: 'GET',
+        path,
+        hostHeader: tenantHost,
+      });
+      expect(res.status, path).toBe(200);
+    }
+
+    // Nothing hidden reached the host, at any depth.
+    for (const path of ['/sub/.plandrop', '/.env', '/.git/config']) {
+      const res = await httpRequest({
+        port: apachePort,
+        method: 'GET',
+        path,
+        hostHeader: tenantHost,
+      });
+      expect(res.status, path).toBe(404);
+    }
+
+    // The local hidden files are untouched — skipped, not consumed.
+    expect(existsSync(join(cwd, '.plandrop'))).toBe(true);
+    expect(existsSync(join(cwd, 'sub', '.plandrop'))).toBe(true);
+    expect(existsSync(join(cwd, '.git', 'config'))).toBe(true);
   });
 });
 

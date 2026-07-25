@@ -10,7 +10,7 @@ The stack is three containers sharing one data volume:
 | Service | Role |
 |---------|------|
 | **ingress** | A dockerised nginx. The only publicly-reachable control entrypoint: it serves `/.plandrop/*` template statics and reverse-proxies `/api/*` to the control plane over the internal docker network. Host-published on `PLANDROP_INGRESS_PORT`. |
-| **apache** | A dockerised Apache `mod_dav` host. One dynamic vhost serves every subdomain: open reads, per-tenant authenticated WebDAV writes. Served content is purely static. Host-published on `PLANDROP_APACHE_PORT`. |
+| **apache** | A dockerised Apache `mod_dav` host. One dynamic vhost serves every subdomain: open reads, per-tenant authenticated WebDAV writes. Served content is purely static. It also answers `.plandrop/*` from the shared read-only theme tree at every depth — a scaffolded document's theme links are root-absolute and resolve straight off the host root, and the any-depth answer keeps an already-published document's relative links working too; that makes `.plandrop` a reserved path segment on tenant hosts, and every write method targeting it — collection or file, at any depth, destination of a COPY/MOVE included — is refused, so a host's credential file can never be published. Host-published on `PLANDROP_APACHE_PORT`. |
 | **control** | A small Node/Hono service: the only writer of the shared content tree and the credentials file. It mints hosts (`create`) and changes/removes them (`rotate`, `remove`). Internal-only — reached solely through the ingress. |
 
 The ingress and apache speak **plain HTTP**. TLS and routing are provided by a reverse
@@ -35,7 +35,7 @@ the compose file plus a `.env`:
 | File | Use |
 |------|-----|
 | **`compose.exposed.yml`** | Behind **your own** TLS/reverse proxy (this guide). ingress + apache publish plain-HTTP ports for the proxy to reach. |
-| **`compose.proxy.yml`** | **Self-contained** — bundles its own proxy so a single host port serves both the control entrypoint and the `*.<domain>` tenant hosts, with no external proxy. Good for a single host or trying it on `localhost`. |
+| **`compose.proxy.yml`** | **Self-contained** — bundles its own proxy so a single host port serves both the control entrypoint and the `*.<domain>` tenant hosts, with no external proxy. That proxy also refuses any request for a dot-prefixed path segment (`.git`, `.env`, the `.plandrop` credential file) with 403 before it reaches a backend, excepting the shared theme namespace `.plandrop/` and the two tenant listing-chrome names `.header.html` / `.footer.html`. Good for a single host or trying it on `localhost`. |
 
 (`docker-compose.yml` in the repo is the **development build/test** stack — it carries the
 build contexts and is not for deployment.)

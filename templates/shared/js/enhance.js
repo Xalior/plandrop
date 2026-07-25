@@ -1,13 +1,13 @@
 /*
  * plandrop document enhancement — renders mermaid diagrams and syntax-highlights
  * code blocks in a published document, from the self-hosted vendor bundles under
- * .plandrop/shared/vendor/ (no runtime CDN).
+ * /.plandrop/shared/vendor/ (no runtime CDN).
  *
  * Lazy by design: this file only scans the document. mermaid (~3.5MB) and
  * highlight.js (~130KB) are fetched on demand — a document with no diagrams and
  * no code blocks loads nothing beyond this scan.
  *
- * Shared, theme-neutral: one copy lives at .plandrop/shared/js/enhance.js and
+ * Shared, theme-neutral: one copy lives at /.plandrop/shared/js/enhance.js and
  * every template's header references it. Both renderers follow the page's
  * data-bs-theme, live: a theme toggle flips the highlight stylesheet and
  * re-renders the diagrams. A self-update <body> swap re-enhances the fresh
@@ -17,9 +17,10 @@
   'use strict';
 
   // Vendor assets resolve relative to this script's own URL, so the same file
-  // works with the hosted documents' relative .plandrop/… paths and the static
-  // plandrop.dev documents' absolute ones (including opened via file://, where
-  // the assets still load from plandrop.dev — or fail harmlessly offline).
+  // works with the hosted documents' root-relative /.plandrop/… paths and the
+  // static plandrop.dev documents' fully-qualified ones (including opened via
+  // file://, where the assets still load from plandrop.dev — or fail harmlessly
+  // offline).
   var script = document.currentScript;
   var src = script && script.src;
   if (!src) {

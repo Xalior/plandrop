@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import { loadContext } from '../context';
+import { DOTFILE_NAME } from '../dotfile';
 import { hostBaseUri } from '../endpoint';
 import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import { makeClient, makeDir, putFile, WrongTenantError } from '../webdav';
@@ -15,6 +16,14 @@ export async function run(dispatch: Dispatch): Promise<number> {
   if (localPath === undefined) {
     process.stderr.write(`${usageLine('upload')}\n`);
     return 2;
+  }
+  // The name as TYPED, not as resolved: `upload .` names the cwd, whose own
+  // basename may well be hidden without the user having asked for anything of
+  // the sort.
+  const named = basename(localPath);
+  if (isWithheld(named)) {
+    process.stderr.write(`${refusal(named)}\n`);
+    return 1;
   }
   const remoteArg = dispatch.params[1];
 
@@ -41,6 +50,11 @@ export async function run(dispatch: Dispatch): Promise<number> {
   const report = (local: string, remote: string): void => {
     process.stdout.write(`uploaded ${local} → ${baseUri}${remote}\n`);
   };
+  // An omission is reported as loudly as an upload: a silent skip leaves the
+  // author believing the whole tree published.
+  const reportSkip = (local: string, reason: string): void => {
+    process.stdout.write(`skipped ${local} (${reason})\n`);
+  };
 
   try {
     if (stats.isDirectory()) {
@@ -49,6 +63,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
         localPath,
         remoteBaseForDirectory(localPath, remoteArg),
         report,
+        reportSkip,
       );
       if (count === 0) {
         process.stdout.write(`nothing to upload: no files under ${localPath}\n`);
@@ -79,10 +94,11 @@ async function uploadDirectory(
   localDir: string,
   remoteBase: string,
   report: (local: string, remote: string) => void,
+  reportSkip: (local: string, reason: string) => void,
 ): Promise<number> {
   const created = new Set<string>();
   let count = 0;
-  for (const file of listFiles(localDir)) {
+  for (const file of listFiles(localDir, reportSkip)) {
     const remote = remoteForEntry(localDir, file, remoteBase);
     await ensureParent(client, remote, created);
     await putFile(client, remote, readFileSync(file));
@@ -144,17 +160,97 @@ async function ensureParent(
   created.add(dir);
 }
 
-function listFiles(dir: string): string[] {
+/**
+ * Every file under `dir`, depth-first, minus the hidden ones a tenant is not
+ * publishing on purpose (see PUBLISHABLE_HIDDEN_NAMES). `onSkip` is called once
+ * per omission, with the reason to print: a hidden directory is pruned whole
+ * and never descended into, so a `.git` costs one line rather than thousands,
+ * and a hidden file costs one line of its own.
+ */
+export function listFiles(
+  dir: string,
+  onSkip: (path: string, reason: string) => void,
+): string[] {
   const files: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
+    if (isWithheld(entry.name)) {
+      if (entry.isDirectory()) {
+        onSkip(`${full}${sep}`, HIDDEN_REASON);
+        continue;
+      }
+      onSkip(full, reasonFor(entry.name));
+      continue;
+    }
     if (entry.isDirectory()) {
-      files.push(...listFiles(full));
+      files.push(...listFiles(full, onSkip));
     } else if (entry.isFile()) {
       files.push(full);
     }
   }
   return files;
+}
+
+/**
+ * A hidden name: dot-prefixed. `.` and `..` are the current and parent
+ * directory, not hidden names, and a user who types either has named an
+ * ordinary directory.
+ */
+function isHidden(name: string): boolean {
+  return name.startsWith('.') && name !== '.' && name !== '..';
+}
+
+/**
+ * The hidden names a tenant publishes on purpose: the header and footer that
+ * wrap a directory listing in the tenant's own chrome. Apache names them as
+ * dotfiles (HeaderName/ReadmeName) so they stay out of the listing they
+ * decorate, which puts them under the blanket hidden-name ban despite being
+ * ordinary content — hence the exception. Exact basenames, honoured at any
+ * depth, because the chrome is per-directory.
+ */
+const PUBLISHABLE_HIDDEN_NAMES = ['.header.html', '.footer.html'];
+
+/** Hidden, and not one of the few hidden names a tenant publishes on purpose. */
+function isWithheld(name: string): boolean {
+  return isHidden(name) && !PUBLISHABLE_HIDDEN_NAMES.includes(name);
+}
+
+/**
+ * The `.plandrop*` family: the credential dotfile itself plus the copies
+ * editors and backup schemes leave beside it (`.plandrop.bak`, `.plandrop~`,
+ * `.plandrop.save`). Each one holds the host's passphrase — the write key for
+ * everything published there — so each is worth naming as such rather than
+ * lumping in with the rest of the hidden files.
+ */
+function isCredential(name: string): boolean {
+  return name.startsWith(DOTFILE_NAME);
+}
+
+const HIDDEN_REASON = 'hidden';
+
+function reasonFor(name: string): string {
+  return isCredential(name) ? 'plandrop credential file' : HIDDEN_REASON;
+}
+
+/**
+ * Why an explicitly-named hidden path is not published. Naming one is not
+ * consent to leak it: hidden names hold configuration and private data by
+ * convention, and everything plandrop publishes is world-readable to anyone
+ * who can reach the host. The escape hatch is a rename, which makes the
+ * intent explicit in a way an argument cannot.
+ */
+function refusal(name: string): string {
+  const escape = `Rename it if you really mean to publish something of that name.`;
+  if (isCredential(name)) {
+    return (
+      `refusing to upload ${name}: it holds this host's passphrase, and everything published ` +
+      `is world-readable — publishing it hands any reader write access to the host. ${escape}`
+    );
+  }
+  return (
+    `refusing to upload ${name}: hidden names are configuration or private data by convention, ` +
+    `and everything plandrop publishes is world-readable. ${escape}`
+  );
 }
 
 /** A remote file path: POSIX, single leading slash. */
