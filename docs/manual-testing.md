@@ -142,3 +142,21 @@ from any device on the network — run the same section-3 browser checks there.
 > The stack ships **without auth**, so exposing it on the LAN makes it reachable
 > by anything on that network. That matches plandrop's model (LAN access is the
 > security boundary) — but don't bind it to an internet-routable address.
+
+## 6. Release smoke — every URL a feature fetches
+
+A feature that fetches a published URL at runtime is only shipped when that URL
+serves. After a release (npm + images) and any site deploy, probe each one at
+its real, public location — not just in the local stack:
+
+```sh
+curl -sf -o /dev/null https://plandrop.dev/start.sh          # `plandrop server` downloads this
+curl -sf https://plandrop.dev/api/templates | grep -q default # `newdoc` catalogue (static mirror)
+curl -sf -o /dev/null https://plandrop.dev/.plandrop/shared/js/selfupdate.js
+curl -sf -o /dev/null https://plandrop.dev/.plandrop/shared/js/enhance.js
+```
+
+Then one end-to-end client pass against the production host: `create` → a
+nested `upload` (prints the full URL — open it) → `remove`. A 404 on any of
+these is a shipped breakage even when every test is green: the suite exercises
+the repo, not the published locations.
