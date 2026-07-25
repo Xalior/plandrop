@@ -1,12 +1,31 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
-import { DEFAULT_WATCH_GLOB, normalizeWatchGlob, writeAutosyncHook } from '../autosync';
+import {
+  describeHookOutcome,
+  DEFAULT_WATCH_GLOB,
+  FLAT_MODE,
+  MIRROR_MODE,
+  hookConfigPatch,
+  modeFromConfig,
+  normalizeWatchGlob,
+  promptPublishMode,
+  promptWatchGlob,
+  publishRootMode,
+  writeAutosyncHook,
+  type PublishMode,
+} from '../autosync';
 import { DomainError, resolveDomain } from '../domain';
-import { DOTFILE_NAME, dotfileExists, dotfileHasHost, readDotfileConfig, writeDotfile } from '../dotfile';
+import {
+  dotfileExists,
+  dotfileHasHost,
+  mergeDotfileConfig,
+  tryReadDotfileConfig,
+  writeDotfile,
+  type DotfileConfig,
+} from '../dotfile';
 import { controlUrl, hostUrl, timedFetch } from '../endpoint';
 import { promptLine } from '../prompt';
 import { DEFAULT_ALIAS } from '../templates';
-import { printCommandHelp, wantsHelp } from '../usage';
+import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import type { Dispatch } from '../dispatch';
 import type { CreateResponse } from '../types';
 
@@ -16,6 +35,10 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 0;
   }
   const flags = parseFlags(dispatch.params);
+  if (flags.hookRoot !== undefined && flags.hookFlat) {
+    process.stderr.write(`--hook-root and --hook-flat are mutually exclusive\n${usageLine('create')}\n`);
+    return 2;
+  }
   const cwd = process.cwd();
 
   // The guard protects a minted host from accidental replacement. A
@@ -25,7 +48,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
     process.stderr.write('a .plandrop already exists here; pass --force to replace it\n');
     return 1;
   }
-  const existingConfig = existingDotfileConfig(cwd);
+  const existingConfig = tryReadDotfileConfig(cwd);
 
   let domain: string;
   try {
@@ -66,7 +89,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
   process.stdout.write(`created ${hostUrl(domain, created.host)}\n`);
   process.stdout.write(`wrote ${path} (mode 0600) — it holds your passphrase\n`);
 
-  await offerAutosyncHook(cwd, flags);
+  await offerAutosyncHook(cwd, flags, existingConfig);
   return 0;
 }
 
@@ -82,17 +105,35 @@ export function hookOfferAccepted(answer: string | undefined): boolean {
 
 /**
  * Offer to scaffold the Claude Code auto-publish hook for the new host.
- * --hook/--hook-path take it without a prompt, --no-hook declines; otherwise
- * it is offered only at a terminal — a scripted create without flags sets up
- * nothing.
+ * --hook/--hook-path/--hook-root/--hook-flat take it without a prompt,
+ * --no-hook declines; otherwise it is offered only at a terminal — a
+ * scripted create without flags sets up nothing. Whichever way the watch glob and publish
+ * mode are settled, they are recorded into .plandrop so a later re-run
+ * (interactive or a bare `plandrop hooks`) defaults from them.
  */
-async function offerAutosyncHook(cwd: string, flags: CreateFlags): Promise<void> {
-  let glob: string | undefined;
+async function offerAutosyncHook(
+  cwd: string,
+  flags: CreateFlags,
+  existingConfig: DotfileConfig | undefined,
+): Promise<void> {
+  let glob: string;
+  let mode: PublishMode;
   if (flags.hook === false) {
     return;
   }
-  if (flags.hook === true || flags.hookPath !== undefined) {
-    glob = normalizeWatchGlob(flags.hookPath ?? DEFAULT_WATCH_GLOB);
+  if (
+    flags.hook === true ||
+    flags.hookPath !== undefined ||
+    flags.hookRoot !== undefined ||
+    flags.hookFlat === true
+  ) {
+    glob = normalizeWatchGlob(flags.hookPath ?? existingConfig?.hookWatch ?? DEFAULT_WATCH_GLOB);
+    const flagMode = flags.hookFlat
+      ? FLAT_MODE
+      : flags.hookRoot !== undefined
+        ? publishRootMode(flags.hookRoot)
+        : undefined;
+    mode = flagMode ?? modeFromConfig(existingConfig ?? {}) ?? MIRROR_MODE;
   } else if (process.stdin.isTTY === true) {
     const wanted = await promptLine(
       'Set up a Claude Code hook that auto-publishes saved HTML documents? [Y/n]: ',
@@ -100,37 +141,18 @@ async function offerAutosyncHook(cwd: string, flags: CreateFlags): Promise<void>
     if (!hookOfferAccepted(wanted)) {
       return;
     }
-    const answer = await promptLine(`Path to watch [${DEFAULT_WATCH_GLOB}]: `);
-    glob = normalizeWatchGlob(answer ?? '');
+    glob = await promptWatchGlob(existingConfig?.hookWatch);
+    mode = await promptPublishMode(glob, existingConfig);
   } else {
     return;
   }
 
   try {
-    const { path, added } = writeAutosyncHook(cwd, glob);
-    process.stdout.write(
-      added
-        ? `wrote ${path} — saving a file matching ${glob} now auto-publishes it\n`
-        : `an equivalent hook is already in ${path}; nothing changed\n`,
-    );
+    const { path, outcome, change } = writeAutosyncHook(cwd, glob, mode);
+    process.stdout.write(describeHookOutcome(path, glob, mode, outcome, change));
+    mergeDotfileConfig(cwd, hookConfigPatch(glob, mode));
   } catch (error) {
     process.stderr.write(`could not set up the hook: ${(error as Error).message}\n`);
-  }
-}
-
-/**
- * The preference keys of the cwd's `.plandrop`, when one is present and
- * readable. A corrupt file (reachable only via --force) reports nothing — it
- * is being replaced wholesale.
- */
-function existingDotfileConfig(cwd: string): { domain?: string; template?: string } | undefined {
-  if (!dotfileExists(cwd)) {
-    return undefined;
-  }
-  try {
-    return readDotfileConfig(join(cwd, DOTFILE_NAME));
-  } catch {
-    return undefined;
   }
 }
 
@@ -153,6 +175,10 @@ interface CreateFlags {
   /** --hook (true) / --no-hook (false); undefined = offer interactively. */
   hook: boolean | undefined;
   hookPath: string | undefined;
+  /** --hook-root <dir>; mutually exclusive with hookFlat. */
+  hookRoot: string | undefined;
+  /** --hook-flat. */
+  hookFlat: boolean;
 }
 
 function parseFlags(params: readonly string[]): CreateFlags {
@@ -162,6 +188,8 @@ function parseFlags(params: readonly string[]): CreateFlags {
     template: undefined,
     hook: undefined,
     hookPath: undefined,
+    hookRoot: undefined,
+    hookFlat: false,
   };
   for (let i = 0; i < params.length; i += 1) {
     const param = params[i];
@@ -176,6 +204,13 @@ function parseFlags(params: readonly string[]): CreateFlags {
       i += 1;
     } else if (param?.startsWith('--hook-path=')) {
       flags.hookPath = param.slice('--hook-path='.length);
+    } else if (param === '--hook-root') {
+      flags.hookRoot = params[i + 1];
+      i += 1;
+    } else if (param?.startsWith('--hook-root=')) {
+      flags.hookRoot = param.slice('--hook-root='.length);
+    } else if (param === '--hook-flat') {
+      flags.hookFlat = true;
     } else if (param === '--domain') {
       flags.domain = params[i + 1];
       i += 1;

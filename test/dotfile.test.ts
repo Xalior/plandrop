@@ -28,10 +28,10 @@ const sample = {
 };
 
 describe('dotfile read/write', () => {
-  it('writes mode 0600 with three fields and round-trips', () => {
+  it('writes mode 0600 with three fields plus the version stamp, and round-trips', () => {
     const path = writeDotfile(workdir, sample);
     expect(statSync(path).mode & 0o777).toBe(0o600);
-    expect(readDotfile(path)).toEqual(sample);
+    expect(readDotfile(path)).toEqual({ ...sample, version: __PLANDROP_VERSION__ });
   });
 
   it('reports existence at a directory', () => {
@@ -49,7 +49,7 @@ describe('dotfile read/write', () => {
   it('round-trips the optional template field', () => {
     const withTemplate = { ...sample, template: 'darkly' };
     const path = writeDotfile(workdir, withTemplate);
-    expect(readDotfile(path)).toEqual(withTemplate);
+    expect(readDotfile(path)).toEqual({ ...withTemplate, version: __PLANDROP_VERSION__ });
   });
 
   it('reads a dotfile with no template field (backward compatible)', () => {
@@ -61,6 +61,49 @@ describe('dotfile read/write', () => {
     const path = join(workdir, '.plandrop');
     writeFileSync(path, JSON.stringify({ ...sample, template: 42 }));
     expect(() => readDotfile(path)).toThrow();
+  });
+
+  it('round-trips the hook fields', () => {
+    const withHooks = { ...sample, hookWatch: 'plans/**/*.html', hookPublish: 'root' as const, hookRoot: 'plans' };
+    const path = writeDotfile(workdir, withHooks);
+    expect(readDotfile(path)).toEqual({ ...withHooks, version: __PLANDROP_VERSION__ });
+  });
+
+  it('rejects a hookPublish value outside the three known modes', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ ...sample, hookPublish: 'sideways' }));
+    expect(() => readDotfile(path)).toThrow();
+  });
+});
+
+describe('version stamp', () => {
+  it('is stamped on mint', () => {
+    const path = writeDotfile(workdir, sample);
+    expect(readDotfile(path).version).toBe(__PLANDROP_VERSION__);
+  });
+
+  it('is stamped on a config-only write', () => {
+    const path = mergeDotfileConfig(workdir, { domain: 'https://x.example' });
+    expect((JSON.parse(readFileSync(path, 'utf8')) as { version?: string }).version).toBe(
+      __PLANDROP_VERSION__,
+    );
+  });
+
+  it('is refreshed on re-merge, overriding whatever an older client left behind', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ ...sample, version: '0.0.1-stale' }));
+    mergeDotfileConfig(workdir, { template: 'darkly' });
+    const written = JSON.parse(readFileSync(path, 'utf8')) as { version?: string; template?: string };
+    expect(written.version).toBe(__PLANDROP_VERSION__);
+    expect(written.template).toBe('darkly');
+  });
+
+  it('refreshing the stamp does not disturb sibling fields', () => {
+    const path = join(workdir, '.plandrop');
+    writeFileSync(path, JSON.stringify({ ...sample, version: '0.0.1-stale', extra: 'kept' }));
+    mergeDotfileConfig(workdir, { template: 'darkly' });
+    const written = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    expect(written).toEqual({ ...sample, extra: 'kept', template: 'darkly', version: __PLANDROP_VERSION__ });
   });
 });
 
@@ -87,7 +130,10 @@ describe('mergeDotfileConfig', () => {
   it('creates a config-only dotfile when none exists, mode 0600', () => {
     const path = mergeDotfileConfig(workdir, { domain: 'https://x.example' });
     expect(statSync(path).mode & 0o777).toBe(0o600);
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ domain: 'https://x.example' });
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({
+      domain: 'https://x.example',
+      version: __PLANDROP_VERSION__,
+    });
   });
 
   it('preserves host, passphrase, and unknown keys while updating preferences', () => {
@@ -99,6 +145,7 @@ describe('mergeDotfileConfig', () => {
       extra: 'kept',
       domain: 'https://new.example',
       template: 'darkly',
+      version: __PLANDROP_VERSION__,
     });
   });
 });

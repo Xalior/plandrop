@@ -1,21 +1,45 @@
 import { dirname } from 'node:path';
-import { DEFAULT_WATCH_GLOB, normalizeWatchGlob, writeAutosyncHook } from '../autosync';
-import { dotfileHasHost, findDotfile } from '../dotfile';
-import { printCommandHelp, wantsHelp } from '../usage';
+import {
+  describeHookOutcome,
+  DEFAULT_WATCH_GLOB,
+  FLAT_MODE,
+  MIRROR_MODE,
+  hookConfigPatch,
+  modeFromConfig,
+  normalizeWatchGlob,
+  promptPublishMode,
+  promptWatchGlob,
+  publishRootMode,
+  writeAutosyncHook,
+  type PublishMode,
+} from '../autosync';
+import { dotfileHasHost, findDotfile, mergeDotfileConfig, tryReadDotfileConfig } from '../dotfile';
+import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import type { Dispatch } from '../dispatch';
 
 /**
  * Install (or update) the Claude Code auto-publish hook in the current
  * project. `create` offers the same hook when it mints a host; this is the way
- * in for a project whose host already exists. Purely a local settings merge —
- * it never calls the control plane and never mints a host.
+ * in for a project whose host already exists, and the way to upgrade one
+ * later. Purely a local settings + .plandrop merge — it never calls the
+ * control plane and never mints a host.
+ *
+ * With no watch/root flags at all: at a terminal it asks (defaulting from
+ * whatever was last recorded); otherwise — a bare `plandrop hooks` run from a
+ * script — it silently re-applies the recorded settings (or the defaults, if
+ * nothing was ever recorded), the "upgrade" path a client version bump relies
+ * on to refresh an older hook shape in place.
  */
-export function run(dispatch: Dispatch): number {
+export async function run(dispatch: Dispatch): Promise<number> {
   if (wantsHelp(dispatch.params)) {
     printCommandHelp('hooks');
     return 0;
   }
   const flags = parseFlags(dispatch.params);
+  if (flags.hookRoot !== undefined && flags.hookFlat) {
+    process.stderr.write(`--hook-root and --hook-flat are mutually exclusive\n${usageLine('hooks')}\n`);
+    return 2;
+  }
   const cwd = process.cwd();
 
   // The hook publishes to the host in the nearest .plandrop; without one it
@@ -28,15 +52,32 @@ export function run(dispatch: Dispatch): number {
     );
     return 1;
   }
+  const dotfileDir = dirname(dotfilePath);
+  const recorded = tryReadDotfileConfig(dotfileDir) ?? {};
 
-  const glob = normalizeWatchGlob(flags.watch ?? DEFAULT_WATCH_GLOB);
+  const flagMode = flags.hookFlat
+    ? FLAT_MODE
+    : flags.hookRoot !== undefined
+      ? publishRootMode(flags.hookRoot)
+      : undefined;
+
+  let glob: string;
+  let mode: PublishMode;
+  if (flags.watch !== undefined || flagMode !== undefined) {
+    glob = normalizeWatchGlob(flags.watch ?? recorded.hookWatch ?? DEFAULT_WATCH_GLOB);
+    mode = flagMode ?? modeFromConfig(recorded) ?? MIRROR_MODE;
+  } else if (process.stdin.isTTY === true) {
+    glob = await promptWatchGlob(recorded.hookWatch);
+    mode = await promptPublishMode(glob, recorded);
+  } else {
+    glob = normalizeWatchGlob(recorded.hookWatch ?? DEFAULT_WATCH_GLOB);
+    mode = modeFromConfig(recorded) ?? MIRROR_MODE;
+  }
+
   try {
-    const { path, added } = writeAutosyncHook(cwd, glob);
-    process.stdout.write(
-      added
-        ? `wrote ${path} — saving a file matching ${glob} now auto-publishes it\n`
-        : `an equivalent hook is already in ${path}; nothing changed\n`,
-    );
+    const { path, outcome, change } = writeAutosyncHook(cwd, glob, mode);
+    process.stdout.write(describeHookOutcome(path, glob, mode, outcome, change));
+    mergeDotfileConfig(dotfileDir, hookConfigPatch(glob, mode));
   } catch (error) {
     process.stderr.write(`could not set up the hook: ${(error as Error).message}\n`);
     return 1;
@@ -47,10 +88,14 @@ export function run(dispatch: Dispatch): number {
 interface HooksFlags {
   /** The watched path: a positional argument or --hook-path. */
   watch: string | undefined;
+  /** --hook-root <dir>; mutually exclusive with hookFlat. */
+  hookRoot: string | undefined;
+  /** --hook-flat. */
+  hookFlat: boolean;
 }
 
 function parseFlags(params: readonly string[]): HooksFlags {
-  const flags: HooksFlags = { watch: undefined };
+  const flags: HooksFlags = { watch: undefined, hookRoot: undefined, hookFlat: false };
   for (let i = 0; i < params.length; i += 1) {
     const param = params[i];
     if (param === undefined) {
@@ -61,6 +106,13 @@ function parseFlags(params: readonly string[]): HooksFlags {
       i += 1;
     } else if (param.startsWith('--hook-path=')) {
       flags.watch = param.slice('--hook-path='.length);
+    } else if (param === '--hook-root') {
+      flags.hookRoot = params[i + 1];
+      i += 1;
+    } else if (param.startsWith('--hook-root=')) {
+      flags.hookRoot = param.slice('--hook-root='.length);
+    } else if (param === '--hook-flat') {
+      flags.hookFlat = true;
     } else if (!param.startsWith('-') && flags.watch === undefined) {
       flags.watch = param;
     }

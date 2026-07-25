@@ -108,7 +108,10 @@ describe('init --local', () => {
     const code = await init(dispatch(['--yes', '--local', '--domain', 'https://plandrop.example.com']));
     expect(code).toBe(0);
     const path = join(workdir, '.plandrop');
-    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ domain: 'https://plandrop.example.com' });
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({
+      domain: 'https://plandrop.example.com',
+      version: __PLANDROP_VERSION__,
+    });
     expect(statSync(path).mode & 0o777).toBe(0o600);
     // realpath: chdir resolves the tmpdir symlink (/var -> /private/var on macOS).
     expect(stdout()).toContain(`wrote ${realpathSync(path)}`);
@@ -129,6 +132,7 @@ describe('init --local', () => {
       host: 'h123',
       passphrase: 'p456',
       template: 'darkly',
+      version: __PLANDROP_VERSION__,
     });
   });
 });

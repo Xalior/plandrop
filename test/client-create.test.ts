@@ -31,6 +31,10 @@ interface Dotfile {
   host: string;
   passphrase: string;
   template?: string;
+  hookWatch?: string;
+  hookPublish?: string;
+  hookRoot?: string;
+  version?: string;
 }
 
 function readDotfile(): Dotfile {
@@ -149,5 +153,50 @@ describe('client create', () => {
     expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain(
       'plandrop upload "${f#"$PWD"/}"',
     );
+  });
+
+  it('records the watch glob, publish mode, and client version into .plandrop when it scaffolds the hook', () => {
+    expect(
+      runCli(
+        ['create', '--domain', controlAddr, '--hook', '--hook-path', 'docs/**/*.html', '--hook-root', 'docs'],
+        { cwd, env: env() },
+      ).status,
+    ).toBe(0);
+    const dotfile = readDotfile();
+    expect(dotfile.hookWatch).toBe('docs/**/*.html');
+    expect(dotfile.hookPublish).toBe('root');
+    expect(dotfile.hookRoot).toBe('docs');
+    expect(dotfile.version).toBe(__PLANDROP_VERSION__);
+  });
+
+  it('--hook-flat alone implies the hook, like --hook-root and --hook-path do', () => {
+    expect(
+      runCli(['create', '--domain', controlAddr, '--hook-flat'], { cwd, env: env() }).status,
+    ).toBe(0);
+    const settings = JSON.parse(readFileSync(join(cwd, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: { PostToolUse: { hooks: { command: string }[] }[] };
+    };
+    expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain('cd "$(dirname "$f")"');
+    expect(readDotfile().hookPublish).toBe('flat');
+  });
+
+  it('rejects --hook-root and --hook-flat together, without minting a host', () => {
+    const result = runCli(
+      ['create', '--domain', controlAddr, '--hook-root', 'docs', '--hook-flat'],
+      { cwd, env: env() },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/mutually exclusive/);
+    expect(existsSync(join(cwd, '.plandrop'))).toBe(false);
+  });
+
+  it('--hook-flat cds into the saved file\'s own directory', () => {
+    expect(
+      runCli(['create', '--domain', controlAddr, '--hook', '--hook-flat'], { cwd, env: env() }).status,
+    ).toBe(0);
+    const settings = JSON.parse(readFileSync(join(cwd, '.claude', 'settings.json'), 'utf8')) as {
+      hooks: { PostToolUse: { hooks: { command: string }[] }[] };
+    };
+    expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain('cd "$(dirname "$f")"');
   });
 });
