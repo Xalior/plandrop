@@ -13,6 +13,8 @@ export interface HttpOptions {
   /** The Host header selects the dynamic vhost (tenant), independent of the connection. */
   hostHeader: string;
   auth?: { user: string; pass: string };
+  /** Extra request headers, e.g. the X-Forwarded-* a front proxy would add. */
+  extraHeaders?: Record<string, string>;
   body?: string | Buffer;
 }
 
@@ -22,7 +24,10 @@ export interface HttpOptions {
  */
 export function httpRequest(options: HttpOptions): Promise<HttpResult> {
   return new Promise((resolve, reject) => {
-    const headers: Record<string, string> = { Host: options.hostHeader };
+    const headers: Record<string, string> = {
+      Host: options.hostHeader,
+      ...options.extraHeaders,
+    };
     if (options.auth) {
       const token = Buffer.from(
         `${options.auth.user}:${options.auth.pass}`,
