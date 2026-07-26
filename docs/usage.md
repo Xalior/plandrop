@@ -354,7 +354,7 @@ A small JSON file written at mode `0600` in the directory where you ran `create`
   "hookWatch": "docs/**/*.html",
   "hookPublish": "root",
   "localRoot": "docs",
-  "version": "0.6.0"
+  "version": "0.5.3"
 }
 ```
 
