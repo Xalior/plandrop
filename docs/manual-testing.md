@@ -83,11 +83,17 @@ production front proxy performs.
 From the same manual working directory (`/tmp/plandrop-manual`, still pointed at
 `http://localhost:8083`):
 
+Accepting `create`'s hook prompt records `"localRoot": "docs"` (the watch glob's
+own directory), so `docs/` **is** this host's root and everything under it
+mirrors from there — check `.plandrop` before reading the table below.
+
 ```sh
 mkdir -p docs/plans
 cp index.html docs/plans/nested.html
 /path/to/plandrop/bin/plandrop upload docs/plans/nested.html
 /path/to/plandrop/bin/plandrop upload newdoc.html                # a lone file, cwd root
+/path/to/plandrop/bin/plandrop upload docs                       # the localRoot itself
+/path/to/plandrop/bin/plandrop upload docs/plans                 # a dir below it
 mkdir -p evidence && cp index.html evidence/a.html
 /path/to/plandrop/bin/plandrop upload ./evidence                 # → /evidence/…
 /path/to/plandrop/bin/plandrop upload ./evidence .                # → / (flattened)
@@ -97,9 +103,12 @@ Confirm:
 
 | Check | Expect |
 |-------|--------|
-| nested single-file upload | `upload docs/plans/nested.html` prints and opens at `http://<label>.localhost:8083/docs/plans/nested.html` — Apache created the intermediate `docs/` and `docs/plans/` collections. |
-| directory upload lands under its own name | `upload ./evidence` (no remote argument) serves its contents at `/evidence/…`. |
+| nested single-file upload | `upload docs/plans/nested.html` prints and opens at `http://<label>.localhost:8083/plans/nested.html` — `docs/` is the recorded root, and Apache created the intermediate `plans/` collection. With no `localRoot` recorded it lands at `/docs/plans/nested.html` instead. |
+| the recorded root fills the host root | `upload docs` (no remote argument) serves its contents at `/…`, with no `docs/` prefix anywhere — the same places those files land one at a time. |
+| a directory below the root mirrors its subpath | `upload docs/plans` serves its contents at `/plans/…`. |
+| directory upload lands under its own name | `upload ./evidence` (no remote argument, and outside the recorded root) serves its contents at `/evidence/…`. |
 | explicit `.` flattens | `upload ./evidence .` serves the same directory's contents straight at the host root, with no `evidence/` prefix. |
+| `upload .` never mints a cwd folder | From `/tmp/plandrop-manual` itself, `upload .` publishes the tree verbatim at `/…` — no `plandrop-manual/` folder, even though the recorded root is `docs/` below it. |
 | `create`'s hook prompt defaults to yes | In a fresh directory, run `create` at a terminal and press **Enter** (no typed answer) at `Set up a Claude Code hook…? [Y/n]`; it writes `.claude/settings.json` with the autosync hook rather than skipping it. |
 | saving a nested watched file republishes it | With the hook installed (default glob `docs/**/*.html`), editing and saving a file like `docs/plans/x.html` in Claude Code auto-publishes it to the same mirrored path `upload` would use — no manual `upload` needed. |
 | `plandrop hooks` installs standalone | In a project with a `.plandrop` but no hook yet (i.e. `create` was never offered, or was declined), run `plandrop hooks` — it writes `.claude/settings.json` with the hook. Running it again reports an equivalent hook already present and changes nothing. |

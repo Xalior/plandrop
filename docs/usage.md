@@ -242,15 +242,23 @@ the shell sits in the project. Any missing collections along the way are created
 outside that root (absolute, or escaping via `../`) has no mirror image on the host, so
 it falls back to its bare name.
 
-Upload a directory and its contents preserve their internal structure verbatim; the
-remote argument, if given, names the destination folder they land in:
+Upload a directory and its contents preserve their internal structure verbatim. A
+directory resolves against the same root a single file does — its subpath under
+`localRoot`, or under the current directory when none is recorded — and the remote
+argument, if given, names the destination folder they land in instead:
 
 | Command | Contents land at |
 |---------|-------------------|
-| `npx plandrop upload ./evidence` | `/evidence/…` — the directory's own name |
+| `npx plandrop upload ./evidence` | `/evidence/…` — its subpath under the root |
+| `npx plandrop upload docs` | `/…` with `localRoot` docs — the root itself publishes *what's here*, never a folder named after it; `/docs/…` with no `localRoot` |
+| `npx plandrop upload docs/plans` | `/plans/…` with `localRoot` docs — where the same files land one at a time |
 | `npx plandrop upload ./evidence photos` | `/photos/…` — the named destination |
 | `npx plandrop upload ./evidence .` | `/…` — `.` is the explicit way to flatten a directory's contents into the host root |
-| `npx plandrop upload .` | `/…` — the current directory publishes *what's here* to the host root; its own name is incidental and never becomes a folder |
+| `npx plandrop upload .` | `/…` — the current directory publishes *what's here*; its own name is incidental and never becomes a folder |
+
+A directory outside the root (absolute, or escaping via `../`) has no mirror image on
+the host either, so it too falls back to its bare name — except the cwd, whose name you
+never typed.
 
 Trailing slashes on either argument never change the outcome, and each uploaded file
 prints its own shareable URL.

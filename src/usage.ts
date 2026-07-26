@@ -77,22 +77,23 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     detail: `  Pushes a file (or a directory, recursively) to the host in the nearest
   .plandrop, printing every uploaded file's full shareable URL.
 
-  A single file with no remote path publishes where you keep it, relative
-  to the .plandrop's recorded localRoot when one is set, else to the
-  current directory: with localRoot docs, uploading docs/plans/x.html
-  lands at /plans/x.html — the same place the autosync hook publishes it —
-  creating any collections needed along the way. A path outside that root
-  (absolute, or escaping via ../) has no mirror on the host, so it falls
-  back to its bare name. Naming a remote path explicitly always wins and
-  is used exactly as given.
+  With no remote path, a file or directory publishes where you keep it,
+  relative to the .plandrop's recorded localRoot when one is set, else to
+  the current directory: with localRoot docs, uploading docs/plans/x.html
+  lands at /plans/x.html and uploading docs/plans fills /plans/ — the same
+  places the autosync hook publishes them — creating any collections needed
+  along the way. A path outside that root (absolute, or escaping via ../)
+  has no mirror on the host, so it falls back to its bare name.
 
-  A directory upload always preserves its internal structure; the remote
-  argument names the destination folder its contents land in — omitted,
-  the directory's own name is used. Uploading the current directory itself
-  (\`upload .\`) publishes its contents to the host root — "what's here",
-  not a folder named after the cwd. \`.\` as the remote argument is the
-  explicit way to flatten any directory's contents into the host root.
-  Trailing slashes never change the outcome.`,
+  Uploading the root itself fills the host root: "what's here", not a folder
+  named after it. So does \`upload .\` — the cwd's own name is incidental, and
+  never becomes a folder.
+
+  Naming a remote path explicitly always wins and is used exactly as given;
+  for a directory it names the destination folder its contents land in, and
+  \`.\` is the explicit way to flatten any directory's contents into the host
+  root. A directory upload always preserves its internal structure, and
+  trailing slashes never change the outcome.`,
     examples: [
       'plandrop upload docs/plans/x.html',
       'plandrop upload plan.html index.html',

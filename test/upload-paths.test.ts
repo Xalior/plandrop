@@ -78,29 +78,56 @@ describe('mirrorAnchor', () => {
 });
 
 describe('remoteBaseForDirectory', () => {
-  it('defaults to the uploaded directory own name', () => {
-    expect(remoteBaseForDirectory('/work/proj/evidence', undefined)).toBe('evidence');
-    expect(remoteBaseForDirectory('/work/proj/evidence/', undefined)).toBe('evidence');
+  it('defaults to the directory place under the anchor', () => {
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/evidence', undefined)).toBe('evidence');
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/evidence/', undefined)).toBe('evidence');
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/docs/plans', undefined)).toBe(
+      'docs/plans',
+    );
   });
 
   it('takes the named remote base instead', () => {
-    expect(remoteBaseForDirectory('/work/proj/evidence', 'photos')).toBe('photos');
-    expect(remoteBaseForDirectory('/work/proj/evidence', 'photos/')).toBe('photos');
-    expect(remoteBaseForDirectory('/work/proj/evidence', '/photos/2026/')).toBe('photos/2026');
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/evidence', 'photos')).toBe('photos');
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/evidence', 'photos/')).toBe('photos');
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/evidence', '/photos/2026/')).toBe(
+      'photos/2026',
+    );
   });
 
   it('spills the contents into the host root when the base is `.`', () => {
-    expect(remoteBaseForDirectory('/work/proj/evidence', '.')).toBe('');
+    expect(remoteBaseForDirectory('/work/proj', '/work/proj/evidence', '.')).toBe('');
   });
 
-  it('maps the bare cwd to the host root, not the cwd basename', () => {
-    expect(remoteBaseForDirectory('.', undefined)).toBe('');
-    expect(remoteBaseForDirectory('./', undefined)).toBe('');
-    expect(remoteBaseForDirectory(process.cwd(), undefined)).toBe('');
+  it('maps the anchor itself to the host root, not its basename', () => {
+    expect(remoteBaseForDirectory(process.cwd(), '.', undefined)).toBe('');
+    expect(remoteBaseForDirectory(process.cwd(), './', undefined)).toBe('');
+    expect(remoteBaseForDirectory(process.cwd(), process.cwd(), undefined)).toBe('');
   });
 
-  it('still names a cwd-resolving directory given an explicit remote', () => {
-    expect(remoteBaseForDirectory('.', 'photos')).toBe('photos');
+  it('still names an anchor-resolving directory given an explicit remote', () => {
+    expect(remoteBaseForDirectory(process.cwd(), '.', 'photos')).toBe('photos');
+  });
+
+  it('falls back to the bare name for a directory outside the anchor', () => {
+    expect(remoteBaseForDirectory('/work/proj', '/elsewhere/evidence', undefined)).toBe('evidence');
+    expect(remoteBaseForDirectory('/work/proj/docs', '/work/proj/build', undefined)).toBe('build');
+  });
+
+  // The cwd's basename is never typed, so an unmirrored cwd publishes what's
+  // here rather than a folder named after wherever the command ran.
+  it('maps an unmirrored cwd to the host root, not its basename', () => {
+    const anchor = join(process.cwd(), 'docs');
+    expect(remoteBaseForDirectory(anchor, '.', undefined)).toBe('');
+    expect(remoteBaseForDirectory(anchor, process.cwd(), undefined)).toBe('');
+  });
+
+  // localRoot names the local root remote paths resolve against, so a directory
+  // upload lands its contents where the same files land one at a time.
+  it('treats a recorded localRoot as the host root, matching a single file', () => {
+    const anchor = mirrorAnchor('/work/proj', 'docs', '/work/proj');
+    expect(remoteBaseForDirectory(anchor, '/work/proj/docs', undefined)).toBe('');
+    expect(remoteBaseForDirectory(anchor, '/work/proj/docs/plans', undefined)).toBe('plans');
+    expect(mirrorRemote(anchor, '/work/proj/docs/plans/x.html')).toBe('/plans/x.html');
   });
 });
 
@@ -115,7 +142,7 @@ describe('remoteForEntry', () => {
   });
 
   it('publishes a directory under its own name by default', () => {
-    const base = remoteBaseForDirectory('/local/evidence', undefined);
+    const base = remoteBaseForDirectory('/local', '/local/evidence', undefined);
     expect(remoteForEntry('/local/evidence', '/local/evidence/a.jpg', base)).toBe('/evidence/a.jpg');
     expect(remoteForEntry('/local/evidence', '/local/evidence/inner/b.jpg', base)).toBe(
       '/evidence/inner/b.jpg',

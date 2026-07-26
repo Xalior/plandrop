@@ -116,6 +116,35 @@ describe('client upload', () => {
     expect((await davGet(dotfile.host, '/plans/x.html')).body.toString()).toBe('rooted plan');
   });
 
+  // A directory resolves against the same localRoot a single file does: the
+  // root itself fills the host root, and a directory below it mirrors its
+  // subpath — the same places those files land one at a time.
+  it('anchors a no-remote directory upload at the recorded localRoot', async () => {
+    const dotfile = createHost();
+    writeDotfile({ ...dotfile, hookPublish: 'root', localRoot: 'docs' });
+    mkdirSync(join(cwd, 'docs', 'plans'), { recursive: true });
+    writeFileSync(join(cwd, 'docs', 'index.html'), 'docs index');
+    writeFileSync(join(cwd, 'docs', 'plans', 'x.html'), 'rooted plan');
+
+    const wholeRoot = runCli(['upload', 'docs'], { cwd, env: env() });
+    expect(wholeRoot.status).toBe(0);
+    expect(wholeRoot.stdout).toContain(
+      `uploaded docs/index.html → ${hostBaseUri(proxyBase, dotfile.host)}/index.html`,
+    );
+    expect(wholeRoot.stdout).toContain(
+      `uploaded docs/plans/x.html → ${hostBaseUri(proxyBase, dotfile.host)}/plans/x.html`,
+    );
+    expect((await davGet(dotfile.host, '/index.html')).body.toString()).toBe('docs index');
+    expect((await davGet(dotfile.host, '/plans/x.html')).body.toString()).toBe('rooted plan');
+    expect((await davGet(dotfile.host, '/docs/index.html')).status).toBe(404);
+
+    const subdir = runCli(['upload', join('docs', 'plans')], { cwd, env: env() });
+    expect(subdir.status).toBe(0);
+    expect(subdir.stdout).toContain(
+      `uploaded docs/plans/x.html → ${hostBaseUri(proxyBase, dotfile.host)}/plans/x.html`,
+    );
+  });
+
   it('reports the explicit remote path of a single-file upload', async () => {
     const dotfile = createHost();
     writeFileSync(join(cwd, 'plan.html'), 'renamed remote');

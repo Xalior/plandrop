@@ -43,6 +43,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 1;
   }
 
+  const anchor = mirrorAnchor(ctx.dotfileDir, ctx.dotfile.localRoot, process.cwd());
   const client = makeClient(ctx.base, ctx.host, ctx.passphrase);
   const baseUri = hostBaseUri(ctx.base, ctx.host);
   // Every published file reports its own URL, so a directory upload prints a
@@ -61,7 +62,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
       const count = await uploadDirectory(
         client,
         localPath,
-        remoteBaseForDirectory(localPath, remoteArg),
+        remoteBaseForDirectory(anchor, localPath, remoteArg),
         report,
         reportSkip,
       );
@@ -71,10 +72,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
     } else {
       const remote =
         remoteArg === undefined
-          ? mirrorRemote(
-              mirrorAnchor(ctx.dotfileDir, ctx.dotfile.localRoot, process.cwd()),
-              resolve(process.cwd(), localPath),
-            )
+          ? mirrorRemote(anchor, resolve(process.cwd(), localPath))
           : normalizeRemote(remoteArg);
       await ensureParent(client, remote, new Set());
       await putFile(client, remote, readFileSync(localPath));
@@ -119,20 +117,38 @@ export function remoteForEntry(localDir: string, file: string, remoteBase: strin
 
 /**
  * The collection a directory upload's contents land in. The remote argument
- * names that collection; without one the directory's own name is used, so
- * `upload ./evidence` publishes `evidence/…`. `.` names the host root — the
- * explicit way to spill a directory's contents into it.
+ * names that collection outright; without one the directory mirrors the place
+ * it occupies under the anchor (see mirrorAnchor), exactly as a single file
+ * does — so with localRoot `docs`, `upload docs` fills the host root and
+ * `upload docs/plans` fills `plans/`, matching where the same files land one
+ * at a time. With no localRoot the anchor is the cwd, so `upload ./evidence`
+ * publishes `evidence/…` and `upload .` publishes "what's here" to the root.
  *
- * The cwd itself is the exception to the own-name default: `upload .` means
- * "publish what's here", and the cwd's basename is incidental — the user never
- * typed it — so it maps to the host root rather than minting a folder named
- * after wherever the command happened to run.
+ * A directory outside the anchor has no mirror image on the host, so it falls
+ * back to its own name — a remote base never contains `..`. The cwd is the
+ * exception: `upload .` means "publish what's here" and the cwd's basename is
+ * incidental — the user never typed it — so a cwd with no mirror publishes to
+ * the root rather than minting a folder named after wherever the command ran.
+ * `.` as the remote argument is the explicit way to spill any directory's
+ * contents into the root.
  */
-export function remoteBaseForDirectory(localDir: string, remoteArg: string | undefined): string {
-  if (remoteArg === undefined && resolve(localDir) === process.cwd()) {
+export function remoteBaseForDirectory(
+  anchor: string,
+  localDir: string,
+  remoteArg: string | undefined,
+): string {
+  if (remoteArg !== undefined) {
+    return toRemoteBase(remoteArg);
+  }
+  const full = resolve(localDir);
+  const rel = relative(anchor, full);
+  if (rel === '') {
     return '';
   }
-  return toRemoteBase(remoteArg ?? basename(resolve(localDir)));
+  if (isAbsolute(rel) || rel.split(sep)[0] === '..') {
+    return full === process.cwd() ? '' : toRemoteBase(basename(full));
+  }
+  return toRemoteBase(rel.split(sep).join('/'));
 }
 
 /**

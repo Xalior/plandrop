@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.4 — 2026-07-26
+
+### Fixed
+
+- **A directory upload honours `localRoot` too.** `localRoot` names the local
+  root remote paths are resolved against, and a single file obeyed it while a
+  directory did not: with `localRoot: "docs"`, `upload docs/plans/x.html`
+  landed at `/plans/x.html` but `upload docs` published the same file at
+  `/docs/plans/x.html` — a `docs/` folder the recorded root says is the host
+  root. Both branches now resolve against the same anchor, so `upload docs`
+  fills the host root and `upload docs/plans` fills `/plans/`: a directory
+  publishes exactly where its files land one at a time. With no `localRoot`
+  the anchor is the cwd, so `upload ./evidence` still publishes `/evidence/…`;
+  an explicit remote argument still wins; and `upload .` still publishes
+  what's here to the host root — the cwd's own name is never a folder.
+
 ## 0.5.3 — 2026-07-26
 
 ### Changed
