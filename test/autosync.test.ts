@@ -109,8 +109,8 @@ describe('modeFromConfig', () => {
     expect(modeFromConfig({ hookPublish: 'flat' })).toEqual(FLAT_MODE);
   });
 
-  it('reconstructs root from hookPublish + hookRoot', () => {
-    expect(modeFromConfig({ hookPublish: 'root', hookRoot: 'docs' })).toEqual({
+  it('reconstructs root from hookPublish + localRoot', () => {
+    expect(modeFromConfig({ hookPublish: 'root', localRoot: 'docs' })).toEqual({
       kind: 'root',
       dir: 'docs',
     });
@@ -122,7 +122,7 @@ describe('hookConfigPatch', () => {
     expect(hookConfigPatch('plans', MIRROR_MODE)).toEqual({
       hookWatch: 'plans/**/*.html',
       hookPublish: 'mirror',
-      hookRoot: undefined,
+      localRoot: undefined,
     });
   });
 
@@ -130,13 +130,13 @@ describe('hookConfigPatch', () => {
     expect(hookConfigPatch(DEFAULT_WATCH_GLOB, { kind: 'root', dir: 'docs' })).toEqual({
       hookWatch: DEFAULT_WATCH_GLOB,
       hookPublish: 'root',
-      hookRoot: 'docs',
+      localRoot: 'docs',
     });
   });
 
-  it('clears hookRoot (rather than omitting it) outside root mode', () => {
-    expect(hookConfigPatch(DEFAULT_WATCH_GLOB, FLAT_MODE).hookRoot).toBeUndefined();
-    expect(Object.keys(hookConfigPatch(DEFAULT_WATCH_GLOB, FLAT_MODE))).toContain('hookRoot');
+  it('clears localRoot (rather than omitting it) outside root mode', () => {
+    expect(hookConfigPatch(DEFAULT_WATCH_GLOB, FLAT_MODE).localRoot).toBeUndefined();
+    expect(Object.keys(hookConfigPatch(DEFAULT_WATCH_GLOB, FLAT_MODE))).toContain('localRoot');
   });
 });
 

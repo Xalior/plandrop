@@ -74,7 +74,7 @@ export function watchDirOf(glob: string): string {
  * *where to cd*, never how the upload itself resolves a remote path.
  *  - `mirror`: the project root — the silent default, unchanged since this
  *    hook's first shape.
- *  - `root`: a fixed directory under the project root (`--hook-root <dir>`).
+ *  - `root`: a fixed directory under the project root (`--local-root <dir>`).
  *  - `flat`: the saved file's own directory, recomputed on every run
  *    (`--hook-flat`) — the file always lands at the host root by basename.
  */
@@ -84,7 +84,7 @@ export const MIRROR_MODE: PublishMode = { kind: 'mirror' };
 export const FLAT_MODE: PublishMode = { kind: 'flat' };
 
 /**
- * Normalize a `--hook-root` value the same way a watch path is trimmed:
+ * Normalize a `--local-root` value the same way a watch path is trimmed:
  * leading `./` and stray slashes gone. Unlike a watch glob, an empty result is
  * not defaulted to anything of its own — `publishRootMode` treats it as "no
  * root", collapsing to the mirror mode.
@@ -95,7 +95,7 @@ export function normalizeHookRoot(input: string): string {
 
 /**
  * The `root` mode for a given directory — or the `mirror` mode, when the
- * directory normalizes to nothing (an empty `--hook-root`, or a watch glob
+ * directory normalizes to nothing (an empty `--local-root`, or a watch glob
  * with no directory of its own used as the interactive default).
  */
 export function publishRootMode(dir: string): PublishMode {
@@ -112,7 +112,7 @@ export function describeMode(mode: PublishMode): string {
 }
 
 /** The recorded `.plandrop` fields this module reads back as defaults. */
-type RecordedHookConfig = Pick<DotfileConfig, 'hookPublish' | 'hookRoot'>;
+type RecordedHookConfig = Pick<DotfileConfig, 'hookPublish' | 'localRoot'>;
 
 /** The mode a recorded `.plandrop` names, or undefined if it names none. */
 export function modeFromConfig(config: RecordedHookConfig): PublishMode | undefined {
@@ -120,22 +120,22 @@ export function modeFromConfig(config: RecordedHookConfig): PublishMode | undefi
     return FLAT_MODE;
   }
   if (config.hookPublish === 'root') {
-    return publishRootMode(config.hookRoot ?? '');
+    return publishRootMode(config.localRoot ?? '');
   }
   return config.hookPublish === 'mirror' ? MIRROR_MODE : undefined;
 }
 
 /**
  * The `.plandrop` patch that records a chosen watch glob + publish mode, for
- * the merge in dotfile.ts. `hookRoot` is explicitly cleared (not merely
- * omitted) when the mode isn't `root`, so switching away from `--hook-root`
+ * the merge in dotfile.ts. `localRoot` is explicitly cleared (not merely
+ * omitted) when the mode isn't `root`, so switching away from `--local-root`
  * doesn't leave a stale directory behind once `hookPublish` no longer names it.
  */
 export function hookConfigPatch(watchGlob: string, mode: PublishMode): DotfileConfig {
   return {
     hookWatch: normalizeWatchGlob(watchGlob),
     hookPublish: mode.kind,
-    hookRoot: mode.kind === 'root' ? mode.dir : undefined,
+    localRoot: mode.kind === 'root' ? mode.dir : undefined,
   };
 }
 

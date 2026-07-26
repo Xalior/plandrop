@@ -136,7 +136,7 @@ would:
 
 - **mirror the project path** (the silent default — no flags, no prompt): a save at
   `docs/plans/x.html` publishes to `/docs/plans/x.html`.
-- **relative to `<dir>`** (`--hook-root <dir>`): with `--hook-root docs`, that same save
+- **relative to `<dir>`** (`--local-root <dir>`): with `--local-root docs`, that same save
   publishes to `/plans/x.html`.
 - **flat at the host root** (`--hook-flat`): that same save publishes to `/x.html`
   regardless of where under the watched glob it lives.
@@ -146,7 +146,7 @@ mirror image inside the host, so it publishes by bare basename.
 
 `--hook` takes the offer without asking, `--no-hook` skips it (and its prompt), and
 `--hook-path <glob>` sets the watched glob non-interactively. Every hook-taking flag
-(`--hook-path`, `--hook-root`, `--hook-flat`) implies `--hook`; `--hook-root` and
+(`--hook-path`, `--local-root`, `--hook-flat`) implies `--hook`; `--local-root` and
 `--hook-flat` are mutually exclusive. A non-interactive `create` with none of those flags
 sets up nothing. Whichever way the glob and publish root are settled, they're recorded
 into `.plandrop` (see [The `.plandrop` file](#the-plandrop-file)) so a later re-run —
@@ -312,7 +312,7 @@ host — for a project that already has one:
 ```sh
 npx plandrop hooks                                   # uses recorded settings, or the defaults
 npx plandrop hooks "plans/**/*.html"                 # a different glob, positional or --hook-path
-npx plandrop hooks docs/**/*.html --hook-root docs   # publish relative to docs, not the project
+npx plandrop hooks docs/**/*.html --local-root docs   # publish relative to docs, not the project
 ```
 
 It merges the same hook `create`'s offer scaffolds (see [Autosync hook](#autosync-hook))
@@ -326,7 +326,7 @@ or hand-edited hook is found and upgraded rather than left beside a second one. 
 already matches the wanted watch glob and publish root is left alone; one that differs is
 replaced in place, printing what changed.
 
-With no path or `--hook-root`/`--hook-flat` given: at a terminal it asks what to watch and
+With no path or `--local-root`/`--hook-flat` given: at a terminal it asks what to watch and
 where to publish, defaulting both from whatever was recorded last time; otherwise — a bare
 `plandrop hooks` run from a script — it silently re-applies the recorded settings, which is
 how a client version bump upgrades an older hook shape without needing to be told the
@@ -350,7 +350,7 @@ A small JSON file written at mode `0600` in the directory where you ran `create`
 Subsequent commands (`upload`, `rotate`, `remove`) find the nearest `.plandrop` by walking
 up from the current directory — so you can run them from anywhere inside the project.
 
-`hookWatch` and `hookPublish` (plus `hookRoot`, present only when `hookPublish` is
+`hookWatch` and `hookPublish` (plus `localRoot`, present only when `hookPublish` is
 `"root"`) record the autosync hook's watch glob and publish root the last time `create` or
 `hooks` set one up — read back as defaults on a later interactive run, or applied silently
 by a bare `plandrop hooks`. `version` records the plandrop client version that last wrote

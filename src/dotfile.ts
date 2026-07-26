@@ -28,8 +28,8 @@ export interface Dotfile {
   hookWatch?: string;
   /** The publish-root mode recorded alongside hookWatch. */
   hookPublish?: HookPublishMode;
-  /** The `--hook-root` directory, present only when hookPublish is 'root'. */
-  hookRoot?: string;
+  /** The `--local-root` directory, present only when hookPublish is 'root'. */
+  localRoot?: string;
   /**
    * The plandrop client version that last wrote this file (__PLANDROP_VERSION__,
    * stamped centrally by every write/merge below — no call site sets it
@@ -77,7 +77,7 @@ export function readDotfile(path: string): Dotfile {
     !isOptionalString(parsed.template) ||
     !isOptionalString(parsed.hookWatch) ||
     !isOptionalHookPublish(parsed.hookPublish) ||
-    !isOptionalString(parsed.hookRoot) ||
+    !isOptionalString(parsed.localRoot) ||
     !isOptionalString(parsed.version)
   ) {
     throw new Error(`malformed ${DOTFILE_NAME} at ${path}`);
@@ -96,8 +96,8 @@ export function readDotfile(path: string): Dotfile {
   if (parsed.hookPublish !== undefined) {
     dotfile.hookPublish = parsed.hookPublish;
   }
-  if (parsed.hookRoot !== undefined) {
-    dotfile.hookRoot = parsed.hookRoot;
+  if (parsed.localRoot !== undefined) {
+    dotfile.localRoot = parsed.localRoot;
   }
   if (parsed.version !== undefined) {
     dotfile.version = parsed.version;
@@ -120,7 +120,7 @@ export interface DotfileConfig {
   template?: string;
   hookWatch?: string;
   hookPublish?: HookPublishMode;
-  hookRoot?: string;
+  localRoot?: string;
 }
 
 /**
@@ -162,8 +162,8 @@ export function readDotfileConfig(path: string): DotfileConfig {
   if (typeof parsed.hookPublish === 'string' && HOOK_PUBLISH_VALUES.includes(parsed.hookPublish as HookPublishMode)) {
     config.hookPublish = parsed.hookPublish as HookPublishMode;
   }
-  if (typeof parsed.hookRoot === 'string') {
-    config.hookRoot = parsed.hookRoot;
+  if (typeof parsed.localRoot === 'string') {
+    config.localRoot = parsed.localRoot;
   }
   return config;
 }
@@ -189,7 +189,7 @@ export function tryReadDotfileConfig(dir: string): DotfileConfig | undefined {
  * Merge preference keys into the `.plandrop` in `dir`, creating the file if
  * absent. Every existing key — host, passphrase, anything unrecognized — is
  * preserved; only the given keys are set (a key given as `undefined`, e.g.
- * clearing `hookRoot`, is removed rather than left stale). Same 0600 atomic
+ * clearing `localRoot`, is removed rather than left stale). Same 0600 atomic
  * write as any dotfile (it may hold a passphrase).
  */
 export function mergeDotfileConfig(dir: string, patch: DotfileConfig): string {

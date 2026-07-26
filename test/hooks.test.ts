@@ -36,7 +36,7 @@ interface StoredDotfile {
   passphrase: string;
   hookWatch?: string;
   hookPublish?: string;
-  hookRoot?: string;
+  localRoot?: string;
   version?: string;
   [key: string]: unknown;
 }
@@ -156,10 +156,10 @@ describe('plandrop hooks', () => {
     expect((await runHooks()).code).toBe(1);
   });
 
-  describe('--hook-root / --hook-flat', () => {
+  describe('--local-root / --hook-flat', () => {
     it('rejects passing both, before touching anything', async () => {
       writeHost();
-      const { code, err } = await runHooks(['--hook-root', 'docs', '--hook-flat']);
+      const { code, err } = await runHooks(['--local-root', 'docs', '--hook-flat']);
       expect(code).toBe(2);
       expect(err).toMatch(/mutually exclusive/);
       expect(() => readSettings()).toThrow();
@@ -167,7 +167,7 @@ describe('plandrop hooks', () => {
 
     it('installs a root-relative hook', async () => {
       writeHost();
-      expect((await runHooks(['docs/**/*.html', '--hook-root', 'docs'])).code).toBe(0);
+      expect((await runHooks(['docs/**/*.html', '--local-root', 'docs'])).code).toBe(0);
       const command = readSettings().hooks?.PostToolUse?.[0]?.hooks?.[0]?.command;
       expect(command).toContain('cd "${CLAUDE_PROJECT_DIR:-.}/docs"');
     });
@@ -183,11 +183,11 @@ describe('plandrop hooks', () => {
   describe('recorded defaults + upgrade', () => {
     it('records the watch glob and publish mode into .plandrop', async () => {
       writeHost();
-      expect((await runHooks(['docs/**/*.html', '--hook-root', 'docs'])).code).toBe(0);
+      expect((await runHooks(['docs/**/*.html', '--local-root', 'docs'])).code).toBe(0);
       const dotfile = readDotfile();
       expect(dotfile.hookWatch).toBe('docs/**/*.html');
       expect(dotfile.hookPublish).toBe('root');
-      expect(dotfile.hookRoot).toBe('docs');
+      expect(dotfile.localRoot).toBe('docs');
       expect(dotfile.version).toBe(__PLANDROP_VERSION__);
     });
 
@@ -211,7 +211,7 @@ describe('plandrop hooks', () => {
 
     it('an explicit flag overrides one recorded dimension while the other still defaults from it', async () => {
       writeHost();
-      expect((await runHooks(['docs/**/*.html', '--hook-root', 'docs'])).code).toBe(0);
+      expect((await runHooks(['docs/**/*.html', '--local-root', 'docs'])).code).toBe(0);
 
       // Only the watch path is given this time; the root should still default
       // from what was recorded rather than resetting to mirror.

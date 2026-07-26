@@ -33,7 +33,7 @@ interface Dotfile {
   template?: string;
   hookWatch?: string;
   hookPublish?: string;
-  hookRoot?: string;
+  localRoot?: string;
   version?: string;
 }
 
@@ -158,18 +158,18 @@ describe('client create', () => {
   it('records the watch glob, publish mode, and client version into .plandrop when it scaffolds the hook', () => {
     expect(
       runCli(
-        ['create', '--domain', controlAddr, '--hook', '--hook-path', 'docs/**/*.html', '--hook-root', 'docs'],
+        ['create', '--domain', controlAddr, '--hook', '--hook-path', 'docs/**/*.html', '--local-root', 'docs'],
         { cwd, env: env() },
       ).status,
     ).toBe(0);
     const dotfile = readDotfile();
     expect(dotfile.hookWatch).toBe('docs/**/*.html');
     expect(dotfile.hookPublish).toBe('root');
-    expect(dotfile.hookRoot).toBe('docs');
+    expect(dotfile.localRoot).toBe('docs');
     expect(dotfile.version).toBe(__PLANDROP_VERSION__);
   });
 
-  it('--hook-flat alone implies the hook, like --hook-root and --hook-path do', () => {
+  it('--hook-flat alone implies the hook, like --local-root and --hook-path do', () => {
     expect(
       runCli(['create', '--domain', controlAddr, '--hook-flat'], { cwd, env: env() }).status,
     ).toBe(0);
@@ -180,9 +180,9 @@ describe('client create', () => {
     expect(readDotfile().hookPublish).toBe('flat');
   });
 
-  it('rejects --hook-root and --hook-flat together, without minting a host', () => {
+  it('rejects --local-root and --hook-flat together, without minting a host', () => {
     const result = runCli(
-      ['create', '--domain', controlAddr, '--hook-root', 'docs', '--hook-flat'],
+      ['create', '--domain', controlAddr, '--local-root', 'docs', '--hook-flat'],
       { cwd, env: env() },
     );
     expect(result.status).toBe(2);

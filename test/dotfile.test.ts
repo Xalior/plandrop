@@ -64,7 +64,7 @@ describe('dotfile read/write', () => {
   });
 
   it('round-trips the hook fields', () => {
-    const withHooks = { ...sample, hookWatch: 'plans/**/*.html', hookPublish: 'root' as const, hookRoot: 'plans' };
+    const withHooks = { ...sample, hookWatch: 'plans/**/*.html', hookPublish: 'root' as const, localRoot: 'plans' };
     const path = writeDotfile(workdir, withHooks);
     expect(readDotfile(path)).toEqual({ ...withHooks, version: __PLANDROP_VERSION__ });
   });

@@ -2,6 +2,17 @@
 
 ## [Unreleased] — 0.6.0
 
+## 0.5.2 — 2026-07-26
+
+### Fixed
+
+- **`--hook-root` misnamed the concept — it is `--local-root`, and the dotfile
+  key `hookRoot` is `localRoot`.** The value names the local root that remote
+  paths are resolved against, which is not a hook-only concern. Same
+  semantics, same `--hook-flat` exclusivity, same implied `--hook`. No
+  compatibility shim: a `.plandrop` written with `hookRoot` needs the key
+  renamed to `localRoot`.
+
 ## 0.5.1 — 2026-07-25
 
 ### Fixed

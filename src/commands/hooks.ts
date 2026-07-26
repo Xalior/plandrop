@@ -36,8 +36,8 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 0;
   }
   const flags = parseFlags(dispatch.params);
-  if (flags.hookRoot !== undefined && flags.hookFlat) {
-    process.stderr.write(`--hook-root and --hook-flat are mutually exclusive\n${usageLine('hooks')}\n`);
+  if (flags.localRoot !== undefined && flags.hookFlat) {
+    process.stderr.write(`--local-root and --hook-flat are mutually exclusive\n${usageLine('hooks')}\n`);
     return 2;
   }
   const cwd = process.cwd();
@@ -57,8 +57,8 @@ export async function run(dispatch: Dispatch): Promise<number> {
 
   const flagMode = flags.hookFlat
     ? FLAT_MODE
-    : flags.hookRoot !== undefined
-      ? publishRootMode(flags.hookRoot)
+    : flags.localRoot !== undefined
+      ? publishRootMode(flags.localRoot)
       : undefined;
 
   let glob: string;
@@ -88,14 +88,14 @@ export async function run(dispatch: Dispatch): Promise<number> {
 interface HooksFlags {
   /** The watched path: a positional argument or --hook-path. */
   watch: string | undefined;
-  /** --hook-root <dir>; mutually exclusive with hookFlat. */
-  hookRoot: string | undefined;
+  /** --local-root <dir>; mutually exclusive with hookFlat. */
+  localRoot: string | undefined;
   /** --hook-flat. */
   hookFlat: boolean;
 }
 
 function parseFlags(params: readonly string[]): HooksFlags {
-  const flags: HooksFlags = { watch: undefined, hookRoot: undefined, hookFlat: false };
+  const flags: HooksFlags = { watch: undefined, localRoot: undefined, hookFlat: false };
   for (let i = 0; i < params.length; i += 1) {
     const param = params[i];
     if (param === undefined) {
@@ -106,11 +106,11 @@ function parseFlags(params: readonly string[]): HooksFlags {
       i += 1;
     } else if (param.startsWith('--hook-path=')) {
       flags.watch = param.slice('--hook-path='.length);
-    } else if (param === '--hook-root') {
-      flags.hookRoot = params[i + 1];
+    } else if (param === '--local-root') {
+      flags.localRoot = params[i + 1];
       i += 1;
-    } else if (param.startsWith('--hook-root=')) {
-      flags.hookRoot = param.slice('--hook-root='.length);
+    } else if (param.startsWith('--local-root=')) {
+      flags.localRoot = param.slice('--local-root='.length);
     } else if (param === '--hook-flat') {
       flags.hookFlat = true;
     } else if (!param.startsWith('-') && flags.watch === undefined) {

@@ -35,8 +35,8 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 0;
   }
   const flags = parseFlags(dispatch.params);
-  if (flags.hookRoot !== undefined && flags.hookFlat) {
-    process.stderr.write(`--hook-root and --hook-flat are mutually exclusive\n${usageLine('create')}\n`);
+  if (flags.localRoot !== undefined && flags.hookFlat) {
+    process.stderr.write(`--local-root and --hook-flat are mutually exclusive\n${usageLine('create')}\n`);
     return 2;
   }
   const cwd = process.cwd();
@@ -105,7 +105,7 @@ export function hookOfferAccepted(answer: string | undefined): boolean {
 
 /**
  * Offer to scaffold the Claude Code auto-publish hook for the new host.
- * --hook/--hook-path/--hook-root/--hook-flat take it without a prompt,
+ * --hook/--hook-path/--local-root/--hook-flat take it without a prompt,
  * --no-hook declines; otherwise it is offered only at a terminal — a
  * scripted create without flags sets up nothing. Whichever way the watch glob and publish
  * mode are settled, they are recorded into .plandrop so a later re-run
@@ -124,14 +124,14 @@ async function offerAutosyncHook(
   if (
     flags.hook === true ||
     flags.hookPath !== undefined ||
-    flags.hookRoot !== undefined ||
+    flags.localRoot !== undefined ||
     flags.hookFlat === true
   ) {
     glob = normalizeWatchGlob(flags.hookPath ?? existingConfig?.hookWatch ?? DEFAULT_WATCH_GLOB);
     const flagMode = flags.hookFlat
       ? FLAT_MODE
-      : flags.hookRoot !== undefined
-        ? publishRootMode(flags.hookRoot)
+      : flags.localRoot !== undefined
+        ? publishRootMode(flags.localRoot)
         : undefined;
     mode = flagMode ?? modeFromConfig(existingConfig ?? {}) ?? MIRROR_MODE;
   } else if (process.stdin.isTTY === true) {
@@ -175,8 +175,8 @@ interface CreateFlags {
   /** --hook (true) / --no-hook (false); undefined = offer interactively. */
   hook: boolean | undefined;
   hookPath: string | undefined;
-  /** --hook-root <dir>; mutually exclusive with hookFlat. */
-  hookRoot: string | undefined;
+  /** --local-root <dir>; mutually exclusive with hookFlat. */
+  localRoot: string | undefined;
   /** --hook-flat. */
   hookFlat: boolean;
 }
@@ -188,7 +188,7 @@ function parseFlags(params: readonly string[]): CreateFlags {
     template: undefined,
     hook: undefined,
     hookPath: undefined,
-    hookRoot: undefined,
+    localRoot: undefined,
     hookFlat: false,
   };
   for (let i = 0; i < params.length; i += 1) {
@@ -204,11 +204,11 @@ function parseFlags(params: readonly string[]): CreateFlags {
       i += 1;
     } else if (param?.startsWith('--hook-path=')) {
       flags.hookPath = param.slice('--hook-path='.length);
-    } else if (param === '--hook-root') {
-      flags.hookRoot = params[i + 1];
+    } else if (param === '--local-root') {
+      flags.localRoot = params[i + 1];
       i += 1;
-    } else if (param?.startsWith('--hook-root=')) {
-      flags.hookRoot = param.slice('--hook-root='.length);
+    } else if (param?.startsWith('--local-root=')) {
+      flags.localRoot = param.slice('--local-root='.length);
     } else if (param === '--hook-flat') {
       flags.hookFlat = true;
     } else if (param === '--domain') {
