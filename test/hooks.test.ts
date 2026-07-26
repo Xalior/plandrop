@@ -86,7 +86,7 @@ describe('plandrop hooks', () => {
     out.mockRestore();
     expect(code).toBe(0);
     expect(readSettings().hooks?.PostToolUse?.[0]?.hooks?.[0]?.command).toBe(
-      autosyncCommand(DEFAULT_WATCH_GLOB),
+      autosyncCommand(DEFAULT_WATCH_GLOB, { kind: 'root', dir: 'docs' }),
     );
   });
 
@@ -98,20 +98,35 @@ describe('plandrop hooks', () => {
     expect(out).toContain(DEFAULT_WATCH_GLOB);
     const entry = readSettings().hooks?.PostToolUse?.[0];
     expect(entry?.matcher).toBe('Write|Edit');
-    expect(entry?.hooks?.[0]?.command).toBe(autosyncCommand(DEFAULT_WATCH_GLOB));
+    expect(entry?.hooks?.[0]?.command).toBe(
+      autosyncCommand(DEFAULT_WATCH_GLOB, { kind: 'root', dir: 'docs' }),
+    );
+  });
+
+  it('a silent run lands in the same defaults the prompts preselect', async () => {
+    // stdin is not a TTY here, so this is the scripted/agent path: with
+    // nothing recorded it must pick root-of-watch-dir — the interactive
+    // prompt's preselected answer — not a mode no prompt would default to.
+    writeHost();
+    expect((await runHooks()).code).toBe(0);
+    const dotfile = readDotfile();
+    expect(dotfile.hookPublish).toBe('root');
+    expect(dotfile.localRoot).toBe('docs');
   });
 
   it('takes the watch path positionally or as --hook-path', async () => {
     writeHost();
     expect((await runHooks(['plans'])).code).toBe(0);
     expect(readSettings().hooks?.PostToolUse?.[0]?.hooks?.[0]?.command).toBe(
-      autosyncCommand('plans/**/*.html'),
+      autosyncCommand('plans/**/*.html', { kind: 'root', dir: 'plans' }),
     );
 
     rmSync(join(workdir, '.claude'), { recursive: true, force: true });
+    // The first run recorded root/plans, and a recorded mode outranks the
+    // watch-dir default — only the watch glob changes here.
     expect((await runHooks(['--hook-path', 'notes/*.html'])).code).toBe(0);
     expect(readSettings().hooks?.PostToolUse?.[0]?.hooks?.[0]?.command).toBe(
-      autosyncCommand('notes/*.html'),
+      autosyncCommand('notes/*.html', { kind: 'root', dir: 'plans' }),
     );
   });
 
@@ -131,7 +146,9 @@ describe('plandrop hooks', () => {
     const post = settings.hooks?.PostToolUse ?? [];
     expect(post).toHaveLength(2);
     expect(post[0]?.matcher).toBe('Bash');
-    expect(post[1]?.hooks?.[0]?.command).toBe(autosyncCommand(DEFAULT_WATCH_GLOB));
+    expect(post[1]?.hooks?.[0]?.command).toBe(
+      autosyncCommand(DEFAULT_WATCH_GLOB, { kind: 'root', dir: 'docs' }),
+    );
   });
 
   it('changes nothing when an equivalent hook is already installed', async () => {
@@ -177,6 +194,17 @@ describe('plandrop hooks', () => {
       expect((await runHooks(['--hook-flat'])).code).toBe(0);
       const command = readSettings().hooks?.PostToolUse?.[0]?.hooks?.[0]?.command;
       expect(command).toContain('cd "$(dirname "$f")"');
+    });
+
+    it('an empty --local-root selects mirror explicitly', async () => {
+      // The only non-interactive spelling of mirror mode — an empty root
+      // collapses to it — so scripts and agents can steer away from the
+      // root-of-watch-dir default without a prompt.
+      writeHost();
+      expect((await runHooks(['--local-root='])).code).toBe(0);
+      const command = readSettings().hooks?.PostToolUse?.[0]?.hooks?.[0]?.command;
+      expect(command).toContain('cd "${CLAUDE_PROJECT_DIR:-.}" &&');
+      expect(readDotfile().hookPublish).toBe('mirror');
     });
   });
 

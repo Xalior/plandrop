@@ -25,6 +25,8 @@ interface Dotfile {
   domain: string;
   host: string;
   passphrase: string;
+  hookPublish?: string;
+  localRoot?: string;
 }
 
 function env(): NodeJS.ProcessEnv {
@@ -90,6 +92,28 @@ describe('client upload', () => {
       `uploaded docs/plans/x.html → ${hostBaseUri(proxyBase, dotfile.host)}/docs/plans/x.html`,
     );
     expect((await davGet(dotfile.host, '/docs/plans/x.html')).body.toString()).toBe('nested plan');
+  });
+
+  it('anchors a no-remote upload at the recorded localRoot, from anywhere in the project', async () => {
+    const dotfile = createHost();
+    writeDotfile({ ...dotfile, hookPublish: 'root', localRoot: 'docs' });
+    mkdirSync(join(cwd, 'docs', 'plans'), { recursive: true });
+    writeFileSync(join(cwd, 'docs', 'plans', 'x.html'), 'rooted plan');
+
+    // From the project root…
+    const fromRoot = runCli(['upload', join('docs', 'plans', 'x.html')], { cwd, env: env() });
+    expect(fromRoot.status).toBe(0);
+    expect(fromRoot.stdout).toContain(`→ ${hostBaseUri(proxyBase, dotfile.host)}/plans/x.html`);
+
+    // …and from deep inside that root: same file, same remote path.
+    const fromDeep = runCli(['upload', 'x.html'], {
+      cwd: join(cwd, 'docs', 'plans'),
+      env: env(),
+    });
+    expect(fromDeep.status).toBe(0);
+    expect(fromDeep.stdout).toContain(`→ ${hostBaseUri(proxyBase, dotfile.host)}/plans/x.html`);
+
+    expect((await davGet(dotfile.host, '/plans/x.html')).body.toString()).toBe('rooted plan');
   });
 
   it('reports the explicit remote path of a single-file upload', async () => {

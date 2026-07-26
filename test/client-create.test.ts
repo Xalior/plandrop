@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest';
@@ -94,9 +94,15 @@ describe('client create', () => {
     expect(existsSync(join(cwd, '.plandrop'))).toBe(false);
   });
 
-  it('stores the default alias in the dotfile when no --template flag', () => {
+  it('omits template from the dotfile when no --template flag', () => {
+    // A recorded template would shadow the per-user config's `template` in
+    // newdoc's fallback chain (flag > dotfile > user config > default alias),
+    // so an unexpressed preference must stay absent — even when the user
+    // config names one.
+    mkdirSync(join(configHome, 'plandrop'), { recursive: true });
+    writeFileSync(join(configHome, 'plandrop', 'config.json'), '{ "template": "darkly" }\n');
     expect(runCli(['create', '--domain', controlAddr], { cwd, env: env() }).status).toBe(0);
-    expect(readDotfile().template).toBe('default');
+    expect(readDotfile().template).toBeUndefined();
   });
 
   it('stores the chosen template name with --template', () => {
@@ -147,9 +153,12 @@ describe('client create', () => {
       hooks: { PostToolUse: { matcher: string; hooks: { command: string }[] }[] };
     };
     expect(settings.hooks.PostToolUse[0]?.matcher).toBe('Write|Edit');
-    // The saved file publishes at its project-relative path, not a flattened
-    // basename under the watched directory.
+    // No mode flag given, so the hook publishes relative to the watched
+    // directory — the same default the interactive prompt preselects.
     expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain('case "$f" in */plans/*.html)');
+    expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain(
+      'cd "${CLAUDE_PROJECT_DIR:-.}/plans"',
+    );
     expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain(
       'plandrop upload "${f#"$PWD"/}"',
     );

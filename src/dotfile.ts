@@ -31,10 +31,12 @@ export interface Dotfile {
   /** The `--local-root` directory, present only when hookPublish is 'root'. */
   localRoot?: string;
   /**
-   * The plandrop client version that last wrote this file (__PLANDROP_VERSION__,
-   * stamped centrally by every write/merge below — no call site sets it
-   * directly, so none can forget). Recorded, not yet read: a future upgrade
-   * flow uses it to know what changed since.
+   * The plandrop client version that last MUTATED this file
+   * (__PLANDROP_VERSION__, stamped centrally by the raw write below — no call
+   * site sets it directly, so none can forget). A run that changes nothing
+   * doesn't touch it: mergeDotfileConfig skips the write outright, so the
+   * stamp stays a mutation record, not a last-used marker. Recorded, not yet
+   * read: a future upgrade flow uses it to know what changed since.
    */
   version?: string;
 }
@@ -190,14 +192,30 @@ export function tryReadDotfileConfig(dir: string): DotfileConfig | undefined {
  * absent. Every existing key — host, passphrase, anything unrecognized — is
  * preserved; only the given keys are set (a key given as `undefined`, e.g.
  * clearing `localRoot`, is removed rather than left stale). Same 0600 atomic
- * write as any dotfile (it may hold a passphrase).
+ * write as any dotfile (it may hold a passphrase). A patch that changes
+ * nothing leaves the file untouched: the `version` stamp records the client
+ * that last MUTATED the file, so a no-op run must not claim it.
  */
 export function mergeDotfileConfig(dir: string, patch: DotfileConfig): string {
   const path = join(dir, DOTFILE_NAME);
   const existing = existsSync(path)
     ? (JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>)
     : {};
-  return writeDotfileRaw(dir, { ...existing, ...patch });
+  const merged = { ...existing, ...patch };
+  if (JSON.stringify(dropUndefined(merged)) === JSON.stringify(dropUndefined(existing))) {
+    return path;
+  }
+  return writeDotfileRaw(dir, merged);
+}
+
+/**
+ * The object as JSON.stringify will actually serialize it — undefined-valued
+ * keys gone — so the changed-or-not comparison in mergeDotfileConfig sees
+ * exactly what a write would produce (a cleared key vs. an absent key is no
+ * difference at all on disk).
+ */
+function dropUndefined(data: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
 }
 
 /**

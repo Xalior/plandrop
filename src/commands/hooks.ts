@@ -1,11 +1,10 @@
 import { dirname } from 'node:path';
 import {
+  defaultPublishMode,
   describeHookOutcome,
   DEFAULT_WATCH_GLOB,
   FLAT_MODE,
-  MIRROR_MODE,
   hookConfigPatch,
-  modeFromConfig,
   normalizeWatchGlob,
   promptPublishMode,
   promptWatchGlob,
@@ -26,9 +25,10 @@ import type { Dispatch } from '../dispatch';
  *
  * With no watch/root flags at all: at a terminal it asks (defaulting from
  * whatever was last recorded); otherwise — a bare `plandrop hooks` run from a
- * script — it silently re-applies the recorded settings (or the defaults, if
- * nothing was ever recorded), the "upgrade" path a client version bump relies
- * on to refresh an older hook shape in place.
+ * script or an agent — it silently applies the recorded settings, or the very
+ * defaults the prompts preselect when nothing was ever recorded, so both
+ * paths land in the same place. The silent run is also the "upgrade" path a
+ * client version bump relies on to refresh an older hook shape in place.
  */
 export async function run(dispatch: Dispatch): Promise<number> {
   if (wantsHelp(dispatch.params)) {
@@ -65,13 +65,13 @@ export async function run(dispatch: Dispatch): Promise<number> {
   let mode: PublishMode;
   if (flags.watch !== undefined || flagMode !== undefined) {
     glob = normalizeWatchGlob(flags.watch ?? recorded.hookWatch ?? DEFAULT_WATCH_GLOB);
-    mode = flagMode ?? modeFromConfig(recorded) ?? MIRROR_MODE;
+    mode = flagMode ?? defaultPublishMode(glob, recorded);
   } else if (process.stdin.isTTY === true) {
     glob = await promptWatchGlob(recorded.hookWatch);
     mode = await promptPublishMode(glob, recorded);
   } else {
     glob = normalizeWatchGlob(recorded.hookWatch ?? DEFAULT_WATCH_GLOB);
-    mode = modeFromConfig(recorded) ?? MIRROR_MODE;
+    mode = defaultPublishMode(glob, recorded);
   }
 
   try {

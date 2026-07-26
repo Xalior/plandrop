@@ -2,6 +2,49 @@
 
 ## [Unreleased] — 0.6.0
 
+### Changed
+
+- **The silent hook default now matches the interactive one.** With no mode
+  flag and nothing recorded, a non-TTY `create --hook`/`hooks` run picked
+  `mirror` while the interactive prompt preselected publishing relative to
+  the watched directory — so an agent-driven install (which can never reach
+  the prompts) landed documents at `/docs/…` where a human pressing Enter
+  would have got them at the host root. Every path now defaults to
+  root-of-watch-dir (collapsing to mirror when the watch glob has no
+  directory of its own); flags and recorded settings steer it exactly as
+  before, and an empty `--local-root=""` selects mirror explicitly without a
+  prompt. A `.plandrop` that already records `"hookPublish": "mirror"` keeps
+  mirroring — only never-recorded setups feel the change.
+
+### Fixed
+
+- **`upload` honours `localRoot`, completing the 0.5.2 rename's promise.** The
+  key names the local root remote paths are resolved against — not a hook-only
+  setting — yet only the generated hook applied it (by `cd`ing there). A
+  single-file upload with no explicit remote now mirrors against the recorded
+  `localRoot` (under the dotfile's directory): with `localRoot: "docs"`,
+  `upload docs/plans/x.html` publishes `/plans/x.html` from anywhere in the
+  project — exactly where the hook lands the same save — instead of wherever
+  the shell's cwd happened to place it. No `localRoot` recorded → cwd-relative
+  mirroring, unchanged; an explicit remote argument still wins; directory
+  uploads keep their own-name semantics.
+
+- **`.plandrop`'s `version` stamp records mutations, not uses.** A run whose
+  config merge changes nothing (a bare `plandrop hooks` re-applying what's
+  already recorded, or flags matching the recorded state) leaves the file
+  byte-identical — it no longer rewrote the dotfile just to restamp `version`
+  with whichever client happened to run, which destroyed the stamp's value as
+  a record of what last *changed* the file.
+
+- **`create` no longer buries the per-user template preference.** With no
+  `--template` flag it wrote the literal `default` alias into `.plandrop`,
+  and — the dotfile outranking the user config in `newdoc`'s fallback chain —
+  that fabricated entry shadowed `~/.config/plandrop/config.json`'s `template`
+  on every host minted thereafter. An unexpressed preference now stays absent
+  from the dotfile, so the per-user config keeps working; a host minted from a
+  config-only `.plandrop` (`init --local`) still inherits its recorded
+  template unchanged.
+
 ## 0.5.2 — 2026-07-26
 
 ### Fixed

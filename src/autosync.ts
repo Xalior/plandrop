@@ -72,8 +72,8 @@ export function watchDirOf(glob: string): string {
  * always the directory the hook `cd`s into before calling `upload`, whose own
  * cwd-relative mirroring places the file — this module only ever decides
  * *where to cd*, never how the upload itself resolves a remote path.
- *  - `mirror`: the project root — the silent default, unchanged since this
- *    hook's first shape.
+ *  - `mirror`: the project root — also what the default (root-of-watch-dir)
+ *    collapses to when the watch glob has no directory of its own.
  *  - `root`: a fixed directory under the project root (`--local-root <dir>`).
  *  - `flat`: the saved file's own directory, recomputed on every run
  *    (`--hook-flat`) — the file always lands at the host root by basename.
@@ -112,7 +112,7 @@ export function describeMode(mode: PublishMode): string {
 }
 
 /** The recorded `.plandrop` fields this module reads back as defaults. */
-type RecordedHookConfig = Pick<DotfileConfig, 'hookPublish' | 'localRoot'>;
+export type RecordedHookConfig = Pick<DotfileConfig, 'hookPublish' | 'localRoot'>;
 
 /** The mode a recorded `.plandrop` names, or undefined if it names none. */
 export function modeFromConfig(config: RecordedHookConfig): PublishMode | undefined {
@@ -123,6 +123,20 @@ export function modeFromConfig(config: RecordedHookConfig): PublishMode | undefi
     return publishRootMode(config.localRoot ?? '');
   }
   return config.hookPublish === 'mirror' ? MIRROR_MODE : undefined;
+}
+
+/**
+ * The publish mode when no flag steers it: whatever a prior run recorded, or
+ * relative to the watched directory (collapsing to mirror when the glob has no
+ * directory of its own). One default for every path — the interactive prompt
+ * preselects it and the silent no-flags run applies it — so a scripted or
+ * agent-driven install lands exactly where a human pressing Enter would.
+ */
+export function defaultPublishMode(
+  glob: string,
+  recorded: RecordedHookConfig | undefined,
+): PublishMode {
+  return modeFromConfig(recorded ?? {}) ?? publishRootMode(watchDirOf(glob));
 }
 
 /**
@@ -389,7 +403,7 @@ export async function promptPublishMode(
 ): Promise<PublishMode> {
   const rootDir = watchDirOf(glob);
   const dirLabel = rootDir === '' ? 'the project root' : rootDir;
-  const defaultMode = modeFromConfig(recorded ?? {}) ?? publishRootMode(rootDir);
+  const defaultMode = defaultPublishMode(glob, recorded);
   const answer = await promptLine(publishModePrompt(defaultMode, dirLabel));
   return parsePublishAnswer(answer, defaultMode, rootDir);
 }

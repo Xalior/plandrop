@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   autosyncCommand,
   DEFAULT_WATCH_GLOB,
+  defaultPublishMode,
   describeHookOutcome,
   describeMode,
   FLAT_MODE,
@@ -117,6 +118,22 @@ describe('modeFromConfig', () => {
   });
 });
 
+describe('defaultPublishMode', () => {
+  it('prefers a recorded mode over the watch-dir default', () => {
+    expect(defaultPublishMode(DEFAULT_WATCH_GLOB, { hookPublish: 'flat' })).toEqual(FLAT_MODE);
+    expect(defaultPublishMode(DEFAULT_WATCH_GLOB, { hookPublish: 'mirror' })).toEqual(MIRROR_MODE);
+  });
+
+  it('defaults to root-of-watch-dir when nothing is recorded', () => {
+    expect(defaultPublishMode(DEFAULT_WATCH_GLOB, undefined)).toEqual({ kind: 'root', dir: 'docs' });
+    expect(defaultPublishMode('plans/*.html', {})).toEqual({ kind: 'root', dir: 'plans' });
+  });
+
+  it('collapses to mirror when the glob has no directory of its own', () => {
+    expect(defaultPublishMode('*.html', undefined)).toEqual(MIRROR_MODE);
+  });
+});
+
 describe('hookConfigPatch', () => {
   it('records the normalized glob and mode kind', () => {
     expect(hookConfigPatch('plans', MIRROR_MODE)).toEqual({
@@ -173,7 +190,7 @@ describe('describeMode', () => {
 });
 
 describe('autosyncCommand', () => {
-  it('matches the proven hook shape for the default glob (mirror, the silent default)', () => {
+  it('matches the proven hook shape for the default glob in mirror mode', () => {
     const command = autosyncCommand(DEFAULT_WATCH_GLOB);
     expect(command).toBe(
       'jq -r \'.tool_input.file_path // .tool_response.filePath\' | ' +

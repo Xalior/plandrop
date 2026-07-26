@@ -4,6 +4,7 @@ import { join, sep } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   listFiles,
+  mirrorAnchor,
   mirrorRemote,
   normalizeRemote,
   remoteBaseForDirectory,
@@ -53,6 +54,26 @@ describe('mirrorRemote', () => {
     expect(mirrorRemote('/work/proj', '../elsewhere/x.html')).toBe('/x.html');
     expect(mirrorRemote('/work/proj', 'docs/../../elsewhere/x.html')).toBe('/x.html');
     expect(mirrorRemote('/work/proj', '/tmp/probe.jpg')).toBe('/probe.jpg');
+  });
+});
+
+describe('mirrorAnchor', () => {
+  it('anchors at dotfileDir/localRoot when one is recorded, wherever the shell sits', () => {
+    expect(mirrorAnchor('/work/proj', 'docs', '/work/proj')).toBe('/work/proj/docs');
+    expect(mirrorAnchor('/work/proj', 'docs', '/work/proj/docs/plans')).toBe('/work/proj/docs');
+  });
+
+  it('anchors at the cwd when no localRoot is recorded', () => {
+    expect(mirrorAnchor('/work/proj', undefined, '/somewhere/else')).toBe('/somewhere/else');
+    expect(mirrorAnchor('/work/proj', '', '/somewhere/else')).toBe('/somewhere/else');
+  });
+
+  it('composes with mirrorRemote to land a file where the hook publishes it', () => {
+    const anchor = mirrorAnchor('/work/proj', 'docs', '/work/proj');
+    expect(mirrorRemote(anchor, '/work/proj/docs/plans/x.html')).toBe('/plans/x.html');
+    // Outside the root there is no mirror image — bare basename, the same
+    // fallback the hook's own out-of-root saves take.
+    expect(mirrorRemote(anchor, '/work/proj/README.html')).toBe('/README.html');
   });
 });
 

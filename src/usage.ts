@@ -41,15 +41,16 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     --hook              scaffold the auto-publish hook without asking
     --no-hook           skip the hook (and its prompt)
     --hook-path <glob>  what the hook watches (default docs/**/*.html; implies --hook)
-    --local-root <dir>   publish relative to <dir> (under the project root)
-                        instead of mirroring the full project path; implies
+    --local-root <dir>   publish relative to <dir> (under the project root);
+                        the default is the watched directory itself, an
+                        empty <dir> mirrors the project path; implies
                         --hook; mutually exclusive with --hook-flat
     --hook-flat         publish every watched file flat at the host root, by
                         its own basename; mutually exclusive with --local-root`,
     examples: [
       'plandrop create --domain https://plandrop.example.com',
       'plandrop create --hook --hook-path plans/*.html',
-      'plandrop create --hook --hook-path docs/**/*.html --local-root docs',
+      'plandrop create --hook --hook-path docs/**/*.html --hook-flat',
     ],
   },
   newdoc: {
@@ -76,12 +77,14 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     detail: `  Pushes a file (or a directory, recursively) to the host in the nearest
   .plandrop, printing every uploaded file's full shareable URL.
 
-  A single file with no remote path publishes where you keep it: uploading
-  docs/plans/x.html lands at /docs/plans/x.html, creating any collections
-  needed along the way. A path outside the current directory (absolute, or
-  escaping via ../) has no mirror on the host, so it falls back to its
-  bare name. Naming a remote path explicitly always wins and is used
-  exactly as given.
+  A single file with no remote path publishes where you keep it, relative
+  to the .plandrop's recorded localRoot when one is set, else to the
+  current directory: with localRoot docs, uploading docs/plans/x.html
+  lands at /plans/x.html — the same place the autosync hook publishes it —
+  creating any collections needed along the way. A path outside that root
+  (absolute, or escaping via ../) has no mirror on the host, so it falls
+  back to its bare name. Naming a remote path explicitly always wins and
+  is used exactly as given.
 
   A directory upload always preserves its internal structure; the remote
   argument names the destination folder its contents land in — omitted,
@@ -164,20 +167,24 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
 
   With no path/flags at all: at a terminal it asks what to watch and where
   to publish (defaulting from what's recorded); otherwise it silently
-  re-applies the recorded settings — a bare \`plandrop hooks\` upgrades an
-  older hook shape in place without needing to be told the settings again.
+  applies the recorded settings — or the same defaults the prompts
+  preselect (watch docs/**/*.html, publish relative to the watched
+  directory), so a scripted run lands where an interactive one would — and
+  a bare \`plandrop hooks\` upgrades an older hook shape in place without
+  needing to be told the settings again.
 
     --hook-path <glob>  what the hook watches (default docs/**/*.html); the
                         same value may be given as a positional argument
-    --local-root <dir>   publish relative to <dir> (under the project root)
-                        instead of mirroring the full project path;
+    --local-root <dir>   publish relative to <dir> (under the project root);
+                        the default is the watched directory itself, an
+                        empty <dir> mirrors the project path;
                         mutually exclusive with --hook-flat
     --hook-flat         publish every watched file flat at the host root, by
                         its own basename; mutually exclusive with --local-root`,
     examples: [
       'plandrop hooks',
       'plandrop hooks "plans/**/*.html"',
-      'plandrop hooks docs/**/*.html --local-root docs',
+      'plandrop hooks docs/**/*.html --hook-flat',
     ],
   },
   help: {

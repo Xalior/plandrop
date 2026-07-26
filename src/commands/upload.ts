@@ -71,7 +71,10 @@ export async function run(dispatch: Dispatch): Promise<number> {
     } else {
       const remote =
         remoteArg === undefined
-          ? mirrorRemote(process.cwd(), localPath)
+          ? mirrorRemote(
+              mirrorAnchor(ctx.dotfileDir, ctx.dotfile.localRoot, process.cwd()),
+              resolve(process.cwd(), localPath),
+            )
           : normalizeRemote(remoteArg);
       await ensureParent(client, remote, new Set());
       await putFile(client, remote, readFileSync(localPath));
@@ -133,10 +136,27 @@ export function remoteBaseForDirectory(localDir: string, remoteArg: string | und
 }
 
 /**
+ * The directory a no-remote single-file upload mirrors against. A recorded
+ * `localRoot` names it, under the dotfile's own directory: remote paths
+ * anchor to that root however deep the shell happens to sit, landing exactly
+ * where the autosync hook (which `cd`s to the same root) publishes the same
+ * file — `localRoot` names the local root remote paths are resolved against,
+ * not a hook-only setting. Without one, the cwd anchors.
+ */
+export function mirrorAnchor(
+  dotfileDir: string,
+  localRoot: string | undefined,
+  cwd: string,
+): string {
+  return localRoot !== undefined && localRoot !== '' ? join(dotfileDir, localRoot) : cwd;
+}
+
+/**
  * The remote path a single file publishes to when no remote is named: the
- * place it occupies under the cwd, so a document stays where its author keeps
- * it. A file outside the cwd has no mirror image inside the host, so it falls
- * back to its bare name — a remote path never contains `..`.
+ * place it occupies under the anchor directory (see mirrorAnchor), so a
+ * document stays where its author keeps it. A file outside the anchor has no
+ * mirror image inside the host, so it falls back to its bare name — a remote
+ * path never contains `..`.
  */
 export function mirrorRemote(cwd: string, localPath: string): string {
   const full = resolve(cwd, localPath);

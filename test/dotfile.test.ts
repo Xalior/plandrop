@@ -105,6 +105,35 @@ describe('version stamp', () => {
     const written = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
     expect(written).toEqual({ ...sample, extra: 'kept', template: 'darkly', version: __PLANDROP_VERSION__ });
   });
+
+  it('records mutations, not uses: a no-op merge leaves the file byte-identical', () => {
+    // An older client's stamp survives a newer client merely running over the
+    // file — only an actual change may claim the stamp.
+    const path = join(workdir, '.plandrop');
+    const stale = JSON.stringify({ ...sample, template: 'darkly', version: '0.0.1-stale' });
+    writeFileSync(path, stale);
+    mergeDotfileConfig(workdir, { template: 'darkly' });
+    expect(readFileSync(path, 'utf8')).toBe(stale);
+  });
+
+  it('a no-op merge includes a key cleared to undefined that was already absent', () => {
+    // hookConfigPatch clears localRoot outside root mode; when the file never
+    // had one, "cleared" and "absent" serialize identically — no write.
+    const path = join(workdir, '.plandrop');
+    const stale = JSON.stringify({
+      ...sample,
+      hookWatch: 'docs/**/*.html',
+      hookPublish: 'mirror',
+      version: '0.0.1-stale',
+    });
+    writeFileSync(path, stale);
+    mergeDotfileConfig(workdir, {
+      hookWatch: 'docs/**/*.html',
+      hookPublish: 'mirror',
+      localRoot: undefined,
+    });
+    expect(readFileSync(path, 'utf8')).toBe(stale);
+  });
 });
 
 describe('readDotfileConfig', () => {

@@ -1,11 +1,10 @@
 import { homedir } from 'node:os';
 import {
+  defaultPublishMode,
   describeHookOutcome,
   DEFAULT_WATCH_GLOB,
   FLAT_MODE,
-  MIRROR_MODE,
   hookConfigPatch,
-  modeFromConfig,
   normalizeWatchGlob,
   promptPublishMode,
   promptWatchGlob,
@@ -24,7 +23,6 @@ import {
 } from '../dotfile';
 import { controlUrl, hostUrl, timedFetch } from '../endpoint';
 import { promptLine } from '../prompt';
-import { DEFAULT_ALIAS } from '../templates';
 import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import type { Dispatch } from '../dispatch';
 import type { CreateResponse } from '../types';
@@ -76,15 +74,18 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 1;
   }
 
-  // The template is stored as-is (the `default` alias when neither a flag nor
-  // an existing preference names one) and resolved to a concrete name at
-  // `newdoc` time, so later default drift never breaks a doc. Only written on
-  // success, so a failed create leaves no dotfile.
+  // The template key is written only when a flag or an existing dotfile
+  // preference names one, stored as-is and resolved to a concrete name at
+  // `newdoc` time. An unnamed template stays absent — a recorded value would
+  // shadow the per-user config's `template` in newdoc's fallback chain, and
+  // no preference was expressed here. Only written on success, so a failed
+  // create leaves no dotfile.
+  const template = flags.template ?? existingConfig?.template;
   const path = writeDotfile(cwd, {
     domain,
     host: created.host,
     passphrase: created.passphrase,
-    template: flags.template ?? existingConfig?.template ?? DEFAULT_ALIAS,
+    ...(template !== undefined ? { template } : {}),
   });
   process.stdout.write(`created ${hostUrl(domain, created.host)}\n`);
   process.stdout.write(`wrote ${path} (mode 0600) — it holds your passphrase\n`);
@@ -133,7 +134,7 @@ async function offerAutosyncHook(
       : flags.localRoot !== undefined
         ? publishRootMode(flags.localRoot)
         : undefined;
-    mode = flagMode ?? modeFromConfig(existingConfig ?? {}) ?? MIRROR_MODE;
+    mode = flagMode ?? defaultPublishMode(glob, existingConfig);
   } else if (process.stdin.isTTY === true) {
     const wanted = await promptLine(
       'Set up a Claude Code hook that auto-publishes saved HTML documents? [Y/n]: ',

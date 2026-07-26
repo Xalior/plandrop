@@ -134,10 +134,14 @@ Three publish roots, all built from the same idea — the hook `cd`s to a root a
 the saved file's path relative to it, exactly as a manual `upload` run from that root
 would:
 
-- **mirror the project path** (the silent default — no flags, no prompt): a save at
-  `docs/plans/x.html` publishes to `/docs/plans/x.html`.
+- **mirror the project path** (`m` at the prompt; `--local-root=""` scripted — an empty
+  root collapses to mirror): a save at `docs/plans/x.html` publishes to
+  `/docs/plans/x.html`.
 - **relative to `<dir>`** (`--local-root <dir>`): with `--local-root docs`, that same save
-  publishes to `/plans/x.html`.
+  publishes to `/plans/x.html`. **Relative to the watched directory is the default
+  everywhere** — the prompt preselects it, and a run with no mode flag and no prompt (a
+  script, an agent) applies the same answer, so both paths land in the same place. A
+  watch glob with no directory of its own (`*.html`) collapses to mirror.
 - **flat at the host root** (`--hook-flat`): that same save publishes to `/x.html`
   regardless of where under the watched glob it lives.
 
@@ -194,7 +198,9 @@ With nothing configured it defaults to the public template host **plandrop.dev**
   `.plandrop`) you get that host's self-updating templates.
 
 The theme is chosen by precedence: `--template` flag > the nearest `.plandrop`'s `template`
-field > the server's default. Domain resolution follows the same precedence as `create` (see
+field > the per-user config's `template` > the server's default. `create` records a
+`template` in `.plandrop` only when `--template` names one, so a host minted without the
+flag keeps following the per-user preference. Domain resolution follows the same precedence as `create` (see
 [Where the domain comes from](#where-the-domain-comes-from)), except `newdoc` never prompts and
 falls back to plandrop.dev. It refuses to overwrite an existing file without `--force`. The
 scaffolded file is yours to edit — then `upload` it like any other document.
@@ -219,19 +225,22 @@ in every bundled one.
 
 ## upload
 
-Upload a single file. With no remote path it publishes where you keep it — the same
-subpath it occupies under the current directory — and prints the full shareable URL of
-the file it just published:
+Upload a single file. With no remote path it publishes where you keep it — the subpath
+it occupies under the `.plandrop`'s recorded `localRoot` when one is set, else under the
+current directory — and prints the full shareable URL of the file it just published:
 
 ```sh
 npx plandrop upload ./planfile.html              # → /planfile.html
-npx plandrop upload docs/plans/x.html            # → /docs/plans/x.html
+npx plandrop upload docs/plans/x.html            # → /plans/x.html with localRoot docs;
+                                                 #   /docs/plans/x.html with none
 npx plandrop upload ./planfile.html index.html   # → /index.html (explicit remote wins)
 ```
 
-Any missing collections along the way are created. A path outside the current directory
-(absolute, or escaping via `../`) has no mirror image on the host, so it falls back to
-its bare name.
+`localRoot` names the local root remote paths are resolved against — a manual `upload`
+lands a file exactly where the autosync hook would publish the same save, however deep
+the shell sits in the project. Any missing collections along the way are created. A path
+outside that root (absolute, or escaping via `../`) has no mirror image on the host, so
+it falls back to its bare name.
 
 Upload a directory and its contents preserve their internal structure verbatim; the
 remote argument, if given, names the destination folder they land in:
@@ -312,7 +321,7 @@ host — for a project that already has one:
 ```sh
 npx plandrop hooks                                   # uses recorded settings, or the defaults
 npx plandrop hooks "plans/**/*.html"                 # a different glob, positional or --hook-path
-npx plandrop hooks docs/**/*.html --local-root docs   # publish relative to docs, not the project
+npx plandrop hooks docs/**/*.html --hook-flat        # publish flat at the host root instead
 ```
 
 It merges the same hook `create`'s offer scaffolds (see [Autosync hook](#autosync-hook))
@@ -328,9 +337,10 @@ replaced in place, printing what changed.
 
 With no path or `--local-root`/`--hook-flat` given: at a terminal it asks what to watch and
 where to publish, defaulting both from whatever was recorded last time; otherwise — a bare
-`plandrop hooks` run from a script — it silently re-applies the recorded settings, which is
-how a client version bump upgrades an older hook shape without needing to be told the
-settings again.
+`plandrop hooks` run from a script or an agent — it silently applies the recorded settings,
+or the same defaults the prompts preselect when nothing was ever recorded, so both paths
+land in the same place. The silent run is also how a client version bump upgrades an older
+hook shape without needing to be told the settings again.
 
 ## The `.plandrop` file
 
@@ -342,8 +352,9 @@ A small JSON file written at mode `0600` in the directory where you ran `create`
   "host": "<generated-label>",
   "passphrase": "<generated-passphrase>",
   "hookWatch": "docs/**/*.html",
-  "hookPublish": "mirror",
-  "version": "0.5.0"
+  "hookPublish": "root",
+  "localRoot": "docs",
+  "version": "0.6.0"
 }
 ```
 
@@ -353,8 +364,10 @@ up from the current directory — so you can run them from anywhere inside the p
 `hookWatch` and `hookPublish` (plus `localRoot`, present only when `hookPublish` is
 `"root"`) record the autosync hook's watch glob and publish root the last time `create` or
 `hooks` set one up — read back as defaults on a later interactive run, or applied silently
-by a bare `plandrop hooks`. `version` records the plandrop client version that last wrote
-the file, refreshed on every write.
+by a bare `plandrop hooks`. `localRoot` also anchors a manual `upload`'s no-remote path
+mirroring (see [upload](#upload)) — it names the local root remote paths are resolved
+against, for the hook and the hand-run command alike. `version` records the plandrop client version that last
+**changed** the file — a run that changes nothing leaves it (and the file) untouched.
 
 > `.plandrop` holds your host's passphrase and grants write access to it — treat it as
 > a credential when deciding whether to commit it.
