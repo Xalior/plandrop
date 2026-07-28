@@ -1,5 +1,115 @@
 # Changelog
 
+## 0.6.0 — 2026-07-28
+
+### Added
+
+- **A new theme, Sonny's First Notebook (`s1notebook`).** A light theme in the
+  style of a paper jotter: cream paper with ruled lines, a red margin rule and
+  ring-binder holes down the left edge, a book serif for prose and a
+  handwriting face for headings, buttons and labels. Its decoration is drawn
+  entirely in CSS, so it costs no extra downloads, and it names no web font, so
+  it looks the same with no network. Choose it like any other theme, with
+  `--template s1notebook` or the `template` field in `.plandrop`.
+
+- **`plandrop index` publishes the header and footer that wrap a directory
+  listing.** When a directory on a host contains no `index.html`, the server
+  lists its files instead. That listing is wrapped in two files the tenant
+  publishes, `.header.html` and `.footer.html`; when they are absent the
+  server falls back to its own configured default theme, so a listing is
+  never unstyled. `plandrop index` writes both files at the host root, taken
+  from a template's own header and footer, so the listing uses the same theme
+  as the documents published beside it rather than the server default. The
+  template is chosen by the usual precedence: `--template` > the nearest
+  `.plandrop`'s `template` field > the per-user config > the server default.
+
+  Given a file as an argument, its HTML is placed at the end of the header,
+  which puts it between the page heading and the list of files — the place to
+  introduce what a visitor is looking at. That file is a fragment, such as a
+  heading and a paragraph, not a complete HTML document; it is wrapped in a
+  themed block for you. Running the command again overwrites both files and
+  never marks up a header twice, so it is safe to repeat.
+
+  The command writes the host root only. The server resolves the header and
+  footer separately for each directory, so a listing in a subdirectory does
+  not inherit the root's pair: subdirectory listings continue to use the
+  server's default theme.
+
+- **`plandrop fixcss` rewrites theme asset links so they name the server.** A
+  document can carry a link to its theme's stylesheet that has no origin in
+  it, in any of three shapes: root-absolute (`/.plandrop/…`), relative
+  (`.plandrop/…`), or climbing (`../.plandrop/…`). All three resolve on the
+  host the document was published to, and none of them resolve anywhere else,
+  so the document renders without styling when it is opened from disk, sent
+  to someone by mail, or copied to another host. `fixcss` walks every HTML
+  document under the publish root — the `localRoot` recorded in the nearest
+  `.plandrop`, or the current directory when none is recorded — and rewrites
+  every origin-less link to name the server outright, which is what a freshly
+  scaffolded document already does. Links that already name an origin are left
+  unchanged. Files are rewritten in place and every changed file is printed.
+
+### Fixed
+
+- **Served files declare their character encoding.** The host added no
+  `charset` to any response. A document that states its own encoding in-band
+  was unaffected — every built-in template carries `<meta charset="utf-8">` —
+  but a file with no such mechanism was decoded using whatever default the
+  reader's browser applied, so UTF-8 bytes were read as Latin-1 and a
+  character such as `·` (bytes `C2 B7`) displayed as `Â·`. The host now sends
+  `charset=utf-8` on text responses.
+
+  Markdown was affected worst, because it was served with no `Content-Type` at
+  all: the standard MIME type list the server uses ships its markdown entry
+  disabled, so the browser was left to guess both the type and the encoding. A
+  `.md` file is now served as `text/plain; charset=utf-8`, which displays in a
+  browser tab and carries the encoding explicitly. (`text/markdown` is the
+  stricter type, but browsers download it instead of displaying it.)
+
+- **The bundled proxy serves only the domain it is configured for.** The
+  self-contained stack (`compose.proxy.yml`) puts one small proxy in front of
+  everything, and it decides where a request goes by the `Host` header it
+  carries: the bare `PLANDROP_PROXY_DOMAIN` reaches the control entrypoint, and
+  a subdomain of it reaches a published document. Every *other* host name was
+  treated as a subdomain, so a request naming any name at all — an unrelated
+  domain, or the machine's own IP address — was served document content. The
+  proxy now matches subdomains explicitly and answers anything else with
+  `421 Misdirected Request` and one line of plain text naming the domain it does
+  serve, so a request that arrives at the wrong address is refused rather than
+  answered, and says so.
+
+- **The autosync hook requests the client `@latest`, not bare.** The generated
+  hook ran `npx -y plandrop upload`, and `npx` reuses whatever it has cached
+  without consulting the registry — so a machine holding an older client kept
+  publishing under path rules the installed version no longer uses, silently,
+  on every save, with nothing on screen to say which client ran. The hook now
+  names `plandrop@latest`. An existing hook is recognised whatever version spec
+  it carries (bare, `@latest`, or pinned), so `plandrop hooks` upgrades one in
+  place rather than leaving a second behind.
+
+### Changed
+
+- **A scaffolded document names its own template server, so it renders on
+  disk.** `newdoc` wrote the server's root-absolute asset links through
+  verbatim (`/.plandrop/…`), which resolve only once the document is published
+  — off disk that path names the filesystem root, so a freshly scaffolded file
+  opened in a browser was unstyled. It now qualifies those links against the
+  server the template came from, exactly as the public host's static templates
+  already did for plandrop.dev: the assets resolve from any origin, and a
+  document still renders published at any depth. The base is the resolved
+  domain (`--domain` > `PLANDROP_DOMAIN` > the nearest `.plandrop` > user
+  config > plandrop.dev), so a project's own `.plandrop` points its documents
+  at its own server. The self-update script is qualified with them and still
+  stands down on anything but http(s), leaving a document on disk inert until
+  it is hosted.
+
+- **The starter document tells its author to link relatively.** A host's root
+  need not be the directory documents are written in: with a `localRoot`
+  recorded, `docs/` publishes *as* the root, so `docs/plans/x.html` is served
+  at `/plans/x.html` and an `href` of `/docs/plans/x.html` 404s once
+  published. The scaffolded document's authoring comment now says so — link
+  between documents relatively (`plans/x.html`, `../index.html`), which
+  survives the mapping and works on the local file in a browser too.
+
 ## 0.5.4 — 2026-07-26
 
 ### Fixed

@@ -16,7 +16,7 @@ import {
 const NATIVE_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero', 'vapor'];
 
 /** The hand-authored themes shipped under themes/. */
-const CUSTOM = ['f1terminal'];
+const CUSTOM = ['f1terminal', 's1notebook'];
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const skeletonDir = join(repoRoot, 'templates', 'bootstrap5');

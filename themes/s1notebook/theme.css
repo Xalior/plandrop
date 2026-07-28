@@ -1,0 +1,777 @@
+/*!
+ * plandrop notebook theme
+ * Copyright (c) plandrop contributors — https://plandrop.dev/
+ * Licensed under the GNU Lesser General Public License v3.0 only.
+ *
+ * A paper jotter: a worksheet that was TYPED (body prose, a readable serif
+ * book face) and then ANNOTATED BY HAND (headings, nav brand, buttons,
+ * badges, card headers, table headers, dt labels and the blockquote
+ * signature, all in a handwriting display face). Layered on stock
+ * Bootstrap 5: everything it can express as a Bootstrap CSS custom property
+ * is expressed as one, so navbars, cards, tables, badges, alerts and code
+ * inherit the palette without a document ever asking for it. Selectors
+ * appear only where Bootstrap compiled a literal colour that no variable
+ * reaches (`.btn-*`, `.text-bg-*`, `.form-check-input`), or where the jotter
+ * look needs shape as well as hue: ruled paper, a margin rule with
+ * ring-binder holes, a highlighter smear on <mark>, a hand-drawn checkbox
+ * tick, washi tape on alerts, a dog-eared card corner.
+ *
+ * This theme is light-only (see theme.json), so unlike a dual-appearance
+ * theme it never needs a `[data-bs-theme="light"]` / `[data-bs-theme="dark"]`
+ * pair: the generator pins `data-bs-theme="light"` permanently and drops the
+ * toggle, so :root alone (which always matches the document root regardless
+ * of that attribute's value) is the only selector this file needs for its
+ * palette.
+ *
+ * --bs-code-color is deliberately absent: the shared override sheet
+ * (.plandrop/shared/css/plandrop.css) loads after this file and tunes inline
+ * code to a calm dark green (#11632a), which clears 6.55:1 against this
+ * theme's paper. Its dark-scheme counterpart (#7ec699) is unreachable here —
+ * this theme never carries [data-bs-theme="dark"] — so no escape hatch is
+ * needed.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Two faces, one metaphor: the body was typed, the annotations were
+   * written by hand. Both are system stacks, not a webfont: a `theme.css`
+   * layer is appended after the skeleton's compiled bootstrap.min.css into
+   * one concatenated file, so any @import inside it lands deep in the
+   * stylesheet rather than at its head — the one place the CSS spec allows
+   * an @import to take effect — and every browser silently drops it. Each
+   * stack instead leans on the genuine handwriting and book-serif faces
+   * mainstream operating systems already carry, so the page renders
+   * identically whether the reader is online or not. */
+  --pd-font-hand: "Bradley Hand", "Segoe Print", "Segoe Script",
+    "Chalkboard SE", "Comic Sans MS", cursive;
+  --pd-font-body: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+    Palatino, Georgia, "Times New Roman", serif;
+  --bs-font-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --bs-body-font-family: var(--pd-font-body);
+  /* line-height is exactly 2 so a line of prose is exactly 2rem tall — the
+   * same interval the ruled-paper background repeats on, so text sits on
+   * the rule instead of merely floating in front of it. */
+  --bs-body-font-size: 1rem;
+  --bs-body-line-height: 2;
+
+  /* Paper is cut, not moulded: a soft, slightly uneven radius throughout
+   * rather than Bootstrap's uniform curve. */
+  --bs-border-radius: 0.3rem;
+  --bs-border-radius-sm: 0.2rem;
+  --bs-border-radius-lg: 0.45rem;
+  --bs-border-radius-xl: 0.6rem;
+  --bs-border-radius-xxl: 0.75rem;
+  --bs-border-radius-2xl: 0.75rem;
+  --bs-border-radius-pill: 50rem;
+
+  /* A hard, short-offset, low-blur shadow — a cut-paper shape lifted off the
+   * page, not a soft UI elevation. */
+  --bs-box-shadow: 2px 3px 0 rgba(20, 27, 43, 0.14);
+  --bs-box-shadow-sm: 1px 2px 0 rgba(20, 27, 43, 0.12);
+  --bs-box-shadow-lg: 3px 4px 0 rgba(20, 27, 43, 0.16);
+  --bs-box-shadow-inset: inset 1px 1px 0 rgba(20, 27, 43, 0.08);
+
+  --bs-focus-ring-width: 2px;
+  --bs-focus-ring-opacity: 1;
+
+  /* Ink on cream paper, ballpoint blue for links and primary accents,
+   * pencil / marker-pen tones for the rest. */
+  --bs-body-color: #23324d;
+  --bs-body-color-rgb: 35, 50, 77;
+  --bs-body-bg: #f7f1df;
+  --bs-body-bg-rgb: 247, 241, 223;
+  --bs-emphasis-color: #141b2b;
+  --bs-emphasis-color-rgb: 20, 27, 43;
+  --bs-secondary-color: #56607a;
+  --bs-secondary-color-rgb: 86, 96, 122;
+  --bs-secondary-bg: #ece7d6;
+  --bs-secondary-bg-rgb: 236, 231, 214;
+  --bs-tertiary-color: #616a84;
+  --bs-tertiary-color-rgb: 97, 106, 132;
+  --bs-tertiary-bg: #fbf8ee;
+  --bs-tertiary-bg-rgb: 251, 248, 238;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: #d8cfb0;
+  --bs-border-color-translucent: rgba(20, 27, 43, 0.14);
+
+  --bs-link-color: #22539c;
+  --bs-link-color-rgb: 34, 83, 156;
+  --bs-link-hover-color: #17396b;
+  --bs-link-hover-color-rgb: 23, 57, 107;
+
+  --bs-highlight-color: var(--bs-emphasis-color);
+  --bs-highlight-bg: #f5df6d;
+
+  --bs-primary: #22539c;
+  --bs-primary-rgb: 34, 83, 156;
+  --bs-primary-text-emphasis: #17396b;
+  --bs-primary-bg-subtle: #dde6f5;
+  --bs-primary-border-subtle: #b0c4e3;
+  --bs-secondary: #6b5f52;
+  --bs-secondary-rgb: 107, 95, 82;
+  --bs-secondary-text-emphasis: #453d34;
+  --bs-secondary-bg-subtle: #ece7dd;
+  --bs-secondary-border-subtle: #cdc3b3;
+  --bs-success: #2e6b2e;
+  --bs-success-rgb: 46, 107, 46;
+  --bs-success-text-emphasis: #1f4a1f;
+  --bs-success-bg-subtle: #dfead9;
+  --bs-success-border-subtle: #b9d1ae;
+  --bs-info: #146b7a;
+  --bs-info-rgb: 20, 107, 122;
+  --bs-info-text-emphasis: #0d4a54;
+  --bs-info-bg-subtle: #d7e8ec;
+  --bs-info-border-subtle: #a8cdd4;
+  --bs-warning: #8a5a06;
+  --bs-warning-rgb: 138, 90, 6;
+  --bs-warning-text-emphasis: #5c3c04;
+  --bs-warning-bg-subtle: #f2e6c9;
+  --bs-warning-border-subtle: #ddc48a;
+  --bs-danger: #ab2328;
+  --bs-danger-rgb: 171, 35, 40;
+  --bs-danger-text-emphasis: #74171a;
+  --bs-danger-bg-subtle: #f5dcdc;
+  --bs-danger-border-subtle: #e0b0b0;
+  --bs-light: #eae2c8;
+  --bs-light-rgb: 234, 226, 200;
+  --bs-light-text-emphasis: var(--bs-secondary-color);
+  --bs-light-bg-subtle: var(--bs-tertiary-bg);
+  --bs-light-border-subtle: #ddd3b3;
+  --bs-dark: #141b2b;
+  --bs-dark-rgb: 20, 27, 43;
+  --bs-dark-text-emphasis: #2b3547;
+  --bs-dark-bg-subtle: #d6d8de;
+  --bs-dark-border-subtle: #aab0bd;
+
+  --bs-form-valid-color: var(--bs-success-text-emphasis);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger-text-emphasis);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* Ink on a solid fill: every accent below is dark enough that paper-cream
+   * text clears 4.5:1 on the palest of them (warning, 5.25:1). */
+  --pd-on-fill: #f7f1df;
+  --pd-on-light: #23324d;
+  --pd-on-dark: #f7f1df;
+
+  --pd-primary-hover: #1d4786;
+  --pd-primary-active: #17396b;
+  --pd-secondary-hover: #5a5045;
+  --pd-secondary-active: #453d34;
+  --pd-success-hover: #275c27;
+  --pd-success-active: #1f4a1f;
+  --pd-info-hover: #115c69;
+  --pd-info-active: #0d4a54;
+  --pd-warning-hover: #754d05;
+  --pd-warning-active: #5c3c04;
+  --pd-danger-hover: #921e22;
+  --pd-danger-active: #74171a;
+
+  /* Two-pass highlighter yellow (a marker stroke has visible overlap where
+   * the tip re-crosses itself) — ink at 12.8:1 / 10.8:1 against them. */
+  --pd-highlighter: #f5df6d;
+  --pd-highlighter-2: #eccb45;
+
+  /* Masking-tape tan, used only as a small rotated strip on alerts. */
+  --pd-tape: rgba(191, 168, 122, 0.55);
+
+  /* A margin rule in schoolbook red, read at low opacity as a soft ink line
+   * rather than a correction mark. */
+  --pd-margin-color: rgba(171, 35, 40, 0.5);
+
+  /* A wobbly, hand-drawn tick — paper-cream stroke, reads on every checked
+   * fill (all are dark inks in this palette). */
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23f7f1df' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.6' d='M4.6 10.4c1.2 1.7 2.5 3 3.7 3.7 2.2-3.5 4.9-6.9 7.4-9.6'/%3e%3c/svg%3e");
+
+  /* A ring-binder punch hole: a shadowed cutout tiled down the page margin. */
+  --pd-hole-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 96'%3e%3ccircle cx='10' cy='48' r='7' fill='%23e4dcc0' stroke='%23c9bd94' stroke-width='1.5'/%3e%3c/svg%3e");
+
+  /* A small pushpin head, pinning the brand to the notebook's cover. */
+  --pd-pin-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3ccircle cx='10' cy='8' r='6'/%3e%3cpath d='M8.7 13.4h2.6l-1 6.1a0.35 0.35 0 0 1-0.6 0z'/%3e%3c/svg%3e");
+}
+
+/* ---------------------------------------------------------------------------
+ * Ruled paper — the signature background. One rule per line of prose
+ * (line-height is exactly 2rem above), at low opacity so the rules stay
+ * legible scaffolding rather than a competitor to the text sitting on them.
+ * ------------------------------------------------------------------------- */
+
+body {
+  /* Painted as one 2rem tile repeated by background-size, NOT as a
+   * repeating-linear-gradient. Over a full-length document Chrome drops rules
+   * from a repeating gradient on a fixed cycle — three drawn, three missing —
+   * which reads as bands of blank paper rather than as ruled paper. A single
+   * tile is rasterised once and repeated exactly, at any document length.
+   * The rule sits at the tile's foot so a line of prose rests on it. */
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(2rem - 1px),
+    rgba(34, 83, 156, 0.1) calc(2rem - 1px)
+  );
+  background-size: 100% 2rem;
+  background-repeat: repeat;
+}
+
+/* The left-margin rule and its ring-binder holes. Both are extra background
+ * layers on <main> itself — <main> keeps no background-color of its own, so
+ * the ruled paper on <body> still shows through everywhere except these two
+ * columns. Narrower than a school margin on small screens so it never
+ * crowds the prose column on a phone. */
+main.container {
+  padding-left: 3.75rem;
+  background-repeat: no-repeat, repeat-y;
+  background-position: 2.6rem 0, 1.35rem 0.5rem;
+  background-size: 2px 100%, 1.25rem 6rem;
+  background-image: linear-gradient(var(--pd-margin-color), var(--pd-margin-color)),
+    var(--pd-hole-image);
+}
+
+@media (max-width: 575.98px) {
+  main.container {
+    padding-left: 2.25rem;
+    background-position: 1.15rem 0, 0.5rem 0.5rem;
+    background-size: 2px 100%, 0.9rem 5rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Type
+ * ------------------------------------------------------------------------- */
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+/* Handwriting sits smaller than a sans/serif face at the same nominal size,
+ * so every heading runs a size step larger than Bootstrap's default scale to
+ * read with the same confidence. */
+h1, .h1 { font-size: 3rem; }
+h2, .h2 { font-size: 2.35rem; }
+h3, .h3 { font-size: 1.9rem; }
+h4, .h4 { font-size: 1.6rem; }
+h5, .h5 { font-size: 1.35rem; }
+h6, .h6 { font-size: 1.15rem; }
+
+.display-1 { font-size: 5.5rem; }
+.display-2 { font-size: 4.75rem; }
+.display-3 { font-size: 4rem; }
+.display-4 { font-size: 3.4rem; }
+.display-5 { font-size: 2.75rem; }
+.display-6 { font-size: 2.2rem; }
+
+.display-1, .display-2, .display-3,
+.display-4, .display-5, .display-6 {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.lead {
+  font-family: var(--pd-font-body);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+/* A wavy, hand-drawn underline — a native text-decoration, so it needs no
+ * image at all and degrades to a plain solid underline on any engine that
+ * does not support the wavy style. */
+a {
+  text-decoration-style: wavy;
+  text-decoration-color: var(--bs-link-color);
+  text-decoration-thickness: from-font;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-color: var(--bs-link-hover-color);
+}
+
+/* A perforated "tear here" line rather than a printed rule. */
+hr {
+  border: none;
+  border-top: 2px dashed var(--bs-border-color);
+  opacity: 1;
+}
+
+/* List markers get the ink accent; the marks themselves stay the browser's
+ * own bullets/numbers, which read better than a hand-doodled glyph at small
+ * sizes and in deep nesting. */
+ul > li::marker,
+ol > li::marker {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+/* Definition lists read as a hand-labelled glossary: the term in the
+ * handwriting face, the definition in the reading face. */
+dt {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  font-size: 1.15em;
+  color: var(--bs-emphasis-color);
+}
+
+/* A highlighter smear over <mark> — two overlapping passes of a marker pen,
+ * traced with an irregular border-radius rather than a hard rectangle. Ink
+ * stays dark and fully legible over the tint (12.8:1 against the lighter
+ * pass, 10.8:1 against the darker one). Reveals itself once on load like a
+ * highlighter being dragged across the page; prefers-reduced-motion gets the
+ * finished smear with no motion at all. */
+mark, .mark {
+  background-image: linear-gradient(
+    178deg,
+    transparent 0%,
+    transparent 6%,
+    var(--pd-highlighter) 6%,
+    var(--pd-highlighter) 55%,
+    var(--pd-highlighter-2) 55%,
+    var(--pd-highlighter-2) 94%,
+    transparent 94%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  background-position: 0 0;
+  border-radius: 0.15em 0.5em 0.2em 0.4em / 0.6em 0.25em 0.5em 0.2em;
+  padding: 0.05em 0.35em;
+  color: var(--bs-emphasis-color);
+  animation: pd-mark-in 0.7s ease-out 0.15s forwards;
+}
+
+@keyframes pd-mark-in {
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  mark, .mark {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}
+
+::selection {
+  background-color: var(--pd-highlighter);
+  color: var(--bs-emphasis-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Chrome: navbar + footer
+ * ------------------------------------------------------------------------- */
+
+.navbar {
+  --bs-navbar-brand-color: var(--bs-primary);
+  --bs-navbar-brand-hover-color: var(--bs-link-hover-color);
+  --bs-navbar-padding-y: 0.7rem;
+  box-shadow: inset 0 -2px 0 -1px rgba(var(--bs-primary-rgb), 0.3);
+}
+
+/* The brand reads as a hand-written label pinned to the notebook's cover: a
+ * small rotation off true, and a pushpin head drawn before it. */
+.navbar-brand {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  font-size: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transform: rotate(-1.4deg);
+}
+
+.navbar-brand::before {
+  content: "";
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  background-color: var(--bs-danger);
+  -webkit-mask: var(--pd-pin-image) center / contain no-repeat;
+  mask: var(--pd-pin-image) center / contain no-repeat;
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons — Bootstrap compiles literal colours into every .btn-* variant, so
+ * each one is re-pointed at the palette. The per-variant rules carry only the
+ * three colours; the shared rules below spend them.
+ * ------------------------------------------------------------------------- */
+
+.btn {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  font-size: 1.05em;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary, .btn-outline-primary {
+  --pd-btn: var(--bs-primary);
+  --pd-btn-hover: var(--pd-primary-hover);
+  --pd-btn-active: var(--pd-primary-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+.btn-secondary, .btn-outline-secondary {
+  --pd-btn: var(--bs-secondary);
+  --pd-btn-hover: var(--pd-secondary-hover);
+  --pd-btn-active: var(--pd-secondary-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+}
+.btn-success, .btn-outline-success {
+  --pd-btn: var(--bs-success);
+  --pd-btn-hover: var(--pd-success-hover);
+  --pd-btn-active: var(--pd-success-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-success-rgb);
+}
+.btn-info, .btn-outline-info {
+  --pd-btn: var(--bs-info);
+  --pd-btn-hover: var(--pd-info-hover);
+  --pd-btn-active: var(--pd-info-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-info-rgb);
+}
+.btn-warning, .btn-outline-warning {
+  --pd-btn: var(--bs-warning);
+  --pd-btn-hover: var(--pd-warning-hover);
+  --pd-btn-active: var(--pd-warning-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-warning-rgb);
+}
+.btn-danger, .btn-outline-danger {
+  --pd-btn: var(--bs-danger);
+  --pd-btn-hover: var(--pd-danger-hover);
+  --pd-btn-active: var(--pd-danger-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-danger-rgb);
+}
+.btn-light, .btn-outline-light {
+  --pd-btn: var(--bs-light);
+  --pd-btn-hover: var(--bs-light);
+  --pd-btn-active: var(--bs-light);
+  --bs-btn-focus-shadow-rgb: var(--bs-light-rgb);
+}
+.btn-dark, .btn-outline-dark {
+  --pd-btn: var(--bs-dark);
+  --pd-btn-hover: var(--bs-dark);
+  --pd-btn-active: var(--bs-dark);
+  --bs-btn-focus-shadow-rgb: var(--bs-dark-rgb);
+}
+
+.btn-primary, .btn-secondary, .btn-success,
+.btn-info, .btn-warning, .btn-danger {
+  --bs-btn-color: var(--pd-on-fill);
+  --bs-btn-bg: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-hover-color: var(--pd-on-fill);
+  --bs-btn-hover-bg: var(--pd-btn-hover);
+  --bs-btn-hover-border-color: var(--pd-btn-hover);
+  --bs-btn-active-color: var(--pd-on-fill);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-on-fill);
+  --bs-btn-disabled-bg: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+}
+
+.btn-light {
+  --bs-btn-color: var(--pd-on-light);
+  --bs-btn-bg: var(--bs-light);
+  --bs-btn-border-color: var(--bs-light);
+  --bs-btn-hover-color: var(--pd-on-light);
+  --bs-btn-hover-bg: var(--bs-light-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-light);
+  --bs-btn-active-color: var(--pd-on-light);
+  --bs-btn-active-bg: var(--bs-light-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-light);
+}
+
+.btn-dark {
+  --bs-btn-color: var(--pd-on-dark);
+  --bs-btn-bg: var(--bs-dark);
+  --bs-btn-border-color: var(--bs-dark);
+  --bs-btn-hover-color: var(--pd-on-dark);
+  --bs-btn-hover-bg: var(--bs-dark-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-dark);
+  --bs-btn-active-color: var(--pd-on-dark);
+  --bs-btn-active-bg: var(--bs-dark-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-dark);
+}
+
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success,
+.btn-outline-info, .btn-outline-warning, .btn-outline-danger {
+  --bs-btn-color: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-bg: transparent;
+  --bs-btn-hover-color: var(--pd-on-fill);
+  --bs-btn-hover-bg: var(--pd-btn);
+  --bs-btn-hover-border-color: var(--pd-btn);
+  --bs-btn-active-color: var(--pd-on-fill);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+}
+
+.btn-link {
+  --bs-btn-color: var(--bs-link-color);
+  --bs-btn-hover-color: var(--bs-link-hover-color);
+  --bs-btn-active-color: var(--bs-link-hover-color);
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+ * Solid colour chips — .text-bg-* also compiles its foreground, and
+ * Bootstrap's hardcoded choice does not know this palette's fills are all
+ * dark inks rather than stock Bootstrap's mixed light/dark set.
+ * ------------------------------------------------------------------------- */
+
+.text-bg-primary, .text-bg-secondary, .text-bg-success,
+.text-bg-info, .text-bg-warning, .text-bg-danger {
+  color: var(--pd-on-fill);
+}
+.text-bg-light { color: var(--pd-on-light); }
+.text-bg-dark { color: var(--pd-on-dark); }
+
+/* Badges read as small hand-labelled tags, each canted very slightly off the
+ * baseline, as if stamped on rather than typeset. */
+.badge {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  font-size: 0.95em;
+  letter-spacing: 0.01em;
+  display: inline-block;
+  transform: rotate(-1.5deg);
+}
+
+/* ---------------------------------------------------------------------------
+ * Surfaces: cards, alerts, list groups, blockquotes
+ * ------------------------------------------------------------------------- */
+
+/* An index card with a folded top-right corner — the fold is a CSS
+ * triangle (a zero-size box with two transparent border sides), so it costs
+ * no image. */
+.card {
+  --bs-card-bg: var(--bs-tertiary-bg);
+  --bs-card-cap-bg: var(--bs-secondary-bg);
+  --bs-card-border-color: var(--bs-border-color);
+  --bs-card-title-color: var(--bs-emphasis-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 1.05rem 1.05rem;
+  border-color: transparent transparent var(--bs-secondary-bg) transparent;
+  box-shadow: -1px 1px 2px rgba(20, 27, 43, 0.2);
+}
+
+.card-header {
+  font-family: var(--pd-font-hand);
+  font-weight: 700;
+  font-size: 1.1em;
+  letter-spacing: 0.01em;
+}
+
+/* Alerts are notes taped to the page: a small rotated strip of masking tape
+ * sits over the top edge, drawn with a gradient rather than an image. */
+.alert {
+  position: relative;
+  border-width: 1px;
+}
+
+.alert::before {
+  content: "";
+  position: absolute;
+  top: -0.55rem;
+  left: 1.4rem;
+  width: 2.75rem;
+  height: 1.15rem;
+  background-image: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.4),
+    rgba(255, 255, 255, 0.05)
+  );
+  background-color: var(--pd-tape);
+  border-radius: 2px;
+  transform: rotate(-3deg);
+  box-shadow: 0 1px 2px rgba(20, 27, 43, 0.22);
+}
+
+.list-group {
+  --bs-list-group-bg: var(--bs-tertiary-bg);
+  --bs-list-group-border-color: var(--bs-border-color);
+  --bs-list-group-action-hover-bg: var(--bs-secondary-bg);
+  --bs-list-group-active-bg: var(--bs-primary);
+  --bs-list-group-active-border-color: var(--bs-primary);
+  --bs-list-group-active-color: var(--pd-on-fill);
+}
+
+/* A large hand-drawn quotation mark stands in for the usual left rule. */
+blockquote,
+.blockquote {
+  position: relative;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  color: var(--bs-secondary-color);
+  border-left: 3px dashed var(--bs-border-color);
+}
+
+blockquote::before,
+.blockquote::before {
+  content: "\201C";
+  position: absolute;
+  left: 0.5rem;
+  top: -0.4rem;
+  font-family: var(--pd-font-hand);
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--bs-primary);
+  opacity: 0.6;
+}
+
+.blockquote-footer {
+  font-family: var(--pd-font-hand);
+  font-size: 1.15em;
+  color: var(--bs-tertiary-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables — worksheet columns, headed by hand.
+ * ------------------------------------------------------------------------- */
+
+.table {
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--bs-border-color);
+  --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.05);
+  --bs-table-striped-color: var(--bs-body-color);
+  --bs-table-hover-bg: rgba(var(--bs-primary-rgb), 0.09);
+  --bs-table-hover-color: var(--bs-emphasis-color);
+  --bs-table-active-bg: rgba(var(--bs-primary-rgb), 0.15);
+  --bs-table-active-color: var(--bs-emphasis-color);
+}
+
+.table > thead > tr > th {
+  font-family: var(--pd-font-hand);
+  color: var(--bs-emphasis-color);
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-bottom: 2px solid var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Code — pasted-in printouts, not handwriting: legibility over theming.
+ * ------------------------------------------------------------------------- */
+
+pre {
+  background-color: var(--bs-tertiary-bg);
+  border: 1px dashed var(--bs-border-color);
+  padding: 0.9rem 1rem;
+  color: var(--bs-body-color);
+}
+
+/* highlight.js links its stylesheet at runtime, after this file, and paints a
+ * background of its own on the <code>. Two classes out-specify it so the
+ * block keeps this theme's surface while the token colours stay upstream's. */
+pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
+
+/* A mermaid diagram is a diagram, not a listing: the surface, not the dashed
+ * "photocopy" border. */
+pre.mermaid {
+  border: 1px solid var(--bs-border-color);
+  border-style: solid;
+  text-align: center;
+}
+
+kbd {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-emphasis-color);
+  border: 1px solid var(--bs-border-color);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Forms + focus
+ * ------------------------------------------------------------------------- */
+
+/* A fill-in-the-blank field: an underline rather than a boxed input, as on a
+ * worksheet. */
+.form-control,
+.form-select {
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--bs-border-color);
+  border-radius: 0;
+  color: var(--bs-body-color);
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--bs-tertiary-bg);
+  border-bottom: 1px solid var(--bs-primary);
+  color: var(--bs-body-color);
+  box-shadow: none;
+}
+
+/* A hand-drawn box: an asymmetric radius rather than four equal corners. */
+.form-check-input {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+  border-radius: 3px 4px 4px 3px / 4px 3px 4px 4px;
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input:checked[type="checkbox"] {
+  --bs-form-check-bg-image: var(--pd-check-image);
+}
+
+/* Keyboard focus is a solid ink rule, visible against the paper. */
+:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+.btn:focus-visible,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.focus-ring:focus {
+  --bs-focus-ring-color: var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Progress
+ * ------------------------------------------------------------------------- */
+
+.progress,
+.progress-stacked {
+  --bs-progress-bg: var(--bs-secondary-bg);
+  --bs-progress-bar-bg: var(--bs-primary);
+  --bs-progress-bar-color: var(--pd-on-fill);
+  --bs-progress-font-size: 0.75rem;
+  border: 1px dashed var(--bs-border-color);
+}

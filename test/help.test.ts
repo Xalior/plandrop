@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { main } from '../src/app';
 import { run as create } from '../src/commands/create';
+import { run as fixcss } from '../src/commands/fixcss';
 import { run as help } from '../src/commands/help';
 import { run as hooks } from '../src/commands/hooks';
 import { run as init } from '../src/commands/init';
@@ -85,7 +86,7 @@ describe('help command', () => {
 describe('per-command --help', () => {
   // --help routes to the same text whether intercepted at dispatch or inside
   // the command; both must exit 0 without touching fs/network.
-  it.each(['create', 'newdoc', 'upload', 'rotate', 'remove', 'init', 'server', 'hooks'] as const)(
+  it.each(['create', 'newdoc', 'upload', 'fixcss', 'rotate', 'remove', 'init', 'server', 'hooks'] as const)(
     'plandrop %s --help prints usage and exits 0',
     async (command) => {
       const { text } = captureStdout();
@@ -95,7 +96,7 @@ describe('per-command --help', () => {
     },
   );
 
-  const handlers = { create, newdoc, upload, rotate, remove, init, server, hooks } as const;
+  const handlers = { create, newdoc, upload, fixcss, rotate, remove, init, server, hooks } as const;
 
   it.each(Object.keys(handlers) as (keyof typeof handlers)[])(
     '%s short-circuits on --help in its own params',

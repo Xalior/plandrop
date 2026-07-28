@@ -14,6 +14,20 @@ const pkgRoot = fileURLToPath(new URL('../../', import.meta.url));
 const DOMAIN = 'plandrop.test';
 const APACHE_PORT = 8788;
 const PROXY_PORT = 8790;
+// The CLI's parent domain is `localhost`; *.localhost tenant hosts resolve to
+// both loopback families with ::1 offered first, so the proxy is published
+// there and traffic that connects by name reaches it. Traffic that names an
+// address must name this one: there is no IPv4 socket to fall back to, unlike
+// apache and the ingress. Stated once and used for the compose publish, the
+// readiness probe and the endpoint handed to tests, so the three can never
+// disagree.
+const PROXY_BIND = '::1';
+// The parent domain the front proxy routes on: the bare name reaches the
+// ingress, `*.<name>` reaches apache, and every other Host is refused with 421.
+// It is NOT the same value as DOMAIN above: DOMAIN is only ever an Apache
+// mod_vhost_alias selector on the direct-to-apache port, and the proxy has no
+// route for it. A proxied request must name a host under this domain.
+const PROXY_DOMAIN = 'localhost';
 // The ingress is the only published control entrypoint: it serves the
 // template statics and reverse-proxies /api/* to the (unpublished) control plane.
 const INGRESS_PORT = 8791;
@@ -45,14 +59,20 @@ export interface Stack {
   authFile: string;
   /** Base URI of the in-process host-router: localhost -> ingress, *.localhost -> apache. */
   proxyBase: string;
-  /** The front proxy's published port, for requests aimed at it directly. */
-  proxyPort: number;
   /**
-   * The address the front proxy is published on. *.localhost resolves to ::1,
-   * so the proxy binds there and a request to it must connect there — unlike
-   * apache and the ingress, which are published on 127.0.0.1.
+   * The front proxy endpoint, for requests aimed at it directly. Port and
+   * connect address travel as ONE value so a caller spreads both or neither:
+   * the proxy publishes on ::1 (where *.localhost resolves) while apache and
+   * the ingress publish on 127.0.0.1, and a request that takes the port
+   * without the address is refused outright.
    */
-  proxyHost: string;
+  proxy: { port: number; connectHost: string };
+  /**
+   * The parent domain the front proxy routes on. A proxied request names either
+   * this domain (-> ingress) or a subdomain of it (-> apache); anything else is
+   * refused with 421, `domain` above included.
+   */
+  proxyDomain: string;
   /** Pre-seeded fixture tenants for the Apache matrix. */
   tenantA: Tenant;
   tenantB: Tenant;
@@ -149,11 +169,10 @@ export default async function setup(project: TestProject): Promise<() => void> {
     PLANDROP_INGRESS_PORT: String(INGRESS_PORT),
     PLANDROP_PROXY_PORT: String(PROXY_PORT),
     PLANDROP_USER_TEMPLATES: userTemplatesDir,
-    // The CLI's parent domain is `localhost`; *.localhost tenant hosts resolve
-    // to ::1, so publish the front proxy there (the parent localhost resolves to
-    // ::1 too, so both the bare and the tenant hops reach this one container).
-    PLANDROP_PROXY_DOMAIN: 'localhost',
-    PLANDROP_PROXY_BIND: '::1',
+    // The parent localhost resolves to ::1 too, so both the bare and the tenant
+    // hops reach this one container.
+    PLANDROP_PROXY_DOMAIN: PROXY_DOMAIN,
+    PLANDROP_PROXY_BIND: PROXY_BIND,
     PLANDROP_UID: String(uid),
     PLANDROP_GID: String(gid),
   };
@@ -186,11 +205,13 @@ export default async function setup(project: TestProject): Promise<() => void> {
     60_000,
   );
 
-  // The front-proxy container shares the harness's nginx routing config. A
-  // response on the bare parent (localhost -> ingress hop) proves it is routing.
+  // The front-proxy container shares the harness's nginx routing config. The
+  // path is deliberately one only the ingress can answer: the shared
+  // /.plandrop/ tree is served by BOTH backends, so a 200 on it would say the
+  // proxy is up without saying which way it routed.
   await waitFor(
     'proxy',
-    async () => (await probe(PROXY_PORT, '/.plandrop/bootstrap5/template.html', 'localhost', '::1')) === 200,
+    async () => (await probe(PROXY_PORT, '/api/templates', PROXY_DOMAIN, PROXY_BIND)) === 200,
     30_000,
   );
 
@@ -202,9 +223,9 @@ export default async function setup(project: TestProject): Promise<() => void> {
     domain: DOMAIN,
     dataDir,
     authFile,
-    proxyBase: `http://localhost:${PROXY_PORT}`,
-    proxyPort: PROXY_PORT,
-    proxyHost: '::1',
+    proxyBase: `http://${PROXY_DOMAIN}:${PROXY_PORT}`,
+    proxy: { port: PROXY_PORT, connectHost: PROXY_BIND },
+    proxyDomain: PROXY_DOMAIN,
     tenantA: TENANT_A,
     tenantB: TENANT_B,
     userTemplate: USER_TEMPLATE,

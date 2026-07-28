@@ -1,19 +1,19 @@
-# Quickstart — run plandrop locally
+# Quickstart — run plandrop on your own machine
 
-Stand up a complete plandrop server on your own machine and publish your first document —
-no domain, no DNS, no TLS proxy. For a real-domain deployment behind a reverse proxy, see
-[Self-hosting](setup.md) instead.
+Start a complete plandrop server on your own machine and publish your first document — no
+domain name, no DNS, and no TLS proxy needed. For a deployment on a real domain behind a
+reverse proxy, see [Self-hosting](setup.md) instead.
 
 ## Start a server
 
-The canonical way to stand up a server is a one-liner from plandrop.dev:
+The recommended way to start a server is a single command from plandrop.dev:
 
 ```sh
 curl -fsSL https://plandrop.dev/start.sh | sh
 ```
 
-`npx plandrop server` downloads and runs that same starter, so you don't have to remember
-the URL. Prefer to read it before running it? Fetch, inspect, then run:
+`npx plandrop server` downloads and runs the same script, so you don't have to remember the
+URL. To read the script before running it, download it first and run it separately:
 
 ```sh
 curl -fsSL https://plandrop.dev/start.sh -o start.sh
@@ -21,34 +21,39 @@ curl -fsSL https://plandrop.dev/start.sh -o start.sh
 sh start.sh
 ```
 
-The starter checks for Docker + Compose (and stops with a clear message if either is
-missing — it never installs them), writes a localhost-defaults `.env` if none exists,
-fetches the ready-to-run compose file, pulls the prebuilt GHCR images, and brings the stack
-up on `http://localhost:8083`. It is re-runnable — an existing `.env` or compose file is
-kept, then `pull` + `up -d` refresh the stack. It tracks the `latest` images; set
-`PLANDROP_VERSION` in `.env` to pin a release.
+The script checks that Docker and Docker Compose are installed, and stops with a clear
+message if either is missing — it never installs them for you. It then writes a `.env` file
+with default settings for local use, if one does not already exist; downloads the
+ready-to-run Compose file; pulls the prebuilt images from the GitHub Container Registry
+(GHCR); and starts the stack at `http://localhost:8083`. Running the script again is safe:
+an existing `.env` file or Compose file is kept as is, and the script just pulls the latest
+images and updates the running stack. The script tracks the `latest` images; to pin a
+release instead, set `PLANDROP_VERSION` in `.env` to that release's version number.
 
 ## Publish a document
 
-With the server up, the full loop works against `http://localhost:8083`:
+With the server running, the full publish workflow works against `http://localhost:8083`:
 
 ```sh
 npx plandrop init --domain http://localhost:8083   # record the local server as your default
-npx plandrop create                                # mint a host
-npx plandrop newdoc plan.html                      # scaffold a document from a theme
+npx plandrop create                                # create a host
+npx plandrop newdoc plan.html                      # generate a document from a theme
 npx plandrop upload plan.html                      # publish it
 # → http://<host-label>.localhost:8083/plan.html
 ```
 
-`*.localhost` resolves to loopback on modern OSes (macOS, and Linux with `systemd-resolved`
-or an `nss-myhostname`/`dnsmasq` setup), so the minted hostnames open in a browser with no
-DNS configuration. Where it doesn't (some minimal or older Linux resolvers), add the label
-to `/etc/hosts` — e.g. `127.0.0.1 <host-label>.localhost` — or run a local resolver.
+`*.localhost` addresses resolve to your own machine automatically on most current operating
+systems — macOS, and Linux with `systemd-resolved` or an `nss-myhostname`/`dnsmasq` setup —
+so the hostname `create` generates opens directly in a browser with no DNS setup. On a Linux
+system where this does not happen (some minimal or older configurations), add the hostname
+to `/etc/hosts` yourself — for example `127.0.0.1 <host-label>.localhost` — or set up a
+local DNS resolver.
 
-## From source instead
+## Building from source instead
 
-The starter pulls prebuilt images. To run from a checkout — to develop plandrop or inspect
-everything first — clone the repo and build the bundled-proxy stack locally:
+The starter script downloads prebuilt images. To run plandrop from a checkout instead — to
+develop it, or to inspect every file before running anything — clone the repository and
+build the stack locally:
 
 ```sh
 git clone https://github.com/Xalior/plandrop.git
@@ -56,6 +61,6 @@ cd plandrop
 docker compose -f compose.proxy.yml up -d --build
 ```
 
-`compose.proxy.yml` bundles its own front proxy, so it needs no external reverse proxy or
-DNS for localhost use — the same shape the starter runs, built from source rather than
-pulled.
+`compose.proxy.yml` includes its own reverse proxy, so it needs no external reverse proxy
+and no DNS for local use — the same stack the starter script runs, built from source instead
+of downloaded as prebuilt images.

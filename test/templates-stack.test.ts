@@ -8,7 +8,7 @@ import { bootswatchThemes, customThemes } from '../scripts/gen-templates.mjs';
 import { runCli } from './helpers/cli';
 import { httpRequest } from './helpers/http';
 
-const { ingressPort, apachePort, domain, proxyBase, proxyPort, proxyHost, tenantA } =
+const { ingressPort, apachePort, domain, proxyBase, proxy, proxyDomain, tenantA } =
   inject('stack');
 
 const bootswatchDir = fileURLToPath(new URL('../node_modules/bootswatch', import.meta.url));
@@ -392,6 +392,7 @@ describe('apache shared /.plandrop at any depth', () => {
 // reader. Apache is the authoritative guard: it refuses every write method
 // against that name at any depth, whatever route the request took to get there.
 describe('apache refuses writes to the reserved .plandrop name', () => {
+  let label: string;
   let tenantHost: string;
   let auth: { user: string; pass: string };
 
@@ -407,6 +408,7 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
       host: string;
       passphrase: string;
     };
+    label = host;
     tenantHost = `${host}.${domain}`;
     auth = { user: host, pass: passphrase };
 
@@ -424,12 +426,18 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
   // client whichever hop it came in on, since a proxy is the shape every real
   // deployment has. Apache's own guard is proven by the direct route; the
   // proxied route proves what a client actually sees.
+  //
+  // The two routes name the SAME tenant under DIFFERENT parent domains, because
+  // the two hops select the vhost differently. Apache keys on the first host
+  // label alone, so any parent works on the direct port. The front proxy routes
+  // on the whole name and refuses one it has no route for, so a proxied request
+  // has to sit under the proxy's own parent domain.
   const routes = [
-    { name: 'apache', port: apachePort, connectHost: undefined },
-    { name: 'front proxy', port: proxyPort, connectHost: proxyHost },
+    { name: 'apache', port: apachePort, connectHost: undefined, parent: domain },
+    { name: 'front proxy', ...proxy, parent: proxyDomain },
   ] as const;
 
-  describe.each(routes)('via $name', ({ port, connectHost }) => {
+  describe.each(routes)('via $name', ({ port, connectHost, parent }) => {
     it.each(['PUT', 'DELETE', 'MKCOL', 'PROPPATCH', 'LOCK'])(
       'refuses %s of the bare name at the root and below',
       async (method) => {
@@ -439,7 +447,7 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
             connectHost,
             method,
             path,
-            hostHeader: tenantHost,
+            hostHeader: `${label}.${parent}`,
             auth,
             body: method === 'PUT' ? '{"passphrase":"leaked"}' : undefined,
           });
@@ -449,13 +457,14 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
     );
 
     it('refuses a COPY or MOVE landing on the name, leaving the source alone', async () => {
+      const host = `${label}.${parent}`;
       const source = `/sub/movable-${port}.txt`;
       const put = await httpRequest({
         port,
         connectHost,
         method: 'PUT',
         path: source,
-        hostHeader: tenantHost,
+        hostHeader: host,
         auth,
         body: 'movable',
       });
@@ -468,9 +477,9 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
             connectHost,
             method,
             path: source,
-            hostHeader: tenantHost,
+            hostHeader: host,
             auth,
-            extraHeaders: { Destination: `http://${tenantHost}${target}` },
+            extraHeaders: { Destination: `http://${host}${target}` },
           });
           expect(res.status, `${method} -> ${target}`).toBe(403);
         }
@@ -481,7 +490,7 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
         connectHost,
         method: 'GET',
         path: source,
-        hostHeader: tenantHost,
+        hostHeader: host,
       });
       expect(still.status).toBe(200);
     });
@@ -524,10 +533,12 @@ describe('apache refuses writes to the reserved .plandrop name', () => {
 // namespace in its `.plandrop/` form, and the two autoindex chrome names a
 // tenant publishes on purpose.
 describe('front proxy refuses hidden paths', () => {
-  const tenantHost = `${tenantA.label}.${domain}`;
+  // Under the PROXY's parent domain, not the Apache-only one: the proxy routes
+  // on the whole host name, so this is the name that reaches Apache through it.
+  const tenantHost = `${tenantA.label}.${proxyDomain}`;
 
   function viaProxy(method: string, path: string, hostHeader = tenantHost) {
-    return httpRequest({ port: proxyPort, connectHost: proxyHost, method, path, hostHeader });
+    return httpRequest({ ...proxy, method, path, hostHeader });
   }
 
   it('serves the theme namespace at the host root and at any depth', async () => {
@@ -544,7 +555,7 @@ describe('front proxy refuses hidden paths', () => {
   });
 
   it('serves the theme namespace on the parent domain too', async () => {
-    const res = await viaProxy('GET', '/.plandrop/bootstrap5/template.html', 'localhost');
+    const res = await viaProxy('GET', '/.plandrop/bootstrap5/template.html', proxyDomain);
     expect(res.status).toBe(200);
   });
 
@@ -587,12 +598,11 @@ describe('front proxy refuses hidden paths', () => {
       host: string;
       passphrase: string;
     };
-    const chromeHost = `${host}.${domain}`;
+    const chromeHost = `${host}.${proxyDomain}`;
     const auth = { user: host, pass: passphrase };
 
     const mkcol = await httpRequest({
-      port: proxyPort,
-      connectHost: proxyHost,
+      ...proxy,
       method: 'MKCOL',
       path: '/sub/',
       hostHeader: chromeHost,
@@ -602,8 +612,7 @@ describe('front proxy refuses hidden paths', () => {
 
     for (const path of ['/.header.html', '/.footer.html', '/sub/.header.html', '/sub/.footer.html']) {
       const put = await httpRequest({
-        port: proxyPort,
-        connectHost: proxyHost,
+        ...proxy,
         method: 'PUT',
         path,
         hostHeader: chromeHost,
@@ -613,8 +622,7 @@ describe('front proxy refuses hidden paths', () => {
       expect(put.status, `PUT ${path}`).toBe(201);
 
       const get = await httpRequest({
-        port: proxyPort,
-        connectHost: proxyHost,
+        ...proxy,
         method: 'GET',
         path,
         hostHeader: chromeHost,
@@ -633,8 +641,7 @@ describe('front proxy refuses hidden paths', () => {
       '/sub/.env',
     ]) {
       const put = await httpRequest({
-        port: proxyPort,
-        connectHost: proxyHost,
+        ...proxy,
         method: 'PUT',
         path,
         hostHeader: chromeHost,
@@ -891,14 +898,15 @@ describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => 
     const auth = { user: dotfile.host, pass: dotfile.passphrase };
     const doc = readFileSync(join(cwd, 'plan.html'), 'utf8');
 
-    // Every asset ref the scaffold ships with is root-absolute — never
-    // document-relative — so it survives being published at any subpath.
+    // Every asset ref the scaffold ships with names the template server
+    // outright — never document-relative — so it survives being published at
+    // any subpath, and resolves on disk before the document is published at all.
     const refs = [...doc.matchAll(/(?:href|src)="([^"]*\.plandrop\/[^"]+)"/g)]
       .map((m) => m[1])
       .filter((ref): ref is string => ref !== undefined);
     expect(refs.length).toBeGreaterThan(2);
     for (const ref of refs) {
-      expect(ref.startsWith('/.plandrop/')).toBe(true);
+      expect(ref.startsWith(`${proxyBase}/.plandrop/`)).toBe(true);
     }
 
     // Publish it two levels down, where `upload plans` puts a document kept in
@@ -923,14 +931,30 @@ describe('newdoc end-to-end (CLI -> ingress -> local file -> published)', () => 
     });
     expect(put.status).toBe(201);
 
-    // Every ref resolves straight off the HOST ROOT (not "/plans/deep" + ref) —
-    // proving the scaffold does not lean on the any-depth alias to render
-    // correctly once published below the root.
+    // Every ref answers at the origin it names — the template server, which is
+    // where a browser will actually fetch it from, on disk or published.
+    for (const ref of refs) {
+      const url = new URL(ref);
+      const res = await httpRequest({
+        ...proxy,
+        method: 'GET',
+        path: url.pathname,
+        // Ask for exactly the host the ref names — the bare parent domain, which
+        // the proxy routes to the ingress. The connection itself goes to ::1,
+        // where the front proxy publishes.
+        hostHeader: url.hostname,
+      });
+      expect(res.status, ref).toBe(200);
+    }
+
+    // And the same path resolves straight off the HOST ROOT (not
+    // "/plans/deep" + ref), so a document published below the root renders
+    // without leaning on any depth alias.
     for (const ref of refs) {
       const res = await httpRequest({
         port: apachePort,
         method: 'GET',
-        path: ref,
+        path: new URL(ref).pathname,
         hostHeader: tenantHost,
       });
       expect(res.status, ref).toBe(200);

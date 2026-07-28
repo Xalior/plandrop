@@ -30,6 +30,44 @@ export async function fetchTemplates(base: string): Promise<TemplatesResponse> {
 export const DEFAULT_TEMPLATE = 'bootstrap5';
 
 /**
+ * An origin-less reference to the shared theme assets, in every shape a
+ * document can carry one: root-absolute (`="/.plandrop/…"`, what a hosted
+ * template serves), bare-relative (`=".plandrop/…"`), and climbing-relative
+ * (`="../.plandrop/…"`). All three resolve on the host — Apache folds
+ * `/any/depth/.plandrop/…` back onto the single theme volume — and all three
+ * break the moment the document is opened from disk or copied anywhere else.
+ *
+ * Anchoring on `="` (rather than the bare path) keeps the match to real
+ * attributes, leaving prose and code samples that mention a `.plandrop` path
+ * alone. A reference that already names an origin begins with a scheme, so it
+ * never matches and is never touched.
+ *
+ * Built fresh per call: a `/g` regex carries `lastIndex` across uses, so one
+ * shared instance would skip matches on every other call.
+ */
+function localAssetRef(): RegExp {
+  return /="(?:\/|(?:\.{1,2}\/)*)\.plandrop\//g;
+}
+
+/**
+ * Fully qualify a document's theme asset links against a server, so they
+ * resolve from any origin — a `file://` document on disk included, and at any
+ * depth once published.
+ *
+ * The self-update script comes along qualified too, which is harmless — it
+ * fetches the document's own URL and stands down on anything but http(s), so a
+ * document on disk stays inert until it is hosted.
+ */
+export function qualifyAssetUrls(html: string, base: string): string {
+  return html.replace(localAssetRef(), `="${base}/.plandrop/`);
+}
+
+/** How many asset references `qualifyAssetUrls` would rewrite in `html`. */
+export function countLocalAssetRefs(html: string): number {
+  return html.match(localAssetRef())?.length ?? 0;
+}
+
+/**
  * plandrop's own version (public/package.json's "version"), baked into the
  * bundle at build time by tsup's `define` (the literal is declared ambiently
  * in src/version.d.ts). `typeof` never throws on a bare identifier that turns

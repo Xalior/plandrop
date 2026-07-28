@@ -27,4 +27,11 @@
       Both follow the document's light/dark theme. Documents that use no
       diagrams or code blocks load none of the machinery — plain HTML costs
       nothing. Inline <code> is styled by the theme already.
+
+      Link between documents RELATIVELY — <a href="plans/x.html">, or
+      <a href="../index.html"> — never from a local root. A host's root need
+      not be the directory you write in: with a localRoot recorded, docs/ is
+      published AS the root, so docs/plans/x.html is served at /plans/x.html
+      and an href of "/docs/plans/x.html" 404s once published. Relative links
+      survive the mapping, and work in a browser on the local file too.
     -->

@@ -179,6 +179,12 @@ interface HookShape {
  * back to publishing by bare basename. The trailing `|| true` keeps a failed
  * publish from failing the edit; jq extracts the path (Write reports
  * tool_input.file_path, Edit's response carries filePath).
+ *
+ * The client is requested `@latest` rather than bare: `npx plandrop` will reuse
+ * whatever it already has cached without consulting the registry, and a hook
+ * runs unattended on every save — so a stale cached client would go on quietly
+ * publishing under path rules the installed version no longer uses, landing
+ * documents somewhere nobody asked for with nothing on screen to say so.
  */
 function buildHookShape(watchGlob: string, mode: PublishMode): HookShape {
   const glob = normalizeWatchGlob(watchGlob);
@@ -190,7 +196,7 @@ function buildHookShape(watchGlob: string, mode: PublishMode): HookShape {
   const command =
     `jq -r '.tool_input.file_path // .tool_response.filePath' | ` +
     `{ read -r f; case "$f" in ${casePattern}) ` +
-    `cd "${cdTarget}" && npx -y plandrop upload "\${f#"$PWD"/}";; esac; } ` +
+    `cd "${cdTarget}" && npx -y plandrop@latest upload "\${f#"$PWD"/}";; esac; } ` +
     `2>/dev/null || true`;
   return { command, casePattern, cdTarget };
 }
@@ -213,15 +219,19 @@ function hookEntry(command: string): HookCommand {
  * command plandrop would generate today. A hand-rolled or older-format hook —
  * say, one that re-prefixes the watched directory itself rather than relying
  * on `upload`'s own cwd-relative mirroring — still matches, so an upgrade
- * finds and replaces it in place instead of leaving two behind.
+ * finds and replaces it in place instead of leaving two behind. Any version
+ * spec on the package counts (`plandrop`, `plandrop@latest`, a pinned
+ * `plandrop@0.5.4`): the request is the client, whichever way it is named.
  */
+const UPLOAD_INVOCATION = /\bplandrop(@[^\s"']+)?\s+upload\b/;
+
 function isPlandropHook(hook: unknown): boolean {
   if (!isRecord(hook)) {
     return false;
   }
   const command = typeof hook.command === 'string' ? hook.command : '';
   const statusMessage = typeof hook.statusMessage === 'string' ? hook.statusMessage : '';
-  return statusMessage === PLANDROP_STATUS_MESSAGE || command.includes('plandrop upload');
+  return statusMessage === PLANDROP_STATUS_MESSAGE || UPLOAD_INVOCATION.test(command);
 }
 
 function extractCasePattern(command: string): string | undefined {

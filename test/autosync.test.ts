@@ -195,7 +195,7 @@ describe('autosyncCommand', () => {
     expect(command).toBe(
       'jq -r \'.tool_input.file_path // .tool_response.filePath\' | ' +
         '{ read -r f; case "$f" in */docs/*.html) ' +
-        'cd "${CLAUDE_PROJECT_DIR:-.}" && npx -y plandrop upload "${f#"$PWD"/}";; esac; } ' +
+        'cd "${CLAUDE_PROJECT_DIR:-.}" && npx -y plandrop@latest upload "${f#"$PWD"/}";; esac; } ' +
         '2>/dev/null || true',
     );
     expect(autosyncCommand(DEFAULT_WATCH_GLOB, MIRROR_MODE)).toBe(command);
@@ -203,8 +203,19 @@ describe('autosyncCommand', () => {
 
   it('uploads the saved file by its project-relative path, not a flat basename', () => {
     const command = autosyncCommand('plans/**/*.html');
-    expect(command).toContain('plandrop upload "${f#"$PWD"/}"');
+    expect(command).toContain('upload "${f#"$PWD"/}"');
     expect(command).not.toContain('basename');
+  });
+
+  // A hook runs unattended on every save, and `npx plandrop` reuses a cached
+  // client without consulting the registry — so a stale one would go on
+  // publishing under path rules the installed version no longer uses.
+  it('requests the client @latest, never bare', () => {
+    for (const mode of [MIRROR_MODE, FLAT_MODE, { kind: 'root', dir: 'docs' } as const]) {
+      const command = autosyncCommand(DEFAULT_WATCH_GLOB, mode);
+      expect(command).toContain('npx -y plandrop@latest upload');
+      expect(command).not.toMatch(/npx -y plandrop\s+upload/);
+    }
   });
 
   it('drops the recursive marker from the case gate, which already spans /', () => {
@@ -218,12 +229,12 @@ describe('autosyncCommand', () => {
 
   it('cds into the project root + dir in root mode', () => {
     const command = autosyncCommand(DEFAULT_WATCH_GLOB, { kind: 'root', dir: 'docs' });
-    expect(command).toContain('cd "${CLAUDE_PROJECT_DIR:-.}/docs" && npx -y plandrop upload "${f#"$PWD"/}"');
+    expect(command).toContain('cd "${CLAUDE_PROJECT_DIR:-.}/docs" && npx -y plandrop@latest upload "${f#"$PWD"/}"');
   });
 
   it('cds into the saved file\'s own directory in flat mode', () => {
     const command = autosyncCommand(DEFAULT_WATCH_GLOB, FLAT_MODE);
-    expect(command).toContain('cd "$(dirname "$f")" && npx -y plandrop upload "${f#"$PWD"/}"');
+    expect(command).toContain('cd "$(dirname "$f")" && npx -y plandrop@latest upload "${f#"$PWD"/}"');
   });
 });
 
@@ -288,7 +299,7 @@ describe('mergeAutosyncHook', () => {
       // like today's generated command, but still plandrop's hook.
       const oldCommand =
         'jq -r \'.tool_input.file_path\' | { read -r f; case "$f" in */docs/*.html) ' +
-        'npx -y plandrop upload "docs/${f#*/docs/}";; esac; } 2>/dev/null || true';
+        'npx -y plandrop@latest upload "docs/${f#*/docs/}";; esac; } 2>/dev/null || true';
       const existing = JSON.stringify({
         hooks: {
           PostToolUse: [
@@ -326,6 +337,26 @@ describe('mergeAutosyncHook', () => {
         },
       });
       expect(mergeAutosyncHook(existing, DEFAULT_WATCH_GLOB).outcome).toBe('replaced');
+    });
+
+    // However the client is named, the hook is plandrop's and gets upgraded in
+    // place — an install predating the pin included, which is the one that most
+    // needs replacing.
+    it.each([
+      ['bare', 'npx -y plandrop upload "$f"'],
+      ['@latest', 'npx -y plandrop@latest upload "$f"'],
+      ['a pinned version', 'npx -y plandrop@0.5.4 upload "$f"'],
+      ['a dist-tag', 'npx -y plandrop@next upload "$f"'],
+    ])('recognizes a hook invoking the client %s', (_name, command) => {
+      const existing = JSON.stringify({
+        hooks: {
+          PostToolUse: [{ matcher: 'Write|Edit', hooks: [{ type: 'command', command }] }],
+        },
+      });
+      const result = mergeAutosyncHook(existing, DEFAULT_WATCH_GLOB);
+      expect(result.outcome).toBe('replaced');
+      const settings = JSON.parse(result.json) as Settings;
+      expect(settings.hooks?.PostToolUse?.[0]?.hooks).toHaveLength(1);
     });
 
     it('is a no-op when the recognized hook already matches exactly', () => {
@@ -369,7 +400,7 @@ describe('mergeAutosyncHook', () => {
       const settings = JSON.parse(result.json) as Settings;
       const hooks = settings.hooks?.PostToolUse?.[0]?.hooks ?? [];
       expect(hooks).toHaveLength(2);
-      expect(hooks.filter((hook) => hook.command?.includes('plandrop upload'))).toHaveLength(1);
+      expect(hooks.filter((hook) => hook.command?.includes(' upload '))).toHaveLength(1);
       expect(hooks.some((hook) => hook.command === 'echo unrelated')).toBe(true);
     });
   });
@@ -468,7 +499,7 @@ describe('the generated shell, run for real', () => {
     binDir = mkdtempSync(join(tmpdir(), 'plandrop-shell-bin-'));
     resultsFile = join(mkdtempSync(join(tmpdir(), 'plandrop-shell-out-')), 'results.txt');
     writeFileSync(resultsFile, '');
-    // A stand-in for the real `npx -y plandrop upload <path>`: records the
+    // A stand-in for the real `npx -y plandrop@latest upload <path>`: records the
     // shell's cwd and its own argv rather than touching the network.
     const fakeNpx = `#!/bin/sh\n{ printf 'PWD=%s\\n' "$PWD"; printf 'ARGS=%s\\n' "$*"; } >> "$RESULTS_FILE"\n`;
     writeFileSync(join(binDir, 'npx'), fakeNpx, { mode: 0o755 });
@@ -496,14 +527,14 @@ describe('the generated shell, run for real', () => {
         mkdirSync(join(projectDir, 'docs', 'plans'), { recursive: true });
         const out = run(shell, autosyncCommand(DEFAULT_WATCH_GLOB, MIRROR_MODE), file);
         expect(out).toContain(`PWD=${projectDir}`);
-        expect(out).toContain('ARGS=-y plandrop upload docs/plans/x.html');
+        expect(out).toContain('ARGS=-y plandrop@latest upload docs/plans/x.html');
       });
 
       it('mirror mode: uploads a top-level save by its project-relative path', () => {
         const file = join(projectDir, 'docs', 'y.html');
         mkdirSync(join(projectDir, 'docs'), { recursive: true });
         const out = run(shell, autosyncCommand(DEFAULT_WATCH_GLOB, MIRROR_MODE), file);
-        expect(out).toContain('ARGS=-y plandrop upload docs/y.html');
+        expect(out).toContain('ARGS=-y plandrop@latest upload docs/y.html');
       });
 
       it('mirror mode: skips a file that does not match the watch glob', () => {
@@ -517,7 +548,7 @@ describe('the generated shell, run for real', () => {
         mkdirSync(join(projectDir, 'docs', 'plans'), { recursive: true });
         const out = run(shell, autosyncCommand('**/*.html', { kind: 'root', dir: 'docs' }), file);
         expect(out).toContain(`PWD=${join(projectDir, 'docs')}`);
-        expect(out).toContain('ARGS=-y plandrop upload plans/x.html');
+        expect(out).toContain('ARGS=-y plandrop@latest upload plans/x.html');
       });
 
       it('root mode: a save outside the configured root keeps its full path (upload\'s own fallback applies)', () => {
@@ -530,7 +561,7 @@ describe('the generated shell, run for real', () => {
         // The shell couldn't strip $PWD/ (the file isn't under it), so the
         // full path is passed through unchanged — upload.ts's own
         // cwd-relative mirroring is what falls back to a bare basename.
-        expect(out).toContain(`ARGS=-y plandrop upload ${file}`);
+        expect(out).toContain(`ARGS=-y plandrop@latest upload ${file}`);
       });
 
       it('flat mode: a nested save publishes by its own basename', () => {
@@ -538,14 +569,14 @@ describe('the generated shell, run for real', () => {
         mkdirSync(join(projectDir, 'docs', 'plans'), { recursive: true });
         const out = run(shell, autosyncCommand(DEFAULT_WATCH_GLOB, FLAT_MODE), file);
         expect(out).toContain(`PWD=${join(projectDir, 'docs', 'plans')}`);
-        expect(out).toContain('ARGS=-y plandrop upload x.html');
+        expect(out).toContain('ARGS=-y plandrop@latest upload x.html');
       });
 
       it('flat mode: a top-level save also publishes by its own basename', () => {
         const file = join(projectDir, 'docs', 'y.html');
         mkdirSync(join(projectDir, 'docs'), { recursive: true });
         const out = run(shell, autosyncCommand(DEFAULT_WATCH_GLOB, FLAT_MODE), file);
-        expect(out).toContain('ARGS=-y plandrop upload y.html');
+        expect(out).toContain('ARGS=-y plandrop@latest upload y.html');
       });
 
       it('flat mode: skips a file that does not match the watch glob', () => {

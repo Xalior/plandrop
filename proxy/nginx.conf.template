@@ -2,8 +2,9 @@
 # (NPM/Cloudflare/etc.) that lives OUTSIDE this stack. It routes by Host on a
 # SINGLE published port so a browser and the CLI share one domain:
 #
-#   <parent domain>  -> ingress  (bare parent: /.plandrop/* statics + /api proxy)
+#   <parent domain>   -> ingress  (bare parent: /.plandrop/* statics + /api proxy)
 #   *.<parent domain> -> apache   (tenant vhosts: static hosting + WebDAV writes)
+#   anything else     -> 421      (refused; see the default server at the end)
 #
 # This is the same routing the production front proxy performs; it is the ONE
 # proxy definition shared by the automated harness (test/setup/stack.ts brings
@@ -85,12 +86,13 @@ http {
     }
   }
 
-  # Everything else (the *.parent tenant vhosts) -> apache. Default server, so
-  # any subdomain Host on this port lands here and Apache picks the docroot from
-  # the host label.
+  # Tenant vhosts: any subdomain of the parent domain -> apache, which picks the
+  # docroot from the first host label. The wildcard matches at any depth
+  # (a.parent and a.b.parent alike) but never the bare parent itself, so the two
+  # blocks cannot both claim a host.
   server {
-    listen ${PLANDROP_PROXY_PORT} default_server;
-    server_name _;
+    listen ${PLANDROP_PROXY_PORT};
+    server_name *.${PLANDROP_PROXY_DOMAIN};
 
     if ($plandrop_hidden_path) {
       return 403;
@@ -100,5 +102,30 @@ http {
       set $upstream "${PLANDROP_APACHE_HOST}:${PLANDROP_APACHE_PORT}";
       proxy_pass http://$upstream;
     }
+  }
+
+  # Any other Host is refused here rather than routed. nginx always has a default
+  # server for a listening address, and an unmarked configuration silently
+  # promotes the FIRST block to the role — so this one claims `default_server`
+  # explicitly, and it answers instead of proxying. Without it, either the
+  # tenants or the control entrypoint would inherit every unmatched Host: a
+  # request naming any name at all, or the host's bare IP address, would be
+  # served real content.
+  #
+  # 421 Misdirected Request, with a body, rather than nginx's connection-drop
+  # (444): the reader is nearly always the person running this stack, pointing a
+  # browser or curl at an address that does not match the domain they configured.
+  # A dropped connection is indistinguishable from a proxy that is down or a
+  # network fault, and sends them to debug the wrong thing; a status line and one
+  # sentence name the actual mistake. Nothing legitimate reaches this proxy on a
+  # name other than the configured domain, so there is nothing here to hide.
+  server {
+    listen ${PLANDROP_PROXY_PORT} default_server;
+    server_name _;
+    default_type text/plain;
+
+    # The Host is never echoed back: it is attacker-controlled and this body is
+    # returned to whoever sent it.
+    return 421 "plandrop: this proxy serves ${PLANDROP_PROXY_DOMAIN} (the control entrypoint) and its subdomains (published documents). The request named a different host, so it was not routed. Set PLANDROP_PROXY_DOMAIN to the domain you reach this stack by.\n";
   }
 }

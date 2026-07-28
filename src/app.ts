@@ -1,4 +1,6 @@
+import { run as index } from './commands/autoindex';
 import { run as create } from './commands/create';
+import { run as fixcss } from './commands/fixcss';
 import { run as help } from './commands/help';
 import { run as hooks } from './commands/hooks';
 import { run as init } from './commands/init';
@@ -15,6 +17,8 @@ const HANDLERS: Record<CommandName, Handler> = {
   create,
   newdoc,
   upload,
+  index,
+  fixcss,
   rotate,
   remove,
   init,

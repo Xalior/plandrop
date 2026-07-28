@@ -1,0 +1,9 @@
+{
+  "label": "Sonny's First Notebook",
+  "appearance": ["light"],
+  "credit": {
+    "name": "plandrop",
+    "url": "https://plandrop.dev/",
+    "license": "LGPL-3.0-only"
+  }
+}

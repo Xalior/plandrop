@@ -160,7 +160,7 @@ describe('client create', () => {
       'cd "${CLAUDE_PROJECT_DIR:-.}/plans"',
     );
     expect(settings.hooks.PostToolUse[0]?.hooks[0]?.command).toContain(
-      'plandrop upload "${f#"$PWD"/}"',
+      'npx -y plandrop@latest upload "${f#"$PWD"/}"',
     );
   });
 

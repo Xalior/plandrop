@@ -1,5 +1,5 @@
 /** The commands plandrop accepts. Every command name is fewer than 8 characters. */
-export const COMMANDS = ['create', 'newdoc', 'upload', 'rotate', 'remove', 'init', 'server', 'hooks', 'help'] as const;
+export const COMMANDS = ['create', 'newdoc', 'upload', 'index', 'fixcss', 'rotate', 'remove', 'init', 'server', 'hooks', 'help'] as const;
 
 export type CommandName = (typeof COMMANDS)[number];
 

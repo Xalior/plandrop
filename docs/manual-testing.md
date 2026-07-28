@@ -17,8 +17,15 @@ The proxy routes by `Host` on a single published port:
 |------|-----------|---------|
 | `localhost` (the bare `PLANDROP_PROXY_DOMAIN`) | ingress | template statics + `/api/*` |
 | `*.localhost` (any subdomain) | apache | tenant static hosting + WebDAV |
+| anything else | nobody | answered `421 Misdirected Request` and never forwarded |
 
 So a browser and the CLI share **one** origin: `http://localhost:8083`.
+
+The third row is the one that surprises people. A request that names any other
+host — including the machine's own IP address, and including a domain that is
+right for Apache but not for this proxy — gets a short plain-text `421` naming
+the domain the proxy does serve. If you see that page, the address you asked for
+does not match `PLANDROP_PROXY_DOMAIN`; change one of the two.
 
 ## 1. Bring the stack up (repo infra only)
 

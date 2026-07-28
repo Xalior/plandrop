@@ -57,9 +57,11 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     summary: 'scaffold a template-based HTML document locally',
     synopsis: '<filename> [--template <name>] [--domain <uri>] [--force]',
     detail: `  Writes a starter document from a server-hosted template. Needs no host:
-  with nothing configured it uses the public template host plandrop.dev
-  (static, publish-less templates); pointed at your own server it fetches
-  that host's self-updating ones. Refuses to overwrite without --force.
+  with nothing configured it uses the public template host plandrop.dev;
+  pointed at your own server it fetches that server's templates. The
+  document's theme assets name whichever server they came from, so it
+  renders on disk in a browser as well as published, at any depth.
+  Refuses to overwrite without --force.
 
     --template <name>   the template to scaffold from (--template > the
                         .plandrop template field > user config > the server default)
@@ -101,6 +103,54 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
       'plandrop upload ./evidence photos',
       'plandrop upload ./evidence .',
     ],
+  },
+  index: {
+    summary: 'publish the directory listing\'s header and footer chrome',
+    synopsis: '[hero-file] [--template <name>]',
+    detail: `  Publishes .header.html and .footer.html at the host root — the two files
+  Apache wraps a directory listing in when a directory has no index.html.
+  The pair comes from a template's own header and footer, so the listing
+  wears the same theme as the documents published beside it; without them a
+  listing falls back to the server's default theme.
+
+  Given a hero file, its HTML is placed at the bottom of the header, so it
+  renders between the page chrome and the list of files — the place to
+  introduce what a visitor is looking at. The file is a fragment (a heading
+  and a paragraph or two), not a whole document; it is wrapped in a themed
+  block for you.
+
+  Re-running is safe: both files are overwritten, and a header is never
+  marked up twice.
+
+    --template <name>   the template to take the chrome from (--template >
+                        the .plandrop template field > user config > the
+                        server default)`,
+    examples: [
+      'plandrop index',
+      'plandrop index intro.html',
+      'plandrop index intro.html --template darkly',
+    ],
+  },
+  fixcss: {
+    summary: 'rewrite documents\' theme asset links to name the server outright',
+    synopsis: '',
+    detail: `  Walks every HTML document under the publish root — the .plandrop's
+  recorded localRoot, or the current directory when none is recorded — and
+  rewrites any theme asset link that carries no origin so it names the
+  server, exactly as a freshly scaffolded document does. All three
+  origin-less shapes are fixed: root-absolute (/.plandrop/...), relative
+  (.plandrop/...), and climbing (../.plandrop/...).
+
+  Such a link resolves only on the host it was published to, so the document
+  renders unstyled anywhere else — opened from disk, mailed on, or copied
+  into another host. Naming the server makes the document carry its own
+  theme wherever it goes. A link that already names an origin is left alone,
+  as is any document with nothing to fix. Files are rewritten in place, and
+  every changed one is printed.
+
+  The server comes from the usual domain resolution: PLANDROP_DOMAIN, the
+  nearest .plandrop, then the user or system config.`,
+    examples: ['plandrop fixcss'],
   },
   rotate: {
     summary: 'change the host passphrase',

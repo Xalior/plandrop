@@ -7,6 +7,7 @@ import { controlUrl, timedFetch } from '../endpoint';
 import {
   fetchTemplates,
   PUBLIC_TEMPLATE_HOST,
+  qualifyAssetUrls,
   requestedTemplate,
   resolveTemplate,
   UnknownTemplateError,
@@ -33,9 +34,10 @@ export async function run(dispatch: Dispatch): Promise<number> {
   // newdoc only scaffolds a local file — it needs the template server's domain,
   // not a host/passphrase. It resolves the domain by the usual precedence (flag >
   // PLANDROP_DOMAIN > nearest .plandrop > user config) but, unlike `create`,
-  // never prompts: with nothing configured it defaults to plandrop.dev, whose
-  // static, publish-less templates make `newdoc <file>` work out of the box.
-  // Pointed at your own host instead, it fetches that host's self-updating ones.
+  // never prompts: with nothing configured it defaults to plandrop.dev, so
+  // `newdoc <file>` works out of the box. Whichever server answers, its own
+  // origin is what the scaffolded document's assets name (see qualifyAssetUrls),
+  // so the file renders on disk before it is ever published.
   const cwd = process.cwd();
   let base: string;
   try {
@@ -61,7 +63,9 @@ export async function run(dispatch: Dispatch): Promise<number> {
     const available = await fetchTemplates(base);
     const requested = requestedTemplate(templateFlag, nearestDotfileTemplate(cwd), userConfigTemplate());
     concrete = resolveTemplate(requested, available);
-    starter = await fetchStarter(base, concrete);
+    // Against the server the template came from, so the scaffolded file renders
+    // on disk as well as published (see qualifyAssetUrls).
+    starter = qualifyAssetUrls(await fetchStarter(base, concrete), base);
   } catch (error) {
     if (error instanceof UnknownTemplateError) {
       process.stderr.write(`${error.message}\n`);
