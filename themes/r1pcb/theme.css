@@ -186,7 +186,7 @@
 
   --pd-cap-bg: oklch(0.90 0.025 var(--pcb-hue));
   --pd-code-bg: oklch(0.985 0.008 var(--pcb-hue));
-  --pd-mask-opacity: 0.045;
+  --pd-mask-opacity: 0.08;
   /* A dark tick, legible on every fill in this palette. */
   --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23f6fcf7' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
 }
@@ -298,7 +298,7 @@
 
   --pd-cap-bg: oklch(0.29 0.045 var(--pcb-hue));
   --pd-code-bg: oklch(0.155 0.045 var(--pcb-hue));
-  --pd-mask-opacity: 0.05;
+  --pd-mask-opacity: 0.09;
   /* A light tick, legible on every fill in this palette. */
   --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23050e07' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
 }
