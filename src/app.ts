@@ -8,6 +8,7 @@ import { run as newdoc } from './commands/newdoc';
 import { run as remove } from './commands/remove';
 import { run as rotate } from './commands/rotate';
 import { run as server } from './commands/server';
+import { run as text } from './commands/text';
 import { run as upload } from './commands/upload';
 import { parseArgs, UsageError, VersionRequested, type CommandName, type Dispatch } from './dispatch';
 
@@ -21,6 +22,7 @@ const HANDLERS: Record<CommandName, Handler> = {
   fixcss,
   rotate,
   remove,
+  text,
   init,
   server,
   hooks,

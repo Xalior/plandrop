@@ -166,6 +166,27 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
   .plandrop. The host URL 404s afterwards.`,
     examples: ['plandrop remove'],
   },
+  text: {
+    summary: 'print a document as markdown',
+    synopsis: '<file | url>',
+    detail: `  Reads an HTML document — a local file or a published URL — and writes it
+  to stdout as markdown. Headings, lists, links, tables and code blocks all
+  keep their structure, and entities are decoded.
+
+  The conversion is mechanical: nothing is summarised, reflowed, or judged
+  to be "the article". What the author wrote comes out in the order they
+  wrote it, so the output can be checked against the source.
+
+  Script and style bodies are dropped outright rather than left as loose
+  prose. An <iframe> is kept as raw HTML so its src survives, and a table
+  with no header row is passed through as HTML rather than having its cell
+  boundaries flattened away.`,
+    examples: [
+      'plandrop text plan.html',
+      'plandrop text https://example.plandrop.dev/plan.html',
+      'plandrop text plan.html > plan.md',
+    ],
+  },
   init: {
     summary: 'record your default domain and template in a config file',
     synopsis: '[--domain <uri>] [--template <name>] [--local | --user] [--yes] [--force]',

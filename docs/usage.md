@@ -27,6 +27,7 @@ npx plandrop upload ./planfile.html
 | `fixcss` | Rewrite the theme links in your local HTML documents so each one names the server outright, so a document keeps its styling wherever it is opened. |
 | `rotate` | Change the host's passphrase (the old one stops working immediately). |
 | `remove` | Delete the host and its content, and remove the local `.plandrop`. |
+| `text <file \| url>` | Print an HTML document as markdown, so it can be read without its markup. Works on a local file or a published URL. |
 | `init` | Record your default domain (and template) in a config file the other commands resolve. |
 | `server` | Start a local plandrop server (Docker) via the plandrop.dev starter script. |
 | `hooks [path]` | Install or update the autosync hook in the current project, without creating a host. |
@@ -390,6 +391,41 @@ npx plandrop remove
 
 Deletes the host (its content and credentials) and removes the local `.plandrop`. After
 this, the host URL returns 404 and writes are rejected. Wrong credentials change nothing.
+
+## text
+
+Print an HTML document as markdown, so it can be read without its markup:
+
+```sh
+npx plandrop text plan.html
+npx plandrop text https://example.plandrop.dev/plan.html
+npx plandrop text plan.html > plan.md
+```
+
+The target is a path to a local file or an `http://` or `https://` URL. The markdown goes
+to standard output, so it can be piped or redirected. Nothing is written to your host.
+
+Headings, lists, links, tables, block quotes and code blocks keep their structure, and
+HTML entities are decoded, so `&lt;` arrives as `<`. The document's `<title>` becomes the
+leading heading, unless the document already opens with a heading that says the same
+thing.
+
+The conversion is mechanical. Nothing is summarised, reflowed, or selected as the part of
+the page worth keeping: the text comes out in the order it was written, so the output can
+be compared against the source. Three cases are handled by name rather than by guessing:
+
+- `<script>`, `<style>` and `<noscript>` are removed together with their contents. Deleting
+  only the tags would leave the JavaScript of a theme switcher sitting in the middle of the
+  document as if someone had written it there.
+- An `<iframe>` is kept as HTML, so the address in its `src` survives. There is no markdown
+  for an embedded document, and the alternative is that it disappears with nothing to show
+  it was ever there.
+- A table with no header row is kept as HTML rather than converted. Markdown tables need a
+  header row, and the cells of such a table would otherwise run together into a single
+  line: two adjacent numbers, `76` and `14`, would read as `7614`.
+
+Text that markdown treats as syntax is escaped, so an underscore in prose arrives as `\_`.
+This is standard markdown and reverses on reading.
 
 ## hooks
 

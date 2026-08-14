@@ -1,5 +1,43 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **`plandrop text` prints an HTML document as markdown.** The target is a local
+  file or a published URL, and the markdown goes to standard output. Headings,
+  lists, links, tables and code blocks keep their structure, and entities are
+  decoded. The conversion is mechanical: nothing is summarised or reflowed, and
+  no part of the page is selected as the part worth keeping, so the output can be
+  compared against the source. `<script>` and `<style>` are removed with their
+  contents, an `<iframe>` is kept as HTML so its address survives, and a table
+  with no header row is kept as HTML rather than having its cells run together.
+
+- **A theme can ship its own fonts and images.** A hand-authored theme under
+  `themes/` was limited to `theme.json` and `theme.css`, so every graphic had to
+  be a CSS gradient or an inline `data:` URI and a web font could not be
+  included at all. Any other file or folder in a theme directory is now copied
+  into the generated template, keeping its layout, and the theme's stylesheet
+  reaches it by relative address: `url("../fonts/name.woff2")`.
+
+- **A new theme, Rachel's First PCB (`r1pcb`).** A printed circuit board in
+  light and dark: a solder mask surface, component cards, and a seamless trace
+  pattern behind the page. It carries the Ryga typeface (SIL Open Font License
+  1.1) for its titles and the trace pattern as an SVG, both served from the
+  theme rather than fetched from anywhere else. A single hue value sets the
+  board colour, in the `oklch()` colour space, so changing it repaints the theme
+  without dropping below the WCAG AA contrast minimum. Choose it with
+  `--template r1pcb` or the `template` field in `.plandrop`.
+
+### Fixed
+
+- **An `@import` in a hand-authored theme's stylesheet now works.** The served
+  stylesheet is Bootstrap followed by the theme's own rules, and CSS obeys
+  `@import` only where it comes before every style rule, so such a rule was
+  discarded by the browser with no request made and no error reported. These
+  rules are moved to the top of the joined stylesheet. Everything else keeps its
+  order, so the cascade is unchanged.
+
 ## 0.6.0 — 2026-07-28
 
 ### Added

@@ -15,8 +15,8 @@ npx plandrop upload ./planfile.html
 - **[Quickstart](quickstart.md)** — start a complete plandrop server on your own machine
   with Docker, no domain name or DNS needed, and publish your first document.
 - **[Using the client](usage.md)** — every `npx plandrop` command: `create`, `newdoc`,
-  `upload`, `index`, `fixcss`, `rotate`, `remove`, `init`, `server`, `hooks`, and `help`; the
-  `.plandrop` file; and how the target server is chosen.
+  `upload`, `index`, `fixcss`, `rotate`, `remove`, `text`, `init`, `server`, `hooks`, and
+  `help`; the `.plandrop` file; and how the target server is chosen.
 - **[Self-hosting the stack](setup.md)** — run the three-container stack (nginx ingress +
   Apache WebDAV host + control plane) with Docker Compose, and the reverse proxy, TLS, and
   DNS it needs in front.
