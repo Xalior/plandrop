@@ -1,0 +1,799 @@
+/*!
+ * plandrop r1pcb theme — Rachel's First PCB
+ * Copyright (c) plandrop contributors — https://plandrop.dev/
+ * Licensed under the GNU Lesser General Public License v3.0 only.
+ *
+ * A printed circuit board: matte solder-mask surface, copper traces, drilled
+ * pads. Layered on stock Bootstrap 5: everything it can express as a
+ * Bootstrap CSS custom property is expressed as one, so navbars, cards,
+ * tables, badges, alerts and code inherit the palette without a document
+ * ever asking for it. Selectors appear only where Bootstrap compiled a
+ * literal colour that no variable reaches (`.btn-*`, `.text-bg-*`,
+ * `.form-check-input`), or where the board look needs shape as well as hue:
+ * a pin-1 pad before the title, a chamfered card corner, a copper-trace
+ * texture behind the page.
+ *
+ * Both appearances are first class. :root matches whichever scheme is live,
+ * so the light block and the [data-bs-theme=dark] block declare the SAME
+ * variable list — a value present in only one of them would leak across the
+ * toggle. Scheme-independent values (type, radii, shadow, motion) sit in the
+ * neutral :root block below and are never repeated.
+ *
+ * One hue drives the whole board: every board/card/text/accent/trace tone
+ * below is oklch(), keyed on --pcb-hue, so changing that one variable
+ * repaints the entire solder mask (lightness is perceptual in OKLCH, so the
+ * contrast pairs hold at any hue — swept and checked at 152/280/210/8 plus a
+ * 15-degree sweep of the full circle for the border and secondary tones).
+ * The four status colours (success/info/warning/danger) keep their own
+ * fixed hues instead — a board's indicator LEDs read red/green/amber
+ * regardless of the solder-mask colour underneath them.
+ *
+ * Bootstrap also wants a handful of these as bare "R, G, B" triples (the
+ * --bs-*-rgb custom properties, spent inside `rgba(var(--bs-x-rgb), alpha)`
+ * for a few low-alpha overlays). CSS has no way to decompose an oklch()
+ * value into live numbers, so the hue-tied *-rgb triples below are fixed at
+ * the default hue (152) — the swatch itself still repaints with --pcb-hue
+ * through the main variable, only those few overlay tints stay put.
+ *
+ * --bs-code-color is deliberately absent: the shared override sheet
+ * (.plandrop/shared/css/plandrop.css) loads after this file and tunes inline
+ * code to a calm green. Both of this theme's surfaces clear 4.5:1 against
+ * both of its greens (#11632a on the light board, #7ec699 on the dark one).
+ */
+
+:root {
+  --pcb-hue: 152;
+
+  /* Silkscreen and spec-sheet text stay on the system stack at every size;
+   * the board only wears a distinct face for its title and top-level
+   * headings, and only large — see the Ryga rule below. */
+  --pd-font-display: "Ryga", ui-serif, Georgia, serif;
+  --pd-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --pd-font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", "DejaVu Sans Mono", monospace;
+  --bs-body-font-family: var(--pd-font-body);
+  --bs-font-monospace: var(--pd-font-mono);
+  --bs-body-font-size: 1rem;
+  --bs-body-line-height: 1.55;
+
+  /* A component package has a small, consistent corner radius — never
+   * Bootstrap's rounder default, never the terminal's hard square. */
+  --bs-border-radius: 0.2rem;
+  --bs-border-radius-sm: 0.125rem;
+  --bs-border-radius-lg: 0.3rem;
+  --bs-border-radius-xl: 0.4rem;
+  --bs-border-radius-xxl: 0.5rem;
+  --bs-border-radius-2xl: 0.5rem;
+  --bs-border-radius-pill: 50rem;
+
+  /* A mounted part sits a hair above the board: a short, low-blur shadow
+   * rather than Bootstrap's softer elevation or the terminal's none-at-all.
+   * Neutral black at low alpha reads correctly against either board colour,
+   * so it needs no per-scheme split. */
+  --bs-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --bs-box-shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --bs-box-shadow-lg: 0 3px 8px rgba(0, 0, 0, 0.4);
+  --bs-box-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+
+  --bs-focus-ring-width: 2px;
+  --bs-focus-ring-opacity: 1;
+}
+
+/* Light — daylight over a pale board: matte pastel solder mask, dark ink. */
+:root,
+[data-bs-theme="light"] {
+  color-scheme: light;
+
+  --bs-body-color: oklch(0.25 0.04 var(--pcb-hue));
+  --bs-body-color-rgb: 18, 39, 24;
+  --bs-body-bg: oklch(0.96 0.02 var(--pcb-hue));
+  --bs-body-bg-rgb: 232, 246, 235;
+  --bs-emphasis-color: oklch(0.16 0.03 var(--pcb-hue));
+  --bs-emphasis-color-rgb: 4, 17, 7;
+  --bs-secondary-color: oklch(0.42 0.035 var(--pcb-hue));
+  --bs-secondary-color-rgb: 63, 83, 68;
+  --bs-secondary-bg: oklch(0.90 0.025 var(--pcb-hue));
+  --bs-secondary-bg-rgb: 210, 227, 214;
+  --bs-tertiary-color: oklch(0.46 0.035 var(--pcb-hue));
+  --bs-tertiary-color-rgb: 74, 94, 78;
+  --bs-tertiary-bg: oklch(0.99 0.01 var(--pcb-hue));
+  --bs-tertiary-bg-rgb: 247, 254, 248;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: oklch(0.60 0.055 var(--pcb-hue));
+  --bs-border-color-translucent: oklch(0.16 0.03 var(--pcb-hue) / 0.14);
+  /* Resting copper — dimmer than --bs-border-color, which is tuned for the
+   * 3:1 UI-edge minimum instead; this one is for decoration only (the board
+   * texture, a corner accent), so it can sit at the quieter anchor tone. */
+  --pcb-trace: oklch(0.65 0.09 var(--pcb-hue));
+
+  --bs-link-color: oklch(0.48 0.15 var(--pcb-hue));
+  --bs-link-color-rgb: 0, 116, 46;
+  --bs-link-hover-color: oklch(0.44 0.15 var(--pcb-hue));
+  --bs-link-hover-color-rgb: 0, 104, 34;
+
+  --bs-highlight-color: oklch(0.985 0.008 var(--pcb-hue));
+  --bs-highlight-bg: oklch(0.554 0.11 85);
+
+  --bs-primary: oklch(0.48 0.15 var(--pcb-hue));
+  --bs-primary-rgb: 0, 116, 46;
+  --bs-primary-text-emphasis: oklch(0.42 0.14 var(--pcb-hue));
+  --bs-primary-bg-subtle: oklch(0.92 0.03 var(--pcb-hue));
+  --bs-primary-border-subtle: oklch(0.78 0.06 var(--pcb-hue));
+  --bs-secondary: oklch(0.52 0.06 var(--pcb-hue));
+  --bs-secondary-rgb: 78, 115, 88;
+  --bs-secondary-text-emphasis: oklch(0.40 0.06 var(--pcb-hue));
+  --bs-secondary-bg-subtle: oklch(0.90 0.025 var(--pcb-hue));
+  --bs-secondary-border-subtle: oklch(0.76 0.045 var(--pcb-hue));
+  --bs-success: oklch(0.538 0.14 145);
+  --bs-success-rgb: 44, 130, 53;
+  --bs-success-text-emphasis: oklch(0.338 0.09 145);
+  --bs-success-bg-subtle: oklch(0.93 0.04 145);
+  --bs-success-border-subtle: oklch(0.74 0.07 145);
+  --bs-info: oklch(0.544 0.08 210);
+  --bs-info-rgb: 41, 124, 138;
+  --bs-info-text-emphasis: oklch(0.344 0.05 210);
+  --bs-info-bg-subtle: oklch(0.93 0.022 210);
+  --bs-info-border-subtle: oklch(0.74 0.04 210);
+  --bs-warning: oklch(0.554 0.11 85);
+  --bs-warning-rgb: 144, 109, 12;
+  --bs-warning-text-emphasis: oklch(0.354 0.07 85);
+  --bs-warning-bg-subtle: oklch(0.92 0.03 85);
+  --bs-warning-border-subtle: oklch(0.74 0.055 85);
+  --bs-danger: oklch(0.57 0.16 25);
+  --bs-danger-rgb: 196, 72, 68;
+  --bs-danger-text-emphasis: oklch(0.37 0.1 25);
+  --bs-danger-bg-subtle: oklch(0.93 0.035 25);
+  --bs-danger-border-subtle: oklch(0.74 0.08 25);
+  --bs-light: oklch(0.90 0.02 var(--pcb-hue));
+  --bs-light-rgb: 213, 226, 216;
+  --bs-light-text-emphasis: oklch(0.46 0.035 var(--pcb-hue));
+  --bs-light-bg-subtle: oklch(0.965 0.012 var(--pcb-hue));
+  --bs-light-border-subtle: oklch(0.85 0.03 var(--pcb-hue));
+  --bs-dark: oklch(0.30 0.045 var(--pcb-hue));
+  --bs-dark-rgb: 27, 52, 34;
+  --bs-dark-text-emphasis: oklch(0.46 0.035 var(--pcb-hue));
+  --bs-dark-bg-subtle: oklch(0.86 0.03 var(--pcb-hue));
+  --bs-dark-border-subtle: oklch(0.62 0.045 var(--pcb-hue));
+
+  --bs-form-valid-color: var(--bs-success-text-emphasis);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger-text-emphasis);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* Ink for a fill: near-white for the mid-tone swatches above, near-black
+   * ink for --bs-light itself. Every solid fill here clears 4.5:1 against
+   * one of the two. */
+  --pd-on-fill: oklch(0.985 0.008 var(--pcb-hue));
+  --pd-on-light: oklch(0.16 0.03 var(--pcb-hue));
+  --pd-on-dark: oklch(0.97 0.01 var(--pcb-hue));
+
+  /* Hover/active darken the fill: the ink is pale, so moving the swatch
+   * away from it only widens the gap. */
+  --pd-primary-hover: oklch(0.42 0.15 var(--pcb-hue));
+  --pd-primary-active: oklch(0.34 0.15 var(--pcb-hue));
+  --pd-secondary-hover: oklch(0.51 0.06 var(--pcb-hue));
+  --pd-secondary-active: oklch(0.48 0.06 var(--pcb-hue));
+  --pd-success-hover: oklch(0.51 0.14 145);
+  --pd-success-active: oklch(0.47 0.14 145);
+  --pd-info-hover: oklch(0.51 0.08 210);
+  --pd-info-active: oklch(0.47 0.08 210);
+  --pd-warning-hover: oklch(0.52 0.11 85);
+  --pd-warning-active: oklch(0.48 0.11 85);
+  --pd-danger-hover: oklch(0.54 0.16 25);
+  --pd-danger-active: oklch(0.50 0.16 25);
+
+  --pd-cap-bg: oklch(0.90 0.025 var(--pcb-hue));
+  --pd-code-bg: oklch(0.985 0.008 var(--pcb-hue));
+  --pd-mask-opacity: 0.045;
+  /* A dark tick, legible on every fill in this palette. */
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23f6fcf7' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+/* Dark — a board under rack lighting: deep solder-mask green-black, bright
+ * silkscreen ink, lit-up copper. */
+[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  --bs-body-color: oklch(0.93 0.02 var(--pcb-hue));
+  --bs-body-color-rgb: 223, 236, 225;
+  --bs-body-bg: oklch(0.20 0.05 var(--pcb-hue));
+  --bs-body-bg-rgb: 1, 28, 10;
+  --bs-emphasis-color: oklch(0.97 0.012 var(--pcb-hue));
+  --bs-emphasis-color-rgb: 240, 248, 241;
+  --bs-secondary-color: oklch(0.74 0.03 var(--pcb-hue));
+  --bs-secondary-color-rgb: 158, 177, 162;
+  --bs-secondary-bg: oklch(0.29 0.045 var(--pcb-hue));
+  --bs-secondary-bg-rgb: 25, 50, 32;
+  --bs-tertiary-color: oklch(0.64 0.03 var(--pcb-hue));
+  --bs-tertiary-color-rgb: 127, 146, 131;
+  --bs-tertiary-bg: oklch(0.25 0.05 var(--pcb-hue));
+  --bs-tertiary-bg-rgb: 12, 40, 21;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: oklch(0.54 0.055 var(--pcb-hue));
+  --bs-border-color-translucent: oklch(0.93 0.02 var(--pcb-hue) / 0.16);
+  /* Resting copper — dimmer than --bs-border-color, which is tuned for the
+   * 3:1 UI-edge minimum instead; this one is for decoration only (the board
+   * texture, a corner accent), so it can sit at the quieter anchor tone. */
+  --pcb-trace: oklch(0.55 0.10 var(--pcb-hue));
+
+  --bs-link-color: oklch(0.78 0.13 var(--pcb-hue));
+  --bs-link-color-rgb: 114, 207, 142;
+  --bs-link-hover-color: oklch(0.85 0.14 var(--pcb-hue));
+  --bs-link-hover-color-rgb: 129, 232, 160;
+
+  --bs-highlight-color: oklch(0.15 0.02 var(--pcb-hue));
+  --bs-highlight-bg: oklch(0.584 0.11 85);
+
+  --bs-primary: oklch(0.78 0.13 var(--pcb-hue));
+  --bs-primary-rgb: 114, 207, 142;
+  --bs-primary-text-emphasis: oklch(0.80 0.08 var(--pcb-hue));
+  --bs-primary-bg-subtle: oklch(0.275 0.03 var(--pcb-hue));
+  --bs-primary-border-subtle: oklch(0.42 0.06 var(--pcb-hue));
+  --bs-secondary: oklch(0.60 0.06 var(--pcb-hue));
+  --bs-secondary-rgb: 101, 139, 111;
+  --bs-secondary-text-emphasis: oklch(0.80 0.05 var(--pcb-hue));
+  --bs-secondary-bg-subtle: oklch(0.27 0.035 var(--pcb-hue));
+  --bs-secondary-border-subtle: oklch(0.42 0.05 var(--pcb-hue));
+  --bs-success: oklch(0.568 0.14 145);
+  --bs-success-rgb: 54, 139, 62;
+  --bs-success-text-emphasis: oklch(0.854 0.09 145);
+  --bs-success-bg-subtle: oklch(0.23 0.04 145);
+  --bs-success-border-subtle: oklch(0.40 0.07 145);
+  --bs-info: oklch(0.574 0.08 210);
+  --bs-info-rgb: 52, 133, 147;
+  --bs-info-text-emphasis: oklch(0.75 0.05 210);
+  --bs-info-bg-subtle: oklch(0.23 0.022 210);
+  --bs-info-border-subtle: oklch(0.40 0.04 210);
+  --bs-warning: oklch(0.584 0.11 85);
+  --bs-warning-rgb: 153, 117, 28;
+  --bs-warning-text-emphasis: oklch(0.75 0.07 85);
+  --bs-warning-bg-subtle: oklch(0.23 0.03 85);
+  --bs-warning-border-subtle: oklch(0.40 0.055 85);
+  --bs-danger: oklch(0.60 0.16 25);
+  --bs-danger-rgb: 206, 81, 77;
+  --bs-danger-text-emphasis: oklch(0.75 0.1 25);
+  --bs-danger-bg-subtle: oklch(0.23 0.045 25);
+  --bs-danger-border-subtle: oklch(0.40 0.08 25);
+  --bs-light: oklch(0.82 0.025 var(--pcb-hue));
+  --bs-light-rgb: 185, 201, 188;
+  --bs-light-text-emphasis: oklch(0.74 0.03 var(--pcb-hue));
+  --bs-light-bg-subtle: oklch(0.29 0.045 var(--pcb-hue));
+  --bs-light-border-subtle: oklch(0.40 0.05 var(--pcb-hue));
+  --bs-dark: oklch(0.16 0.035 var(--pcb-hue));
+  --bs-dark-rgb: 2, 17, 6;
+  --bs-dark-text-emphasis: oklch(0.64 0.03 var(--pcb-hue));
+  --bs-dark-bg-subtle: oklch(0.13 0.03 var(--pcb-hue));
+  --bs-dark-border-subtle: oklch(0.32 0.045 var(--pcb-hue));
+
+  --bs-form-valid-color: var(--bs-success);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* Ink for a fill: every solid colour on this palette is a bright, lit
+   * swatch, so one dark ink reads on all of them (worst case 4.5:1). */
+  --pd-on-fill: oklch(0.15 0.02 var(--pcb-hue));
+  --pd-on-light: oklch(0.15 0.02 var(--pcb-hue));
+  --pd-on-dark: oklch(0.90 0.02 var(--pcb-hue));
+
+  /* Hover/active brighten the fill instead of darkening it: the ink is
+   * near-black, and every base swatch already sits close to the 4.5:1 floor
+   * against it, so a "pressed" step has to move away from the ink, not
+   * toward it — the component reads as lighting up rather than dimming. */
+  --pd-primary-hover: oklch(0.74 0.13 var(--pcb-hue));
+  --pd-primary-active: oklch(0.68 0.13 var(--pcb-hue));
+  --pd-secondary-hover: oklch(0.62 0.06 var(--pcb-hue));
+  --pd-secondary-active: oklch(0.66 0.06 var(--pcb-hue));
+  --pd-success-hover: oklch(0.60 0.14 145);
+  --pd-success-active: oklch(0.64 0.14 145);
+  --pd-info-hover: oklch(0.60 0.08 210);
+  --pd-info-active: oklch(0.64 0.08 210);
+  --pd-warning-hover: oklch(0.61 0.11 85);
+  --pd-warning-active: oklch(0.65 0.11 85);
+  --pd-danger-hover: oklch(0.63 0.16 25);
+  --pd-danger-active: oklch(0.67 0.16 25);
+
+  --pd-cap-bg: oklch(0.29 0.045 var(--pcb-hue));
+  --pd-code-bg: oklch(0.155 0.045 var(--pcb-hue));
+  --pd-mask-opacity: 0.05;
+  /* A light tick, legible on every fill in this palette. */
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23050e07' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+/* ---------------------------------------------------------------------------
+ * Board texture — the copper-trace tile, used as a mask so one asset serves
+ * both appearances: an external SVG has no styling context of its own, so
+ * currentColor inside it would resolve to black; a mask instead takes its
+ * colour from CSS. Kept to a low, scheme-tuned opacity behind the page so it
+ * never competes with the prose sitting on top of it.
+ * ------------------------------------------------------------------------- */
+
+body {
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--pcb-trace);
+  opacity: var(--pd-mask-opacity);
+  mask-image: url("../img/traces.svg");
+  mask-repeat: repeat;
+}
+
+/* ---------------------------------------------------------------------------
+ * Type
+ * ------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Ryga";
+  src: url("../fonts/ryga.woff2") format("woff2");
+  font-display: swap;
+}
+
+/* Ryga is an outline face — each glyph drawn like a trace — and turns to mud
+ * below about 1.5rem, so it is reserved for the title and its top-level
+ * section headings, always large, always tracked open. h3 and below stay on
+ * the system stack. */
+h1, h2,
+.h1, .h2 {
+  font-family: var(--pd-font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-wrap: balance;
+}
+
+h3, h4, h5, h6,
+.h3, .h4, .h5, .h6 {
+  font-family: var(--pd-font-body);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+
+h1, .h1 { font-size: 3rem; }
+h2, .h2 { font-size: 2.1rem; }
+h3, .h3 { font-size: 1.5rem; }
+h4, .h4 { font-size: 1.25rem; }
+h5, .h5 { font-size: 1.05rem; }
+h6, .h6 { font-size: 0.9rem; }
+
+.display-1 { font-size: 5.5rem; }
+.display-2 { font-size: 4.75rem; }
+.display-3 { font-size: 4rem; }
+.display-4 { font-size: 3.4rem; }
+.display-5 { font-size: 2.75rem; }
+.display-6 { font-size: 2.2rem; }
+
+.display-1, .display-2, .display-3,
+.display-4, .display-5, .display-6 {
+  font-family: var(--pd-font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+/* A square pad before the document's own title — the footprint marker a
+ * board silkscreens next to pin 1 of a component. Excluded from the navbar
+ * brand, which carries its own via-dot instead (below), and from any h1/h2
+ * nested in ordinary flow content smaller than the title. */
+h1:not(.navbar-brand)::before,
+.h1:not(.navbar-brand)::before {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.2em;
+  margin-bottom: 0.06em;
+  background-color: var(--bs-primary);
+  vertical-align: middle;
+}
+
+.lead {
+  font-family: var(--pd-font-body);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}
+
+a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+hr {
+  border-top: 1px solid var(--bs-border-color);
+  opacity: 1;
+}
+
+::selection {
+  background-color: var(--bs-primary);
+  color: var(--pd-on-fill);
+}
+
+/* ---------------------------------------------------------------------------
+ * Chrome: navbar + footer
+ * ------------------------------------------------------------------------- */
+
+.navbar {
+  position: relative;
+  --bs-navbar-brand-color: var(--bs-emphasis-color);
+  --bs-navbar-brand-hover-color: var(--bs-primary);
+  --bs-navbar-padding-y: 0.65rem;
+  /* A gold-finger edge connector: two close traces along the navbar's foot. */
+  box-shadow:
+    inset 0 -4px 0 -3px var(--bs-border-color),
+    inset 0 -2px 0 -1px var(--bs-primary);
+}
+
+/* A stamped silkscreen label: uppercase, open tracking, a via (a drilled,
+ * plated hole) standing in for a logo mark. */
+.navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.navbar-brand::before {
+  content: "";
+  display: inline-block;
+  width: 0.65em;
+  height: 0.65em;
+  border-radius: 50%;
+  background-color: var(--bs-primary);
+  box-shadow: inset 0 0 0 0.16em var(--bs-body-bg);
+  animation: pd-via-pulse 2.4s ease-in-out infinite;
+}
+
+/* A powered via, breathing rather than blinking — a component that is live,
+ * not signalling an alert. */
+@keyframes pd-via-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-brand::before {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons — Bootstrap compiles literal colours into every .btn-* variant, so
+ * each one is re-pointed at the palette. The per-variant rules carry only the
+ * three colours; the shared rules below spend them.
+ * ------------------------------------------------------------------------- */
+
+.btn {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary, .btn-outline-primary {
+  --pd-btn: var(--bs-primary);
+  --pd-btn-hover: var(--pd-primary-hover);
+  --pd-btn-active: var(--pd-primary-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+.btn-secondary, .btn-outline-secondary {
+  --pd-btn: var(--bs-secondary);
+  --pd-btn-hover: var(--pd-secondary-hover);
+  --pd-btn-active: var(--pd-secondary-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+}
+.btn-success, .btn-outline-success {
+  --pd-btn: var(--bs-success);
+  --pd-btn-hover: var(--pd-success-hover);
+  --pd-btn-active: var(--pd-success-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-success-rgb);
+}
+.btn-info, .btn-outline-info {
+  --pd-btn: var(--bs-info);
+  --pd-btn-hover: var(--pd-info-hover);
+  --pd-btn-active: var(--pd-info-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-info-rgb);
+}
+.btn-warning, .btn-outline-warning {
+  --pd-btn: var(--bs-warning);
+  --pd-btn-hover: var(--pd-warning-hover);
+  --pd-btn-active: var(--pd-warning-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-warning-rgb);
+}
+.btn-danger, .btn-outline-danger {
+  --pd-btn: var(--bs-danger);
+  --pd-btn-hover: var(--pd-danger-hover);
+  --pd-btn-active: var(--pd-danger-active);
+  --bs-btn-focus-shadow-rgb: var(--bs-danger-rgb);
+}
+.btn-light, .btn-outline-light {
+  --pd-btn: var(--bs-light);
+  --pd-btn-hover: var(--bs-light);
+  --pd-btn-active: var(--bs-light);
+  --bs-btn-focus-shadow-rgb: var(--bs-light-rgb);
+}
+.btn-dark, .btn-outline-dark {
+  --pd-btn: var(--bs-dark);
+  --pd-btn-hover: var(--bs-dark);
+  --pd-btn-active: var(--bs-dark);
+  --bs-btn-focus-shadow-rgb: var(--bs-dark-rgb);
+}
+
+.btn-primary, .btn-secondary, .btn-success,
+.btn-info, .btn-warning, .btn-danger {
+  --bs-btn-color: var(--pd-on-fill);
+  --bs-btn-bg: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-hover-color: var(--pd-on-fill);
+  --bs-btn-hover-bg: var(--pd-btn-hover);
+  --bs-btn-hover-border-color: var(--pd-btn-hover);
+  --bs-btn-active-color: var(--pd-on-fill);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-on-fill);
+  --bs-btn-disabled-bg: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+}
+
+.btn-light {
+  --bs-btn-color: var(--pd-on-light);
+  --bs-btn-bg: var(--bs-light);
+  --bs-btn-border-color: var(--bs-light);
+  --bs-btn-hover-color: var(--pd-on-light);
+  --bs-btn-hover-bg: var(--bs-light-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-light);
+  --bs-btn-active-color: var(--pd-on-light);
+  --bs-btn-active-bg: var(--bs-light-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-light);
+}
+
+.btn-dark {
+  --bs-btn-color: var(--pd-on-dark);
+  --bs-btn-bg: var(--bs-dark);
+  --bs-btn-border-color: var(--bs-dark);
+  --bs-btn-hover-color: var(--pd-on-dark);
+  --bs-btn-hover-bg: var(--bs-dark-bg-subtle);
+  --bs-btn-hover-border-color: var(--bs-dark);
+  --bs-btn-active-color: var(--pd-on-dark);
+  --bs-btn-active-bg: var(--bs-dark-bg-subtle);
+  --bs-btn-active-border-color: var(--bs-dark);
+}
+
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success,
+.btn-outline-info, .btn-outline-warning, .btn-outline-danger {
+  --bs-btn-color: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-bg: transparent;
+  --bs-btn-hover-color: var(--pd-on-fill);
+  --bs-btn-hover-bg: var(--pd-btn);
+  --bs-btn-hover-border-color: var(--pd-btn);
+  --bs-btn-active-color: var(--pd-on-fill);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+}
+
+.btn-link {
+  --bs-btn-color: var(--bs-link-color);
+  --bs-btn-hover-color: var(--bs-link-hover-color);
+  --bs-btn-active-color: var(--bs-link-hover-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Solid colour chips — .text-bg-* also compiles its foreground, and a pale
+ * ink on a bright, lit swatch (or the reverse) is unreadable.
+ * ------------------------------------------------------------------------- */
+
+.text-bg-primary, .text-bg-secondary, .text-bg-success,
+.text-bg-info, .text-bg-warning, .text-bg-danger {
+  color: var(--pd-on-fill);
+}
+.text-bg-light { color: var(--pd-on-light); }
+.text-bg-dark { color: var(--pd-on-dark); }
+
+/* Badges read as component reference designators (R1, C4, U2): shouted,
+ * kerned open, uppercase. */
+.badge {
+  font-weight: 700;
+  font-size: 0.7em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.4em 0.55em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Surfaces: cards, alerts, list groups, blockquotes
+ * ------------------------------------------------------------------------- */
+
+/* A mounted package: a small copper triangle in the top-left corner marks
+ * pin 1, the way a chip's case notches its own orientation. */
+.card {
+  --bs-card-bg: var(--bs-tertiary-bg);
+  --bs-card-cap-bg: var(--pd-cap-bg);
+  --bs-card-border-color: var(--bs-border-color);
+  --bs-card-title-color: var(--bs-emphasis-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0.55rem 0.55rem 0 0;
+  border-color: var(--pcb-trace) transparent transparent transparent;
+}
+
+.card-header {
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Alerts wear a heavy left rule — a trace feeding the message in from the
+ * edge of the board. */
+.alert {
+  border-left-width: 3px;
+}
+
+.list-group {
+  --bs-list-group-bg: var(--bs-tertiary-bg);
+  --bs-list-group-border-color: var(--bs-border-color);
+  --bs-list-group-action-hover-bg: var(--bs-secondary-bg);
+  --bs-list-group-active-bg: var(--bs-primary);
+  --bs-list-group-active-border-color: var(--bs-primary);
+  --bs-list-group-active-color: var(--pd-on-fill);
+}
+
+blockquote,
+.blockquote {
+  padding-left: 1rem;
+  border-left: 3px solid var(--bs-border-color);
+  color: var(--bs-secondary-color);
+}
+
+.blockquote-footer {
+  color: var(--bs-tertiary-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables — the one surface that stays conservative above all: a spec sheet
+ * has to be legible first, themed second.
+ * ------------------------------------------------------------------------- */
+
+.table {
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--bs-border-color);
+  --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.035);
+  --bs-table-striped-color: var(--bs-body-color);
+  --bs-table-hover-bg: rgba(var(--bs-primary-rgb), 0.08);
+  --bs-table-hover-color: var(--bs-emphasis-color);
+  --bs-table-active-bg: rgba(var(--bs-primary-rgb), 0.14);
+  --bs-table-active-color: var(--bs-emphasis-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.table > thead > tr > th {
+  color: var(--bs-emphasis-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Code — a datasheet listing, not silkscreen: legibility over theming.
+ * ------------------------------------------------------------------------- */
+
+pre {
+  background-color: var(--pd-code-bg);
+  border: 1px solid var(--bs-border-color);
+  padding: 0.9rem 1rem;
+  color: var(--bs-body-color);
+}
+
+/* highlight.js links its stylesheet at runtime, after this file, and paints a
+ * background of its own on the <code>. Two classes out-specify it so the
+ * block keeps this theme's surface while the token colours stay upstream's. */
+pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
+
+/* A mermaid diagram is a schematic, not a listing: the surface, but no code
+ * padding assumptions. */
+pre.mermaid {
+  border-color: var(--bs-border-color);
+  text-align: center;
+}
+
+kbd {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-emphasis-color);
+  border: 1px solid var(--bs-border-color);
+  border-bottom-width: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Forms + focus
+ * ------------------------------------------------------------------------- */
+
+.form-control,
+.form-select {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+  color: var(--bs-body-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-primary);
+  color: var(--bs-body-color);
+}
+
+.form-check-input {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input:checked[type="checkbox"] {
+  --bs-form-check-bg-image: var(--pd-check-image);
+}
+
+/* Keyboard focus is a hard accent rule, visible against both surfaces. */
+:focus-visible {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+}
+
+/* Bootstrap zeroes the outline on controls and paints a soft ring in its
+ * place, which under-performs on the darker surface; this rule replaces it,
+ * matching Bootstrap's own specificity so it lands. */
+.btn:focus-visible,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  outline: 2px solid var(--bs-primary);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.focus-ring:focus {
+  --bs-focus-ring-color: var(--bs-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Progress
+ * ------------------------------------------------------------------------- */
+
+.progress,
+.progress-stacked {
+  --bs-progress-bg: var(--bs-secondary-bg);
+  --bs-progress-bar-bg: var(--bs-primary);
+  --bs-progress-bar-color: var(--pd-on-fill);
+  --bs-progress-font-size: 0.7rem;
+  border: 1px solid var(--bs-border-color);
+}

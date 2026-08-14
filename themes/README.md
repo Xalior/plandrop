@@ -18,14 +18,19 @@ erasing it.
 themes/<name>/
   theme.json   the manifest: label, appearances, credit
   theme.css    the theme itself — CSS layered on top of stock Bootstrap
+  <anything>   assets your CSS refers to — fonts/, img/, whatever you name them
 ```
 
-That is all. The generator supplies everything else:
+The two named files are the ones the generator reads. Everything else in the
+folder is copied into the generated template as-is, keeping its layout, so a
+theme can ship a webfont or an image rather than being limited to gradients and
+inline `data:` URIs. The generator supplies the rest:
 
 | Generated into `templates/<name>/` | From |
 | --- | --- |
 | `header.html`, `plan.html`, `footer.html` | the `bootstrap5` skeleton, retargeted at your theme |
 | `css/bootstrap.min.css` | stock Bootstrap (the skeleton's copy) with your `theme.css` appended |
+| `fonts/`, `img/`, … | copied verbatim from your theme folder |
 | `NOTICE` | the skeleton's Bootstrap attribution, since your theme vendors it |
 
 Because the chrome comes from the skeleton, a change to the shared header or
@@ -87,9 +92,36 @@ the cascade. Your CSS always wins over the Bootstrap rule it overrides, with no
 - **Respect `prefers-reduced-motion`.** Any animated flourish must have a still
   fallback that still looks deliberate.
 
+## Fonts and images
+
+Your stylesheet is served from the template's `css/`, and your assets land at
+the template root, so reach them with `../`:
+
+```css
+@font-face {
+  font-family: "Your Face";
+  src: url("../fonts/yourface.woff2") format("woff2");
+  font-display: swap;
+}
+```
+
+- **Self-host the font.** A `@font-face` with a relative `url()` works anywhere
+  in the sheet, needs no third-party request, and keeps a published document
+  readable on a network that cannot reach a font host.
+- **An `@import` is lifted, not honoured where you wrote it.** CSS obeys
+  `@import` only where it precedes every style rule, and your layer is appended
+  after Bootstrap — so the generator moves your `@import` rules to the top of
+  the joined sheet. It works, but it is a remote fetch on every document view;
+  prefer the self-hosted `@font-face` above. (A Bootswatch theme's own `@import`
+  survives because it is the first line of that theme's own file. That is a
+  precedent for Bootswatch, not for your layer.)
+- **Ship the font's license alongside it**, and pick one whose terms allow web
+  redistribution — the theme folder is committed to a public LGPL-3.0-only repo
+  and the font travels in every image built from it.
+
 ## Adding a theme
 
-1. Create `themes/<name>/` with the two files.
+1. Create `themes/<name>/` with the two files, plus any assets it needs.
 2. Run `node scripts/gen-templates.mjs` (or `pnpm run gen:templates`) and open
    `templates/<name>/template.html` in a browser.
 3. Add its name to the `CUSTOM` list in `test/gen-templates.test.ts`. The

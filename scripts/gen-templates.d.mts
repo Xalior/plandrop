@@ -53,6 +53,18 @@ export function generateCustomTheme(
   theme: string,
   options: Omit<GenerateOptions, 'bootswatchDir'>,
 ): string;
+
+/**
+ * Join stock Bootstrap and a theme layer into the served stylesheet, lifting the
+ * layer's `@import` rules to the top of the sheet, where CSS honours them.
+ */
+export function joinStylesheet(bootstrap: string, layer: string): string;
+
+/** Copy a theme folder's own assets (everything but the manifest and the CSS). */
+export function copyThemeAssets(
+  theme: string,
+  options: { customDir?: string; dest: string },
+): void;
 export function bootswatchThemes(bootswatchDir: string): string[];
 export function generateAll(options: GenerateOptions): string[];
 

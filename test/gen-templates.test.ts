@@ -1,4 +1,12 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +15,8 @@ import {
   bootswatchThemes,
   customThemes,
   generateAll,
+  generateCustomTheme,
+  joinStylesheet,
   nativeScheme,
   readThemeSpec,
   vendorSharedAssets,
@@ -16,7 +26,7 @@ import {
 const NATIVE_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero', 'vapor'];
 
 /** The hand-authored themes shipped under themes/. */
-const CUSTOM = ['f1terminal', 's1notebook'];
+const CUSTOM = ['f1terminal', 'r1pcb', 's1notebook'];
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const skeletonDir = join(repoRoot, 'templates', 'bootstrap5');
@@ -294,6 +304,59 @@ describe('hand-authored themes', () => {
     const css = readFileSync(join(customDir, 'f1terminal', 'theme.css'), 'utf8');
     expect(css).toContain('@keyframes pd-cursor-blink');
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
+  });
+});
+
+// A theme folder is not limited to its manifest and its stylesheet: whatever
+// else it carries reaches the generated template, so a theme can ship a font or
+// an image its CSS refers to.
+describe('theme assets', () => {
+  it("copies a theme folder's extra files into the generated template", () => {
+    const src = mkdtempSync(join(tmpdir(), 'plandrop-theme-'));
+    try {
+      mkdirSync(join(src, 'assetty', 'fonts'), { recursive: true });
+      mkdirSync(join(src, 'assetty', 'img'), { recursive: true });
+      writeFileSync(
+        join(src, 'assetty', 'theme.json'),
+        JSON.stringify({
+          label: 'Assetty',
+          appearance: ['light'],
+          credit: { name: 'plandrop', url: 'https://plandrop.dev/', license: 'LGPL-3.0-only' },
+        }),
+      );
+      writeFileSync(join(src, 'assetty', 'theme.css'), 'body { color: red }\n');
+      writeFileSync(join(src, 'assetty', 'fonts', 'sample.woff2'), 'not-really-a-font');
+      writeFileSync(join(src, 'assetty', 'img', 'x.svg'), '<svg/>');
+
+      generateCustomTheme('assetty', { skeletonDir, customDir: src, outDir });
+
+      // The assets arrive at the template root, keeping their layout, so the
+      // stylesheet (served from css/) reaches them as ../fonts/ and ../img/.
+      expect(readFileSync(join(outDir, 'assetty', 'fonts', 'sample.woff2'), 'utf8')).toBe(
+        'not-really-a-font',
+      );
+      expect(existsSync(join(outDir, 'assetty', 'img', 'x.svg'))).toBe(true);
+      // The generator's own inputs are consumed, not republished.
+      expect(existsSync(join(outDir, 'assetty', 'theme.json'))).toBe(false);
+      expect(existsSync(join(outDir, 'assetty', 'theme.css'))).toBe(false);
+    } finally {
+      rmSync(src, { recursive: true, force: true });
+    }
+  });
+
+  it("lifts a theme's @import above Bootstrap, where CSS honours it", () => {
+    // Left in place, an @import ~100KB into the sheet is discarded by every
+    // browser: no request, no error. Hoisting is what makes it load at all.
+    const joined = joinStylesheet('.a { color: red }\n', '@import url("x.css");\n.b { color: blue }\n');
+    expect(joined.indexOf('@import')).toBeLessThan(joined.indexOf('.a'));
+    expect(joined.indexOf('.a')).toBeLessThan(joined.indexOf('.b'));
+    // The rule is moved, not copied.
+    expect(joined.match(/@import/g)).toHaveLength(1);
+  });
+
+  it('leaves a layer without @import in its original order', () => {
+    const joined = joinStylesheet('.a { color: red }', '.b { color: blue }');
+    expect(joined).toBe('.a { color: red }\n.b { color: blue }');
   });
 });
 

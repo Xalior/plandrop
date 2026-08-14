@@ -25,7 +25,10 @@
 // no SCSS compilation is needed here — just copy it in. A hand-authored theme
 // ships only its own layer, so its stylesheet is assembled here: the skeleton's
 // stock Bootstrap with the theme's CSS appended, which is the same shape a
-// Bootswatch dist file has — one request, cascade decided by source order.
+// Bootswatch dist file has — one request, cascade decided by source order. Any
+// `@import` in that layer is lifted to the top of the joined sheet, the only
+// place CSS honours it. A theme folder may carry further files — fonts, images —
+// and they are copied into the generated template beside the chrome.
 //
 // themes/ is source and templates/ is output, which is what keeps a hand-made
 // theme safe: this script rewrites templates/ wholesale on every run and in
@@ -68,6 +71,13 @@ const SPEC_FILE = 'theme.json';
 
 /** The hand-authored stylesheet layered over stock Bootstrap. */
 const THEME_CSS = 'theme.css';
+
+/**
+ * The entries of a theme folder the generator consumes itself. Everything else
+ * a theme carries — fonts/, img/, whatever it names them — is copied into the
+ * generated template as-is, so a theme can ship assets its CSS refers to.
+ */
+const THEME_OWN_FILES = new Set([SPEC_FILE, THEME_CSS]);
 
 /**
  * Bootswatch themes whose native scheme is DARK — they get data-bs-theme="dark"
@@ -263,9 +273,50 @@ export function generateCustomTheme(theme, { skeletonDir, customDir = CUSTOM_DIR
 
   const bootstrap = readFileSync(join(skeletonDir, 'css', 'bootstrap.min.css'), 'utf8');
   const layer = readFileSync(join(customDir, theme, THEME_CSS), 'utf8');
-  writeFileSync(join(dest, 'css', 'bootstrap.min.css'), `${bootstrap}\n${layer}`);
+  writeFileSync(join(dest, 'css', 'bootstrap.min.css'), joinStylesheet(bootstrap, layer));
+  copyThemeAssets(theme, { customDir, dest });
   cpSync(join(skeletonDir, 'NOTICE'), join(dest, 'NOTICE'));
   return theme;
+}
+
+/**
+ * Join stock Bootstrap and a theme's layer into the one served stylesheet, with
+ * the theme's `@import` rules lifted to the very top.
+ *
+ * The lift is what makes an `@import` work at all. CSS honours the rule only
+ * where it precedes every style rule in the sheet, and the theme layer lands
+ * after ~100 KB of Bootstrap — so an `@import` left in place is discarded by
+ * every browser, with no request and no error to show for it. Everything else
+ * keeps its order, because source order alone decides the cascade: Bootstrap
+ * first, the theme's own rules after it.
+ *
+ * A comment banner may precede an `@import`, so the joined sheet is still valid
+ * with Bootstrap's banner where it is.
+ */
+export function joinStylesheet(bootstrap, layer) {
+  const imports = [];
+  const body = layer.replace(/^[ \t]*@import\b[^;]*;[ \t]*\n?/gm, (rule) => {
+    imports.push(rule.trim());
+    return '';
+  });
+  const head = imports.length > 0 ? `${imports.join('\n')}\n` : '';
+  return `${head}${bootstrap}\n${body}`;
+}
+
+/**
+ * Copy a theme's own assets — its folder minus the manifest and the stylesheet —
+ * into the generated template, keeping their layout. A theme's fonts/ arrives at
+ * the template root as fonts/, which is where its CSS expects it: the stylesheet
+ * is served from the template's css/, so it reaches an asset as `../fonts/…`.
+ */
+export function copyThemeAssets(theme, { customDir = CUSTOM_DIR, dest }) {
+  const src = join(customDir, theme);
+  for (const entry of readdirSync(src)) {
+    if (THEME_OWN_FILES.has(entry)) {
+      continue;
+    }
+    cpSync(join(src, entry), join(dest, entry), { recursive: true });
+  }
 }
 
 /** The chrome every theme folder shares: the three rendered skeleton parts. */
