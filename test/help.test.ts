@@ -46,7 +46,7 @@ describe('usage registry', () => {
   });
 
   it('composes the usage line from the synopsis', () => {
-    expect(usageLine('upload')).toBe('usage: plandrop upload <path> [remote-path]');
+    expect(usageLine('upload')).toBe('usage: plandrop upload <path> [remote-path] [--open]');
     expect(usageLine('rotate')).toBe('usage: plandrop rotate');
   });
 

@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.8.0 — 2026-08-29
+
+### Added
+
+- **A new theme, D3-code (`d3code`).** The appearance of the D3-code desktop
+  application, carried over to Bootstrap 5 in both light and dark. Light is a
+  rose accent on warm pink paper with deep plum text; dark is a violet focus
+  colour and a pink call-to-action on deep indigo. The shapes come over with
+  the colours: a rounder radius scale than stock Bootstrap, soft wide shadows,
+  a top bar that blurs the page behind it, and a focus ring set one pixel clear
+  of the control it marks. Choose it with `--template d3code` or the `template`
+  field in `.plandrop`.
+
+- **`plandrop delete <remote-path>` removes one file from a host.** `remove`
+  destroys a whole host, so dropping a single stale file meant taking
+  everything with it. `delete` names one file, over the same WebDAV
+  credentials the client already holds, and prints the address of what it
+  removed. It refuses a directory, because deleting one over WebDAV takes
+  everything inside it, and it says so plainly when the path is not there
+  rather than reporting a success.
+
+- **`plandrop index --clear` takes published listing chrome back off.**
+  `index` writes `.header.html` and `.footer.html` at the host root, which is
+  what makes a directory listing use your theme. Re-running it replaced them,
+  but nothing removed them, so a host could not go back to the server's own
+  default listing. `--clear` deletes both files. A file that is already gone
+  counts as cleared, so the command can be repeated safely. It cannot be
+  combined with a template or a heading file, since those describe chrome to
+  write rather than chrome to remove.
+
+- **`plandrop upload --open` opens the host in your browser.** The upload
+  already prints the address of every file it writes. With this flag it also
+  hands the host's address to the desktop browser once the upload finishes.
+  The upload is complete before the browser is called, so a launcher that is
+  missing or refuses to start is reported on standard error and changes
+  nothing about the result.
+
+### Changed
+
+- **The light and dark toggle has a third setting, and each theme remembers
+  its own.** The toggle cycles light, then dark, then system. In system it
+  follows the operating system's colour-scheme preference and keeps following
+  it while the page is open, rather than reading it once when the page loads.
+  The chosen setting is stored against the document's own theme, so choosing
+  dark for one theme leaves every other theme as it was. It is applied before
+  the page is drawn, so a document opens in the setting you left it in without
+  showing the other one first. Where the browser refuses access to local
+  storage the toggle still works; it simply does not remember the choice.
+  Themes with a single appearance carry no toggle, as before.
+
+### Documentation
+
+- The [self-hosting guide](setup.md) explains why one request can write two
+  identical lines to the Apache log. The vhost uses pass-through rewrite
+  rules, and a pass-through rewrite sends the request through Apache's
+  URL-to-file mapping a second time, so anything logged for that request is
+  logged twice. It is not doubled traffic and nothing is retrying.
+
 ## 0.7.0 — 2026-08-14
 
 ### Added

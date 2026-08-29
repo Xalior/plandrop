@@ -1,8 +1,9 @@
+import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import { loadContext } from '../context';
 import { DOTFILE_NAME } from '../dotfile';
-import { hostBaseUri } from '../endpoint';
+import { hostBaseUri, hostUrl } from '../endpoint';
 import { printCommandHelp, usageLine, wantsHelp } from '../usage';
 import { makeClient, makeDir, putFile, WrongTenantError } from '../webdav';
 import type { Dispatch } from '../dispatch';
@@ -12,7 +13,8 @@ export async function run(dispatch: Dispatch): Promise<number> {
     printCommandHelp('upload');
     return 0;
   }
-  const localPath = dispatch.params[0];
+  const { open, positionals } = parseUploadFlags(dispatch.params);
+  const localPath = positionals[0];
   if (localPath === undefined) {
     process.stderr.write(`${usageLine('upload')}\n`);
     return 2;
@@ -25,7 +27,7 @@ export async function run(dispatch: Dispatch): Promise<number> {
     process.stderr.write(`${refusal(named)}\n`);
     return 1;
   }
-  const remoteArg = dispatch.params[1];
+  const remoteArg = positionals[1];
 
   let ctx;
   try {
@@ -87,7 +89,82 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 1;
   }
 
+  if (open) {
+    await openUrl(hostUrl(ctx.base, ctx.host));
+  }
+
   return 0;
+}
+
+/** The positional arguments and the `--open` flag, split apart. */
+export interface UploadFlags {
+  open: boolean;
+  positionals: string[];
+}
+
+/** Pull `--open` out of the argument list; every other argument stays positional. */
+export function parseUploadFlags(params: readonly string[]): UploadFlags {
+  const positionals: string[] = [];
+  let open = false;
+  for (const param of params) {
+    if (param === '--open') {
+      open = true;
+    } else {
+      positionals.push(param);
+    }
+  }
+  return { open, positionals };
+}
+
+/** The command and arguments that launch a URL in the desktop's browser. */
+export interface BrowserLauncher {
+  command: string;
+  args: string[];
+}
+
+/**
+ * The platform's own way to open a URL. `cmd /c start` needs an empty title
+ * argument ahead of the URL — without one, `start` treats a quoted URL as the
+ * window title instead of the thing to open.
+ */
+export function browserLauncher(platform: NodeJS.Platform, url: string): BrowserLauncher | undefined {
+  switch (platform) {
+    case 'darwin':
+      return { command: 'open', args: [url] };
+    case 'linux':
+      return { command: 'xdg-open', args: [url] };
+    case 'win32':
+      return { command: 'cmd', args: ['/c', 'start', '""', url] };
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Hand `url` to the desktop's browser launcher. The upload has already
+ * succeeded by the time this runs, so a launcher that is missing, unknown for
+ * this platform, or fails to start is a warning on stderr, never a failure of
+ * the command — `spawnFn` is injectable so tests can watch it without an
+ * actual browser opening.
+ */
+export function openUrl(
+  url: string,
+  platform: NodeJS.Platform = process.platform,
+  spawnFn: typeof spawn = spawn,
+): Promise<void> {
+  const launcher = browserLauncher(platform, url);
+  if (launcher === undefined) {
+    process.stderr.write(`could not open a browser: no launcher known for platform ${platform}\n`);
+    return Promise.resolve();
+  }
+  return new Promise((resolvePromise) => {
+    const child = spawnFn(launcher.command, launcher.args, { stdio: 'ignore' });
+    child.once('error', (error) => {
+      process.stderr.write(`could not open a browser: ${error.message}\n`);
+      resolvePromise();
+    });
+    child.once('spawn', () => resolvePromise());
+  });
 }
 
 async function uploadDirectory(

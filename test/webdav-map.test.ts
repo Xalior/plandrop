@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WebDAVClient } from 'webdav';
 import {
   collectionChain,
+  deleteFile,
+  isRemoteDirectory,
   makeDir,
   OffEndpointRedirectError,
   putFile,
+  RemoteNotFoundError,
   sameOriginFetch,
   WrongTenantError,
 } from '../src/webdav';
@@ -13,7 +16,12 @@ function throwingClient(status: number): WebDAVClient {
   const throwStatus = (): never => {
     throw Object.assign(new Error('http error'), { status });
   };
-  return { putFileContents: throwStatus, createDirectory: throwStatus } as unknown as WebDAVClient;
+  return {
+    putFileContents: throwStatus,
+    createDirectory: throwStatus,
+    stat: throwStatus,
+    deleteFile: throwStatus,
+  } as unknown as WebDAVClient;
 }
 
 /** A client that records the collections it is asked to create. */
@@ -53,6 +61,24 @@ describe('webdav error mapping', () => {
     await expect(putFile(throwingClient(500), '/x', Buffer.from('x'))).rejects.not.toBeInstanceOf(
       WrongTenantError,
     );
+  });
+
+  it('maps a 401 on stat to WrongTenantError', async () => {
+    await expect(isRemoteDirectory(throwingClient(401), '/x')).rejects.toBeInstanceOf(WrongTenantError);
+  });
+
+  it('maps a 404 on stat to RemoteNotFoundError', async () => {
+    await expect(isRemoteDirectory(throwingClient(404), '/x')).rejects.toBeInstanceOf(
+      RemoteNotFoundError,
+    );
+  });
+
+  it('maps a 401 on delete to WrongTenantError', async () => {
+    await expect(deleteFile(throwingClient(401), '/x')).rejects.toBeInstanceOf(WrongTenantError);
+  });
+
+  it('maps a 404 on delete to RemoteNotFoundError', async () => {
+    await expect(deleteFile(throwingClient(404), '/x')).rejects.toBeInstanceOf(RemoteNotFoundError);
   });
 });
 

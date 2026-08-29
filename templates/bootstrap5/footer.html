@@ -6,16 +6,5 @@
       and served by <a href="https://plandrop.dev/" class="link-body-emphasis">plandrop</a>.
     </p>
   </footer>
-  <script>
-    document.addEventListener('click', function (event) {
-      var trigger = event.target.closest('[data-bs-theme-toggle]');
-      if (!trigger) {
-        return;
-      }
-      var root = document.documentElement;
-      var next = root.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
-      root.setAttribute('data-bs-theme', next);
-    });
-  </script>
 </body>
 </html>

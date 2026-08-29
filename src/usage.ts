@@ -75,7 +75,7 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
   },
   upload: {
     summary: 'push a file or directory over authed WebDAV',
-    synopsis: '<path> [remote-path]',
+    synopsis: '<path> [remote-path] [--open]',
     detail: `  Pushes a file (or a directory, recursively) to the host in the nearest
   .plandrop, printing every uploaded file's full shareable URL.
 
@@ -95,18 +95,23 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
   for a directory it names the destination folder its contents land in, and
   \`.\` is the explicit way to flatten any directory's contents into the host
   root. A directory upload always preserves its internal structure, and
-  trailing slashes never change the outcome.`,
+  trailing slashes never change the outcome.
+
+    --open   after a successful upload, also open the host's URL in the
+             desktop's browser. A launcher that is missing or fails to start
+             is a warning, not a failure — the upload has already happened.`,
     examples: [
       'plandrop upload docs/plans/x.html',
       'plandrop upload plan.html index.html',
       'plandrop upload ./evidence',
       'plandrop upload ./evidence photos',
       'plandrop upload ./evidence .',
+      'plandrop upload plan.html --open',
     ],
   },
   index: {
     summary: 'publish the directory listing\'s header and footer chrome',
-    synopsis: '[hero-file] [--template <name>]',
+    synopsis: '[hero-file] [--template <name>] | --clear',
     detail: `  Publishes .header.html and .footer.html at the host root — the two files
   Apache wraps a directory listing in when a directory has no index.html.
   The pair comes from a template's own header and footer, so the listing
@@ -124,11 +129,16 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
 
     --template <name>   the template to take the chrome from (--template >
                         the .plandrop template field > user config > the
-                        server default)`,
+                        server default)
+    --clear              delete .header.html and .footer.html from the host
+                        root, restoring the server's default listing. A file
+                        already absent is left as it is rather than reported
+                        as an error. Does not take a hero file or --template.`,
     examples: [
       'plandrop index',
       'plandrop index intro.html',
       'plandrop index intro.html --template darkly',
+      'plandrop index --clear',
     ],
   },
   fixcss: {
@@ -165,6 +175,21 @@ export const COMMAND_USAGE: Record<CommandName, CommandUsage> = {
     detail: `  Deletes the host (content and credentials) and removes the local
   .plandrop. The host URL 404s afterwards.`,
     examples: ['plandrop remove'],
+  },
+  delete: {
+    summary: 'delete one file from the host',
+    synopsis: '<remote-path>',
+    detail: `  Sends a WebDAV DELETE for the one remote path named, using the
+  credentials in the nearest .plandrop. Unlike remove, which destroys the
+  whole host, this takes down a single file and leaves everything else in
+  place.
+
+  Refuses a path that names a directory, since deleting a directory would
+  take everything inside it with it — name the exact file instead. Refuses
+  with a clear error if the path does not exist on the host, rather than
+  reporting success for nothing. On success it prints the full address of
+  the file it removed.`,
+    examples: ['plandrop delete stale.html', 'plandrop delete docs/old-plan.html'],
   },
   text: {
     summary: 'print a document as markdown',

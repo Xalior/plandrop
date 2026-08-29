@@ -9,9 +9,10 @@ import {
   resolveTemplate,
   UnknownTemplateError,
 } from '../templates';
-import { printCommandHelp, wantsHelp } from '../usage';
-import { makeClient, putFile, WrongTenantError } from '../webdav';
+import { printCommandHelp, usageLine, wantsHelp } from '../usage';
+import { deleteFile, makeClient, putFile, RemoteNotFoundError, WrongTenantError } from '../webdav';
 import type { Dispatch } from '../dispatch';
+import type { WebDAVClient } from 'webdav';
 
 /**
  * `plandrop index` — publish the directory-listing chrome. The module is not
@@ -42,7 +43,15 @@ export async function run(dispatch: Dispatch): Promise<number> {
     return 0;
   }
 
-  const { heroPath, template: templateFlag } = parseFlags(dispatch.params);
+  const { heroPath, template: templateFlag, clear } = parseFlags(dispatch.params);
+
+  if (clear && (heroPath !== undefined || templateFlag !== undefined)) {
+    process.stderr.write(
+      `${usageLine('index')}\n--clear restores the server's default listing chrome; it does not ` +
+        `take a hero file or a template.\n`,
+    );
+    return 2;
+  }
 
   let ctx;
   try {
@@ -50,6 +59,30 @@ export async function run(dispatch: Dispatch): Promise<number> {
   } catch (error) {
     process.stderr.write(`${(error as Error).message}\n`);
     return 1;
+  }
+
+  if (clear) {
+    const client = makeClient(ctx.base, ctx.host, ctx.passphrase);
+    const baseUri = hostBaseUri(ctx.base, ctx.host);
+    try {
+      const header = await clearChromeFile(client, HEADER_REMOTE);
+      const footer = await clearChromeFile(client, FOOTER_REMOTE);
+      if (header) {
+        process.stdout.write(`deleted ${baseUri}${HEADER_REMOTE}\n`);
+      }
+      if (footer) {
+        process.stdout.write(`deleted ${baseUri}${FOOTER_REMOTE}\n`);
+      }
+    } catch (error) {
+      if (error instanceof WrongTenantError) {
+        process.stderr.write(`${error.message}\n`);
+        return 1;
+      }
+      process.stderr.write(`index --clear failed: ${(error as Error).message}\n`);
+      return 1;
+    }
+    process.stdout.write(`listing chrome cleared; ${baseUri}/ now shows the server's default listing\n`);
+    return 0;
   }
 
   let hero: string | undefined;
@@ -174,11 +207,13 @@ export function markAutoindexBody(html: string): string {
 interface IndexFlags {
   heroPath: string | undefined;
   template: string | undefined;
+  clear: boolean;
 }
 
 function parseFlags(params: readonly string[]): IndexFlags {
   let heroPath: string | undefined;
   let template: string | undefined;
+  let clear = false;
   for (let i = 0; i < params.length; i += 1) {
     const param = params[i];
     if (param === '--template') {
@@ -186,9 +221,30 @@ function parseFlags(params: readonly string[]): IndexFlags {
       i += 1;
     } else if (param?.startsWith('--template=')) {
       template = param.slice('--template='.length);
+    } else if (param === '--clear') {
+      clear = true;
     } else if (heroPath === undefined && param !== undefined && !param.startsWith('--')) {
       heroPath = param;
     }
   }
-  return { heroPath, template };
+  return { heroPath, template, clear };
+}
+
+/**
+ * Delete one chrome file, treating it already being gone as success — --clear
+ * restores the server's default listing, and that is already the state of a
+ * file that was never published or was cleared before. Returns whether this
+ * call is the one that removed it, so the command can report exactly what it
+ * deleted.
+ */
+async function clearChromeFile(client: WebDAVClient, remote: string): Promise<boolean> {
+  try {
+    await deleteFile(client, remote);
+    return true;
+  } catch (error) {
+    if (error instanceof RemoteNotFoundError) {
+      return false;
+    }
+    throw error;
+  }
 }

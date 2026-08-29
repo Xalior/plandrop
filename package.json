@@ -1,6 +1,6 @@
 {
   "name": "plandrop",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Push a static HTML document to a unique, secure hostname on your network and share the link.",
   "type": "module",
   "license": "LGPL-3.0-only",
@@ -25,6 +25,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:stack": "vitest run --project stack",
     "gen:templates": "node scripts/gen-templates.mjs"
   },
   "devDependencies": {

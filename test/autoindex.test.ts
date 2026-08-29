@@ -1,8 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-import { buildHeader, markAutoindexBody } from '../src/commands/autoindex';
+import { describe, expect, it, vi } from 'vitest';
+import { buildHeader, markAutoindexBody, run as index } from '../src/commands/autoindex';
+import { usageLine } from '../src/usage';
 
 const TEMPLATES_DIR = fileURLToPath(new URL('../templates', import.meta.url));
 
@@ -78,5 +79,34 @@ describe('buildHeader', () => {
   it('takes the hero fragment verbatim, markup and all', () => {
     const hero = '<h1>Title</h1>\n<p>A <a href="/x.html">link</a>.</p>';
     expect(buildHeader('<body>\n<main>\n', hero)).toContain(hero);
+  });
+});
+
+// --clear rejects a hero file or a template before touching the network, so
+// these run from whatever cwd the test happens to sit in.
+describe('index --clear argument handling', () => {
+  it('rejects --clear combined with a hero file', async () => {
+    const err = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    const code = await index({
+      command: 'index',
+      hashOverride: undefined,
+      params: ['intro.html', '--clear'],
+    });
+    const written = err.mock.calls.map((call) => String(call[0])).join('');
+    err.mockRestore();
+    expect(code).toBe(2);
+    expect(written).toContain(usageLine('index'));
+    expect(written).toMatch(/does not.*take a hero file or a template/);
+  });
+
+  it('rejects --clear combined with --template', async () => {
+    const err = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    const code = await index({
+      command: 'index',
+      hashOverride: undefined,
+      params: ['--clear', '--template', 'darkly'],
+    });
+    err.mockRestore();
+    expect(code).toBe(2);
   });
 });

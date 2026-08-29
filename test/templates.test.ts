@@ -140,6 +140,8 @@ describe('countLocalAssetRefs', () => {
 describe('bootstrap5 template parts', () => {
   const part = (name: string): string =>
     readFileSync(fileURLToPath(new URL(`../templates/bootstrap5/${name}`, import.meta.url)), 'utf8');
+  const sharedJs = (name: string): string =>
+    readFileSync(fileURLToPath(new URL(`../templates/shared/js/${name}`, import.meta.url)), 'utf8');
 
   it('concatenates the three parts into one valid HTML document', () => {
     const assembled = part('header.html') + part('plan.html') + part('footer.html');
@@ -163,7 +165,25 @@ describe('bootstrap5 template parts', () => {
 
   it('supports light/dark via data-bs-theme', () => {
     expect(part('header.html')).toContain('data-bs-theme');
-    expect(part('footer.html')).toContain('data-bs-theme-toggle');
+    expect(part('header.html')).toContain('data-bs-theme-toggle');
+  });
+
+  it('restores the stored mode from <head>, before <body> is parsed', () => {
+    const header = part('header.html');
+    // Render-blocking and in <head>: a deferred script runs after the parser
+    // reaches <body>, which is the flash it exists to prevent.
+    expect(header.indexOf('<script data-bs-theme-toggle')).toBeLessThan(header.indexOf('<body>'));
+    expect(header).toContain('src="/.plandrop/shared/js/theme.js"');
+    expect(header).not.toMatch(/<script[^>]*\bdata-bs-theme-toggle\b[^>]*\b(?:defer|async)\b/);
+  });
+
+  it('keys the stored mode to the document\'s own theme via data-plandrop-theme', () => {
+    // The behaviour is one shared file; the document supplies the theme name
+    // it keys the stored mode by.
+    expect(part('header.html')).toContain('data-plandrop-theme=');
+    expect(sharedJs('theme.js')).toContain(
+      "'plandrop:mode:' + root.getAttribute('data-plandrop-theme')",
+    );
   });
 
   it('credits Bootstrap and plandrop in the footer (loud and proud)', () => {

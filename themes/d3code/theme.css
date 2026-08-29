@@ -1,0 +1,871 @@
+/*!
+ * plandrop D3-code theme
+ * Copyright (c) plandrop contributors — https://plandrop.dev/
+ * Licensed under the GNU Lesser General Public License v3.0 only.
+ *
+ * A port of the D3-code desktop app's own appearance into Bootstrap 5. The
+ * app is a Tailwind 4 / shadcn build whose palette is declared as OKLCH role
+ * tokens; this file carries the same colours as sRGB hex, plus the geometry
+ * that makes the app look like itself: a 0.625rem radius scale, 0.5rem
+ * controls, 1.125rem cards, soft far-offset shadows, a glass top bar, and a
+ * 2px focus ring set one pixel off the surface it sits on.
+ *
+ * The palette is D3-code's house pair: T3 Chat's light mode (rose accents on
+ * warm pink paper) with Iris's dark mode (violet on deep indigo), both from
+ * the MIT-licensed t3code / D3-code source. Three accents are in play,
+ * because the app uses three: a rose or pink call-to-action, a blue for prose
+ * links, and a violet focus ring in dark. Roles the app has but Bootstrap
+ * does not are dropped; roles Bootstrap needs but the app's theme tokens do
+ * not name — success and info — take the Tailwind emerald and blue the app
+ * itself falls back to.
+ *
+ * Both appearances are first class. :root matches whichever scheme is live,
+ * so the light block and the [data-bs-theme=dark] block declare the SAME
+ * variable list — a value present in only one of them would leak across the
+ * toggle. Scheme-independent values (type, radii, motion) sit in the neutral
+ * :root block below and are never repeated.
+ *
+ * Two places where fidelity gives way to the legibility floor this theme set
+ * holds itself to, both marked at the rule that makes the change: the light
+ * danger fill is darkened until a white label clears 4.5:1, and prose links
+ * carry their dotted rule at rest rather than only on hover, so a link is
+ * never signalled by colour alone.
+ *
+ * --bs-code-color is deliberately absent: the shared override sheet
+ * (.plandrop/shared/css/plandrop.css) loads after this file and tunes inline
+ * code to a calm green. Both code surfaces here clear it comfortably —
+ * #11632a on the light code panel at 6.42:1, #7ec699 on the dark one at
+ * 7.23:1 — so no exception is needed.
+ */
+
+/* Scheme-independent: type, geometry, motion.
+ *
+ * The radius scale is the app's `--radius: 0.625rem` and its derived steps
+ * (sm = radius − 4px, md = radius − 2px, xl = radius + 4px, 2xl = radius +
+ * 8px), mapped onto Bootstrap's five named sizes. Bootstrap's own base is
+ * 0.375rem, so everything here reads a little rounder than stock — which is
+ * the single biggest reason the app looks like the app. */
+:root {
+  --bs-font-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI",
+    system-ui, sans-serif;
+  --bs-body-font-family: var(--bs-font-sans-serif);
+  --bs-font-monospace: ui-monospace, "SF Mono", SFMono-Regular, Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  --bs-border-radius-sm: 0.375rem;
+  --bs-border-radius: 0.5rem;
+  --bs-border-radius-lg: 0.625rem;
+  --bs-border-radius-xl: 0.875rem;
+  --bs-border-radius-xxl: 1.125rem;
+  --bs-border-radius-2xl: 1.125rem;
+  --bs-border-radius-pill: 50rem;
+
+  /* The app gives compact controls, cards, code blocks and small chips their
+   * own fixed radii rather than letting them ride the scale. */
+  --pd-control-radius: 0.5rem;
+  --pd-card-radius: 1.125rem;
+  --pd-pre-radius: 0.75rem;
+  --pd-chip-radius: 0.375rem;
+
+  --bs-focus-ring-width: 2px;
+  --bs-focus-ring-opacity: 1;
+
+  /* Glass: the app's top bar is the page showing through a blur, not a solid
+   * bar. The blur radius and the saturation lift are the app's own. */
+  --pd-glass-blur: 12px;
+  --pd-glass-saturate: 1.14;
+
+  --pd-transition: background-color 120ms ease, border-color 120ms ease,
+    box-shadow 120ms ease, color 120ms ease;
+  --pd-disabled-opacity: 0.64;
+  --pd-scrollbar-width: 6px;
+}
+
+/* Light — T3 Chat: rose call-to-action on warm pink paper, plum ink. */
+:root,
+[data-bs-theme="light"] {
+  color-scheme: light;
+
+  --bs-body-color: #501854;
+  --bs-body-color-rgb: 80, 24, 84;
+  --bs-body-bg: #fdf7fd;
+  --bs-body-bg-rgb: 253, 247, 253;
+  --bs-emphasis-color: #37013b;
+  --bs-emphasis-color-rgb: 55, 1, 59;
+  --bs-secondary-color: #ac1668;
+  --bs-secondary-color-rgb: 172, 22, 104;
+  --bs-secondary-bg: #f3e6f5;
+  --bs-secondary-bg-rgb: 243, 230, 245;
+  --bs-tertiary-color: #8b5f90;
+  --bs-tertiary-color-rgb: 139, 95, 144;
+  --bs-tertiary-bg: #faf3fb;
+  --bs-tertiary-bg-rgb: 250, 243, 251;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: #e7c1dc;
+  --bs-border-color-translucent: rgba(55, 1, 59, 0.14);
+
+  /* Prose links take the app's blue, not its rose: the app reserves the rose
+   * for things you press and gives running text a link colour that cannot be
+   * confused with a button. */
+  --bs-link-color: #1447e6;
+  --bs-link-color-rgb: 20, 71, 230;
+  --bs-link-hover-color: #193dcc;
+  --bs-link-hover-color-rgb: 25, 61, 204;
+
+  --bs-highlight-color: var(--bs-emphasis-color);
+  --bs-highlight-bg: #f1c4e6;
+
+  --bs-primary: #db2777;
+  --bs-primary-rgb: 219, 39, 119;
+  --bs-primary-text-emphasis: #ac0052;
+  --bs-primary-bg-subtle: #f7def2;
+  --bs-primary-border-subtle: #f5c5dd;
+  --bs-secondary: #f1c4e6;
+  --bs-secondary-rgb: 241, 196, 230;
+  --bs-secondary-text-emphasis: #77347c;
+  --bs-secondary-bg-subtle: #fcf1fa;
+  --bs-secondary-border-subtle: #eccfe3;
+  --bs-success: #00bc7d;
+  --bs-success-rgb: 0, 188, 125;
+  --bs-success-text-emphasis: #007a55;
+  --bs-success-bg-subtle: #e9f2f3;
+  --bs-success-border-subtle: #c0e9de;
+  --bs-info: #155dfc;
+  --bs-info-rgb: 21, 93, 252;
+  --bs-info-text-emphasis: #1447e6;
+  --bs-info-bg-subtle: #eaebfd;
+  --bs-info-border-subtle: #c5d2fd;
+  --bs-warning: #f59e0b;
+  --bs-warning-rgb: 245, 158, 11;
+  --bs-warning-text-emphasis: #b05109;
+  --bs-warning-bg-subtle: #fcf0ea;
+  --bs-warning-border-subtle: #fbe2c3;
+  /* The palette's own error, #f7086c, is a display colour: it carries neither
+   * a white label (4.03:1) nor a plum one (4.31:1) at AA. The fill is stepped
+   * down the same hue until white clears 5.5:1; the brighter original still
+   * sets the tint and the border below. */
+  --bs-danger: #d00052;
+  --bs-danger-rgb: 208, 0, 82;
+  --bs-danger-text-emphasis: #9d174d;
+  --bs-danger-bg-subtle: #fde4f1;
+  --bs-danger-border-subtle: #f2bcd4;
+  --bs-light: #f3e6f5;
+  --bs-light-rgb: 243, 230, 245;
+  --bs-light-text-emphasis: #501854;
+  --bs-light-bg-subtle: #faf3fb;
+  --bs-light-border-subtle: #eccfe3;
+  --bs-dark: #501854;
+  --bs-dark-rgb: 80, 24, 84;
+  --bs-dark-text-emphasis: #37013b;
+  --bs-dark-bg-subtle: #e8dce9;
+  --bs-dark-border-subtle: #c6b0c7;
+
+  --bs-form-valid-color: var(--bs-success-text-emphasis);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger-text-emphasis);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* The ring is the app's focus role at 70%, which in light is the rose. */
+  --bs-focus-ring-color: rgba(219, 39, 119, 0.7);
+
+  --bs-box-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --bs-box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.4);
+  --bs-box-shadow-lg: 0 24px 64px -24px rgba(0, 0, 0, 0.45);
+  --bs-box-shadow-inset: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+
+  /* Surfaces the app names separately from Bootstrap's three-step scale. */
+  --pd-card-bg: #faf3fb;
+  --pd-card-cap-bg: #f3e6f5;
+  --pd-field-bg: #ffffff;
+  --pd-code-bg: #f5ecf9;
+
+  --pd-glass-bg: rgba(253, 247, 253, 0.8);
+  --pd-glass-border: #efbdeb;
+
+  /* A filled control is lit from above and pressed from above: a white gloss
+   * along its top edge at rest, a dark one while held. A bordered surface
+   * gets the same hairline, one pixel inside its own edge. */
+  --pd-fill-gloss: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --pd-fill-press: inset 0 1px 0 rgba(0, 0, 0, 0.08);
+  --pd-hairline: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+
+  --pd-scrollbar-thumb: #d9d9d9;
+  --pd-scrollbar-thumb-hover: #bfbfbf;
+
+  --pd-selection-bg: #f1c4e6;
+  --pd-selection-color: #37013b;
+
+  /* Every fill carries the label colour that clears AA on it, so a rose fill
+   * takes white while an emerald or amber one takes plum ink. Hover and
+   * active step toward the ink, away from the label, so a control never
+   * loses contrast as it is pressed — the neutral dark fill is the one
+   * exception and steps toward the paper instead. */
+  --pd-fg-primary: #ffffff;
+  --pd-primary-hover: #cb2371;
+  --pd-primary-active: #ba1f6b;
+  --pd-fg-secondary: #37013b;
+  --pd-secondary-hover: #deb1d5;
+  --pd-secondary-active: #cc9dc4;
+  --pd-fg-success: #37013b;
+  --pd-success-hover: #05a976;
+  --pd-success-active: #0b9770;
+  --pd-fg-info: #ffffff;
+  --pd-info-hover: #1854e9;
+  --pd-info-active: #1c4bd5;
+  --pd-fg-warning: #37013b;
+  --pd-warning-hover: #e28e10;
+  --pd-warning-active: #cf7f15;
+  --pd-fg-danger: #ffffff;
+  --pd-danger-hover: #c10050;
+  --pd-danger-active: #b1004d;
+  --pd-fg-light: #37013b;
+  --pd-light-hover: #e0cfe2;
+  --pd-light-active: #cdb8d0;
+  --pd-fg-dark: #ffffff;
+  --pd-dark-hover: #653368;
+  --pd-dark-active: #764979;
+
+  /* Bootstrap compiles a white tick and a white radio dot into its form
+   * check images, which the dark scheme's pale fills cannot carry. Both
+   * schemes therefore supply their own, drawn in their own label colour. */
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  --pd-radio-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23ffffff'/%3e%3c/svg%3e");
+  --pd-switch-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23ffffff'/%3e%3c/svg%3e");
+}
+
+/* Dark — Iris: violet focus and links on deep indigo, a pink call-to-action. */
+[data-bs-theme="dark"] {
+  color-scheme: dark;
+
+  --bs-body-color: #fffaff;
+  --bs-body-color-rgb: 255, 250, 255;
+  --bs-body-bg: #1d1929;
+  --bs-body-bg-rgb: 29, 25, 41;
+  --bs-emphasis-color: #ffffff;
+  --bs-emphasis-color-rgb: 255, 255, 255;
+  --bs-secondary-color: #8e8a95;
+  --bs-secondary-color-rgb: 142, 138, 149;
+  --bs-secondary-bg: #362d51;
+  --bs-secondary-bg-rgb: 54, 45, 81;
+  --bs-tertiary-color: #a29ea8;
+  --bs-tertiary-color-rgb: 162, 158, 168;
+  --bs-tertiary-bg: #2a2736;
+  --bs-tertiary-bg-rgb: 42, 39, 54;
+  --bs-heading-color: var(--bs-emphasis-color);
+
+  --bs-border-color: #4d4366;
+  --bs-border-color-translucent: rgba(255, 250, 255, 0.14);
+
+  --bs-link-color: #51a2ff;
+  --bs-link-color-rgb: 81, 162, 255;
+  --bs-link-hover-color: #7db8ff;
+  --bs-link-hover-color-rgb: 125, 184, 255;
+
+  --bs-highlight-color: var(--bs-emphasis-color);
+  --bs-highlight-bg: #4b3d72;
+
+  --bs-primary: #f099d8;
+  --bs-primary-rgb: 240, 153, 216;
+  --bs-primary-text-emphasis: #f099d8;
+  --bs-primary-bg-subtle: #3f2d45;
+  --bs-primary-border-subtle: #614261;
+  --bs-secondary: #362d51;
+  --bs-secondary-rgb: 54, 45, 81;
+  --bs-secondary-text-emphasis: #a7a1b5;
+  --bs-secondary-bg-subtle: #241f34;
+  --bs-secondary-border-subtle: #362d51;
+  --bs-success: #00bc7d;
+  --bs-success-rgb: 0, 188, 125;
+  --bs-success-text-emphasis: #00d492;
+  --bs-success-bg-subtle: #183336;
+  --bs-success-border-subtle: #144d44;
+  --bs-info: #2b7fff;
+  --bs-info-rgb: 43, 127, 255;
+  --bs-info-text-emphasis: #51a2ff;
+  --bs-info-bg-subtle: #1f294b;
+  --bs-info-border-subtle: #213a6d;
+  --bs-warning: #fe9a00;
+  --bs-warning-rgb: 254, 154, 0;
+  --bs-warning-text-emphasis: #ffb900;
+  --bs-warning-bg-subtle: #412e23;
+  --bs-warning-border-subtle: #65421c;
+  --bs-danger: #fb414a;
+  --bs-danger-rgb: 251, 65, 74;
+  --bs-danger-text-emphasis: #ff6467;
+  --bs-danger-bg-subtle: #40202e;
+  --bs-danger-border-subtle: #642634;
+  --bs-light: #ddd8e6;
+  --bs-light-rgb: 221, 216, 230;
+  --bs-light-text-emphasis: #fffaff;
+  --bs-light-bg-subtle: #362d51;
+  --bs-light-border-subtle: #4d4366;
+  --bs-dark: #2a2736;
+  --bs-dark-rgb: 42, 39, 54;
+  --bs-dark-text-emphasis: #a29ea8;
+  --bs-dark-bg-subtle: #13101b;
+  --bs-dark-border-subtle: #383443;
+
+  --bs-form-valid-color: var(--bs-success-text-emphasis);
+  --bs-form-valid-border-color: var(--bs-success);
+  --bs-form-invalid-color: var(--bs-danger-text-emphasis);
+  --bs-form-invalid-border-color: var(--bs-danger);
+
+  /* Dark's focus role is the violet, which is a different colour from both
+   * the pink call-to-action and the blue link. That is the app's own choice
+   * and the reason its dark mode reads as violet at all. */
+  --bs-focus-ring-color: rgba(157, 125, 242, 0.7);
+
+  --bs-box-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --bs-box-shadow: 0 14px 32px -18px rgba(0, 0, 0, 0.75);
+  --bs-box-shadow-lg: 0 24px 64px -24px rgba(0, 0, 0, 0.65);
+  --bs-box-shadow-inset: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+
+  --pd-card-bg: #272139;
+  --pd-card-cap-bg: #362d51;
+  --pd-field-bg: #241f34;
+  --pd-code-bg: #2a2736;
+
+  --pd-glass-bg: rgba(29, 25, 41, 0.8);
+  --pd-glass-border: #4a3c70;
+
+  /* In dark the hairline runs along the BOTTOM edge and is light, not dark:
+   * a raised surface catches light where a lit one would fall into shadow. */
+  --pd-fill-gloss: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  --pd-fill-press: inset 0 1px 0 rgba(0, 0, 0, 0.08);
+  --pd-hairline: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+
+  --pd-scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --pd-scrollbar-thumb-hover: rgba(255, 255, 255, 0.12);
+
+  --pd-selection-bg: #4a3c70;
+  --pd-selection-color: #fffaff;
+
+  /* Dark's fills are the bright half of the palette, so almost every label
+   * is the deep plum ink; hover and active step toward the paper colour,
+   * again away from the label. The two light-labelled fills invert. */
+  --pd-fg-primary: #241523;
+  --pd-primary-hover: #f2a3dc;
+  --pd-primary-active: #f3ace0;
+  --pd-fg-secondary: #fffaff;
+  --pd-secondary-hover: #4a4262;
+  --pd-secondary-active: #5e5674;
+  --pd-fg-success: #241523;
+  --pd-success-hover: #19c28a;
+  --pd-success-active: #33c897;
+  --pd-fg-info: #241523;
+  --pd-info-hover: #408bff;
+  --pd-info-active: #5598ff;
+  --pd-fg-warning: #241523;
+  --pd-warning-hover: #fea419;
+  --pd-warning-active: #fead33;
+  --pd-fg-danger: #241523;
+  --pd-danger-hover: #fb545c;
+  --pd-danger-active: #fc666e;
+  --pd-fg-light: #241523;
+  --pd-light-hover: #cac5d3;
+  --pd-light-active: #b7b2c0;
+  --pd-fg-dark: #fffaff;
+  --pd-dark-hover: #3f3c4a;
+  --pd-dark-active: #55515e;
+
+  --pd-check-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23241523' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  --pd-radio-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23241523'/%3e%3c/svg%3e");
+  --pd-switch-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23241523'/%3e%3c/svg%3e");
+}
+
+/* ---------------------------------------------------------------------------
+ * Type
+ * ------------------------------------------------------------------------- */
+
+/* The app sets headings semibold and tightens their tracking; at document
+ * sizes that reads as a firm heading rather than a heavy one. */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-weight: 600;
+  letter-spacing: -0.011em;
+  text-wrap: balance;
+}
+
+.display-1, .display-2, .display-3,
+.display-4, .display-5, .display-6 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  color: var(--bs-secondary-color);
+}
+
+/* The app's links carry no solid underline. They wear a row of dots painted
+ * as a repeating radial gradient along the baseline, which is the detail
+ * worth having. The app shows the dots only under the pointer; here they are
+ * permanent, because a link in a published document must be distinguishable
+ * from body text without relying on its colour. Hover trades them for a
+ * solid rule, so the pointer still gets a state change. */
+a {
+  text-decoration: none;
+  background-image: radial-gradient(circle, currentcolor 0.75px, transparent 1px);
+  background-position: left bottom;
+  background-repeat: repeat-x;
+  background-size: 4px 2px;
+  padding-bottom: 0.05em;
+}
+
+a:hover,
+a:focus-visible {
+  background-image: none;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Links that are already a shape — buttons, nav items, brands, page links,
+ * list-group and dropdown rows, and the footer's credits — keep their own
+ * chrome instead of a dotted rule under the text. */
+.btn,
+.nav-link,
+.navbar-brand,
+.page-link,
+.list-group-item-action,
+.dropdown-item,
+.link-body-emphasis,
+.alert-link {
+  background-image: none;
+  padding-bottom: revert;
+}
+
+hr {
+  border-top: 1px solid var(--bs-border-color);
+  opacity: 1;
+}
+
+/* An anchored heading has to clear the sticky top bar it would otherwise
+ * scroll under. */
+html {
+  scroll-padding-top: 5rem;
+}
+
+::selection {
+  background-color: var(--pd-selection-bg);
+  color: var(--pd-selection-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Chrome: the glass top bar
+ * ------------------------------------------------------------------------- */
+
+/* The app's toolbar is the page seen through a blur with the colour lifted
+ * slightly, pinned to the top of the window. Sticking it here is what makes
+ * the blur mean anything: without it there is never anything behind the bar
+ * to see through. Where backdrop-filter is unsupported the bar falls back to
+ * its own 80% background, which is still legible over prose. */
+.navbar {
+  --bs-navbar-color: var(--bs-secondary-color);
+  --bs-navbar-hover-color: var(--bs-emphasis-color);
+  --bs-navbar-active-color: var(--bs-emphasis-color);
+  --bs-navbar-brand-color: var(--bs-emphasis-color);
+  --bs-navbar-brand-hover-color: var(--bs-emphasis-color);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background-color: var(--pd-glass-bg);
+  backdrop-filter: blur(var(--pd-glass-blur)) saturate(var(--pd-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--pd-glass-blur)) saturate(var(--pd-glass-saturate));
+  border-bottom: 1px solid var(--pd-glass-border);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+footer {
+  border-top-color: var(--bs-border-color) !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Buttons — Bootstrap compiles literal colours into every .btn-* variant, so
+ * each one is re-pointed at the palette. The per-variant rules carry only the
+ * colours; the shared rules below spend them.
+ * ------------------------------------------------------------------------- */
+
+.btn {
+  --bs-btn-border-radius: var(--pd-control-radius);
+  --bs-btn-font-weight: 500;
+  --bs-btn-disabled-opacity: var(--pd-disabled-opacity);
+  transition: var(--pd-transition);
+}
+
+.btn-primary, .btn-outline-primary {
+  --pd-btn: var(--bs-primary);
+  --pd-btn-rgb: var(--bs-primary-rgb);
+  --pd-btn-fg: var(--pd-fg-primary);
+  --pd-btn-hover: var(--pd-primary-hover);
+  --pd-btn-active: var(--pd-primary-active);
+  --pd-btn-ink: var(--bs-primary-text-emphasis);
+  --pd-btn-line: var(--bs-primary);
+  --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+.btn-secondary, .btn-outline-secondary {
+  --pd-btn: var(--bs-secondary);
+  --pd-btn-rgb: var(--bs-secondary-rgb);
+  --pd-btn-fg: var(--pd-fg-secondary);
+  --pd-btn-hover: var(--pd-secondary-hover);
+  --pd-btn-active: var(--pd-secondary-active);
+  /* The app's outline button is a neutral: the field border and the body ink,
+   * never the secondary fill, which is far too pale to letter. */
+  --pd-btn-ink: var(--bs-body-color);
+  --pd-btn-line: var(--bs-border-color);
+  --bs-btn-focus-shadow-rgb: var(--bs-secondary-rgb);
+}
+.btn-success, .btn-outline-success {
+  --pd-btn: var(--bs-success);
+  --pd-btn-rgb: var(--bs-success-rgb);
+  --pd-btn-fg: var(--pd-fg-success);
+  --pd-btn-hover: var(--pd-success-hover);
+  --pd-btn-active: var(--pd-success-active);
+  --pd-btn-ink: var(--bs-success-text-emphasis);
+  --pd-btn-line: var(--bs-success);
+  --bs-btn-focus-shadow-rgb: var(--bs-success-rgb);
+}
+.btn-info, .btn-outline-info {
+  --pd-btn: var(--bs-info);
+  --pd-btn-rgb: var(--bs-info-rgb);
+  --pd-btn-fg: var(--pd-fg-info);
+  --pd-btn-hover: var(--pd-info-hover);
+  --pd-btn-active: var(--pd-info-active);
+  --pd-btn-ink: var(--bs-info-text-emphasis);
+  --pd-btn-line: var(--bs-info);
+  --bs-btn-focus-shadow-rgb: var(--bs-info-rgb);
+}
+.btn-warning, .btn-outline-warning {
+  --pd-btn: var(--bs-warning);
+  --pd-btn-rgb: var(--bs-warning-rgb);
+  --pd-btn-fg: var(--pd-fg-warning);
+  --pd-btn-hover: var(--pd-warning-hover);
+  --pd-btn-active: var(--pd-warning-active);
+  --pd-btn-ink: var(--bs-warning-text-emphasis);
+  --pd-btn-line: var(--bs-warning);
+  --bs-btn-focus-shadow-rgb: var(--bs-warning-rgb);
+}
+.btn-danger, .btn-outline-danger {
+  --pd-btn: var(--bs-danger);
+  --pd-btn-rgb: var(--bs-danger-rgb);
+  --pd-btn-fg: var(--pd-fg-danger);
+  --pd-btn-hover: var(--pd-danger-hover);
+  --pd-btn-active: var(--pd-danger-active);
+  --pd-btn-ink: var(--bs-danger-text-emphasis);
+  --pd-btn-line: var(--bs-danger);
+  --bs-btn-focus-shadow-rgb: var(--bs-danger-rgb);
+}
+.btn-light, .btn-outline-light {
+  --pd-btn: var(--bs-light);
+  --pd-btn-rgb: var(--bs-light-rgb);
+  --pd-btn-fg: var(--pd-fg-light);
+  --pd-btn-hover: var(--pd-light-hover);
+  --pd-btn-active: var(--pd-light-active);
+  --pd-btn-ink: var(--bs-body-color);
+  --pd-btn-line: var(--bs-border-color);
+  --bs-btn-focus-shadow-rgb: var(--bs-light-rgb);
+}
+.btn-dark, .btn-outline-dark {
+  --pd-btn: var(--bs-dark);
+  --pd-btn-rgb: var(--bs-dark-rgb);
+  --pd-btn-fg: var(--pd-fg-dark);
+  --pd-btn-hover: var(--pd-dark-hover);
+  --pd-btn-active: var(--pd-dark-active);
+  --pd-btn-ink: var(--bs-emphasis-color);
+  --pd-btn-line: var(--bs-border-color);
+  --bs-btn-focus-shadow-rgb: var(--bs-dark-rgb);
+}
+
+.btn-primary, .btn-secondary, .btn-success, .btn-info,
+.btn-warning, .btn-danger, .btn-light, .btn-dark {
+  --bs-btn-color: var(--pd-btn-fg);
+  --bs-btn-bg: var(--pd-btn);
+  --bs-btn-border-color: var(--pd-btn);
+  --bs-btn-hover-color: var(--pd-btn-fg);
+  --bs-btn-hover-bg: var(--pd-btn-hover);
+  --bs-btn-hover-border-color: var(--pd-btn-hover);
+  --bs-btn-active-color: var(--pd-btn-fg);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-btn-fg);
+  --bs-btn-disabled-bg: var(--pd-btn);
+  --bs-btn-disabled-border-color: var(--pd-btn);
+  box-shadow: var(--pd-fill-gloss), 0 1px 2px rgba(var(--pd-btn-rgb), 0.24);
+}
+
+.btn-light, .btn-dark {
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-border-color: var(--bs-border-color);
+  --bs-btn-active-border-color: var(--bs-border-color);
+  --bs-btn-disabled-border-color: var(--bs-border-color);
+}
+
+/* Held down, the gloss flips to the underside of the top edge and the drop
+ * shadow goes, so the control reads as pushed into the page. */
+.btn-primary:active, .btn-secondary:active, .btn-success:active,
+.btn-info:active, .btn-warning:active, .btn-danger:active,
+.btn-light:active, .btn-dark:active,
+.btn-check:checked + .btn {
+  box-shadow: var(--pd-fill-press);
+}
+
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success,
+.btn-outline-info, .btn-outline-warning, .btn-outline-danger,
+.btn-outline-light, .btn-outline-dark {
+  --bs-btn-color: var(--pd-btn-ink);
+  --bs-btn-border-color: var(--pd-btn-line);
+  --bs-btn-bg: var(--pd-field-bg);
+  --bs-btn-hover-color: var(--pd-btn-fg);
+  --bs-btn-hover-bg: var(--pd-btn);
+  --bs-btn-hover-border-color: var(--pd-btn);
+  --bs-btn-active-color: var(--pd-btn-fg);
+  --bs-btn-active-bg: var(--pd-btn-active);
+  --bs-btn-active-border-color: var(--pd-btn-active);
+  --bs-btn-disabled-color: var(--pd-btn-ink);
+  --bs-btn-disabled-border-color: var(--pd-btn-line);
+  box-shadow: var(--bs-box-shadow-sm);
+}
+
+.btn-link {
+  --bs-btn-color: var(--bs-link-color);
+  --bs-btn-hover-color: var(--bs-link-hover-color);
+  --bs-btn-active-color: var(--bs-link-hover-color);
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Solid colour chips — .text-bg-* compiles its foreground too, and the choice
+ * Bootstrap compiled in does not know which of these fills take white and
+ * which take plum ink.
+ * ------------------------------------------------------------------------- */
+
+.text-bg-primary { color: var(--pd-fg-primary) !important; }
+.text-bg-secondary { color: var(--pd-fg-secondary) !important; }
+.text-bg-success { color: var(--pd-fg-success) !important; }
+.text-bg-info { color: var(--pd-fg-info) !important; }
+.text-bg-warning { color: var(--pd-fg-warning) !important; }
+.text-bg-danger { color: var(--pd-fg-danger) !important; }
+.text-bg-light { color: var(--pd-fg-light) !important; }
+.text-bg-dark { color: var(--pd-fg-dark) !important; }
+
+/* The app's chips are small, medium weight, and only slightly rounded — a
+ * label, not a pill. */
+.badge {
+  --bs-badge-border-radius: var(--pd-chip-radius);
+  --bs-badge-font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------------
+ * Surfaces: cards, alerts, list groups, blockquotes
+ * ------------------------------------------------------------------------- */
+
+/* A card is the app's largest radius, a one-pixel border, a hairline just
+ * inside the top edge, and a shadow so faint it registers as depth rather
+ * than as a shadow. */
+.card {
+  --bs-card-bg: var(--pd-card-bg);
+  --bs-card-cap-bg: var(--pd-card-cap-bg);
+  --bs-card-border-color: var(--bs-border-color);
+  --bs-card-border-radius: var(--pd-card-radius);
+  --bs-card-inner-border-radius: calc(var(--pd-card-radius) - 1px);
+  --bs-card-title-color: var(--bs-emphasis-color);
+  box-shadow: var(--pd-hairline), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+  font-weight: 600;
+}
+
+.alert {
+  --bs-alert-border-radius: var(--bs-border-radius-lg);
+}
+
+.list-group {
+  --bs-list-group-bg: var(--pd-card-bg);
+  --bs-list-group-border-color: var(--bs-border-color);
+  --bs-list-group-border-radius: var(--bs-border-radius-lg);
+  --bs-list-group-action-hover-bg: var(--bs-secondary-bg);
+  --bs-list-group-action-hover-color: var(--bs-emphasis-color);
+  --bs-list-group-active-bg: var(--bs-primary);
+  --bs-list-group-active-border-color: var(--bs-primary);
+  --bs-list-group-active-color: var(--pd-fg-primary);
+}
+
+blockquote,
+.blockquote {
+  border-left: 2px solid var(--bs-border-color);
+  padding-left: 0.8rem;
+  color: var(--bs-secondary-color);
+}
+
+.blockquote-footer {
+  color: var(--bs-tertiary-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables
+ * ------------------------------------------------------------------------- */
+
+.table {
+  --bs-table-color: var(--bs-body-color);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--bs-border-color);
+  --bs-table-striped-bg: rgba(var(--bs-emphasis-color-rgb), 0.03);
+  --bs-table-striped-color: var(--bs-body-color);
+  --bs-table-hover-bg: rgba(var(--bs-primary-rgb), 0.08);
+  --bs-table-hover-color: var(--bs-emphasis-color);
+  --bs-table-active-bg: rgba(var(--bs-primary-rgb), 0.14);
+  --bs-table-active-color: var(--bs-emphasis-color);
+}
+
+.table > thead > tr > th {
+  color: var(--bs-emphasis-color);
+  font-weight: 600;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Code
+ * ------------------------------------------------------------------------- */
+
+pre {
+  background-color: var(--pd-code-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--pd-pre-radius);
+  padding: 0.9rem 1rem;
+  color: var(--bs-body-color);
+}
+
+/* highlight.js links its stylesheet at runtime, after this file, and paints a
+ * background of its own on the <code>. Two classes out-specify it so the
+ * block keeps this theme's surface while the token colours stay upstream's. */
+pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
+
+/* A mermaid diagram is a diagram, not a listing: no panel, and centred. */
+pre.mermaid {
+  background-color: transparent;
+  border: none;
+  text-align: center;
+}
+
+/* Inline code is boxed in the app: a bordered chip on the code surface. Its
+ * text colour is left to the shared override sheet. */
+:not(pre) > code {
+  background-color: var(--pd-code-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--pd-chip-radius);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.875em;
+}
+
+kbd {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-emphasis-color);
+  border: 1px solid var(--bs-border-color);
+  border-bottom-width: 2px;
+  border-radius: var(--pd-chip-radius);
+}
+
+/* ---------------------------------------------------------------------------
+ * Forms + focus
+ * ------------------------------------------------------------------------- */
+
+.form-control,
+.form-select {
+  background-color: var(--pd-field-bg);
+  border-color: var(--bs-border-color);
+  border-radius: var(--pd-control-radius);
+  color: var(--bs-body-color);
+  box-shadow: var(--bs-box-shadow-sm);
+  transition: var(--pd-transition);
+}
+
+.form-control::placeholder {
+  color: var(--bs-tertiary-color);
+}
+
+.form-check-input {
+  background-color: var(--pd-field-bg);
+  border-color: var(--bs-border-color);
+}
+
+.form-check-input:checked {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+}
+
+.form-check-input:checked[type="checkbox"] {
+  --bs-form-check-bg-image: var(--pd-check-image);
+}
+
+.form-check-input:checked[type="radio"] {
+  --bs-form-check-bg-image: var(--pd-radio-image);
+}
+
+.form-switch .form-check-input:checked {
+  --bs-form-switch-bg: var(--pd-switch-image);
+}
+
+/* The app's focus ring stands one pixel clear of the control, in a ring of
+ * the page colour, so it reads on a fill and on paper alike. */
+.btn:focus-visible,
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus,
+.page-link:focus,
+a:focus-visible,
+summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--bs-body-bg), 0 0 0 3px var(--bs-focus-ring-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Progress + scrollbars
+ * ------------------------------------------------------------------------- */
+
+.progress,
+.progress-stacked {
+  --bs-progress-bg: var(--bs-secondary-bg);
+  --bs-progress-bar-bg: var(--bs-primary);
+  --bs-progress-bar-color: var(--pd-fg-primary);
+  --bs-progress-border-radius: var(--bs-border-radius-pill);
+  --bs-progress-height: 0.5rem;
+}
+
+/* The app runs a thin, trackless scrollbar that only shows its thumb. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pd-scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--pd-scrollbar-width);
+  height: var(--pd-scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--pd-scrollbar-thumb);
+  border-radius: var(--bs-border-radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--pd-scrollbar-thumb-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .form-control,
+  .form-select {
+    transition: none;
+  }
+}

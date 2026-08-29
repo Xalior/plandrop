@@ -23,10 +23,11 @@ npx plandrop upload ./planfile.html
 | `create` | Create a new host (a unique hostname and passphrase) and write them to a `.plandrop` file in the current directory. |
 | `newdoc <filename>` | Generate a new template-based HTML document locally from a server-hosted theme. Needs no host — defaults to the public template host. |
 | `upload <path> [remote]` | Publish a file or a directory (recursively) to your host over authenticated WebDAV. |
-| `index [hero-file]` | Publish the header and footer that wrap a directory listing when a directory has no `index.html`, optionally with a hero section from a local file. |
+| `index [hero-file]` | Publish the header and footer that wrap a directory listing when a directory has no `index.html`, optionally with a hero section from a local file. `index --clear` removes them again. |
 | `fixcss` | Rewrite the theme links in your local HTML documents so each one names the server outright, so a document keeps its styling wherever it is opened. |
 | `rotate` | Change the host's passphrase (the old one stops working immediately). |
 | `remove` | Delete the host and its content, and remove the local `.plandrop`. |
+| `delete <remote-path>` | Delete one file from the host, leaving everything else in place. |
 | `text <file \| url>` | Print an HTML document as markdown, so it can be read without its markup. Works on a local file or a published URL. |
 | `init` | Record your default domain (and template) in a config file the other commands resolve. |
 | `server` | Start a local plandrop server (Docker) via the plandrop.dev starter script. |
@@ -274,6 +275,16 @@ current directory, whose name was never typed in the first place.
 A trailing slash on either argument never changes the outcome, and each uploaded file prints
 its own address once it is published.
 
+Add `--open` to also open the host's address in your default browser once the upload finishes:
+
+```sh
+npx plandrop upload ./planfile.html --open
+```
+
+If no browser can be opened — the launcher for your operating system is missing, or fails to
+start — a warning is printed and the command still succeeds, because the upload itself has
+already finished by that point.
+
 By default, nothing hidden is published. A directory upload skips every name starting with a
 dot as it walks the tree — a dot-file is skipped with one line of output, and a
 dot-directory is skipped whole, without descending into it, so a `.git` folder costs a
@@ -345,6 +356,17 @@ both files are replaced each time, and a hero is never inserted twice.
 The template is chosen with the same precedence as `newdoc`: the `--template` flag, then the
 `.plandrop` file's recorded template, then the per-user config, then the server's default.
 
+Run `index --clear` to remove the header and footer and go back to the server's own default
+listing style:
+
+```sh
+npx plandrop index --clear
+```
+
+`--clear` only removes the two files; it does not take a hero file or a `--template` flag —
+combining it with either is an error. A file that is already gone (never published, or cleared
+before) is left as it is, not reported as a failure.
+
 ## fixcss
 
 Rewrite the theme links inside your published documents so each one names the server
@@ -391,6 +413,21 @@ npx plandrop remove
 
 Deletes the host (its content and credentials) and removes the local `.plandrop`. After
 this, the host URL returns 404 and writes are rejected. Wrong credentials change nothing.
+
+## delete
+
+Delete one file from the host, without touching anything else that is published there:
+
+```sh
+npx plandrop delete stale.html
+npx plandrop delete docs/old-plan.html
+```
+
+This is different from [`remove`](#remove), which deletes the whole host. `delete` refuses to
+remove a directory — deleting a directory would take everything inside it with it — so name the
+exact file you want gone. It also refuses with a clear error if the path does not exist on the
+host, rather than reporting success for nothing. On success it prints the full address of the
+file it removed.
 
 ## text
 

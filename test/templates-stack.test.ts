@@ -101,10 +101,13 @@ describe('ingress static template serving', () => {
     });
     expect(res.status).toBe(200);
     const html = res.body.toString();
-    // Dual-appearance: opens dark, and carries the toggle button + its script.
+    // Dual-appearance: opens dark, carries the toggle button, and pulls the
+    // shared toggle behaviour rather than an inlined copy of it. The button
+    // states the scheme the theme opens in.
     expect(html).toContain('data-bs-theme="dark"');
     expect(html).toContain('data-bs-theme-toggle');
-    expect(html).toContain("getAttribute('data-bs-theme')");
+    expect(html).toContain('src="/.plandrop/shared/js/theme.js"');
+    expect(html).toContain('aria-label="Toggle colour scheme, currently dark"');
     // Its own credit, not the Bootswatch one.
     expect(html).toContain('LGPL-3.0-only');
     expect(html).not.toContain('Bootswatch');

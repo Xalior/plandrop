@@ -1,5 +1,6 @@
 import { run as index } from './commands/autoindex';
 import { run as create } from './commands/create';
+import { run as deleteFile } from './commands/delete';
 import { run as fixcss } from './commands/fixcss';
 import { run as help } from './commands/help';
 import { run as hooks } from './commands/hooks';
@@ -22,6 +23,7 @@ const HANDLERS: Record<CommandName, Handler> = {
   fixcss,
   rotate,
   remove,
+  delete: deleteFile,
   text,
   init,
   server,

@@ -167,17 +167,15 @@ function appearanceOf(theme, spec) {
 
 /**
  * Strip the dual-mode theme toggle from a header/footer fragment: the navbar
- * <button> carrying the data-bs-theme-toggle attribute, and the footer
- * <script> that drives it (recognised by referencing that same attribute).
- * Used for the single-appearance Bootswatch themes, which carry no toggle.
+ * <button> carrying the data-bs-theme-toggle attribute, and the <script> tag
+ * that pulls in the shared toggle behaviour, marked with the same attribute so
+ * one pass removes both. Used for the single-appearance Bootswatch themes,
+ * which carry no toggle.
  */
 export function stripToggle(html) {
   return html
     .replace(/[ \t]*<button[^>]*\bdata-bs-theme-toggle\b[\s\S]*?<\/button>\n?/g, '')
-    .replace(
-      /[ \t]*<script>(?:(?!<\/script>)[\s\S])*?data-bs-theme-toggle[\s\S]*?<\/script>\n?/g,
-      '',
-    );
+    .replace(/[ \t]*<script[^>]*\bdata-bs-theme-toggle\b[^>]*>[\s\S]*?<\/script>\n?/g, '');
 }
 
 /**
@@ -205,6 +203,16 @@ export function renderHeader(skeletonHeader, theme, spec) {
     `data-plandrop-theme="${theme}"`,
   );
   header = header.replace(/(<html[^>]*\sdata-bs-theme=")[^"]*(")/, `$1${scheme}$2`);
+  // The toggle button states the current mode in its accessible name and its
+  // visible label. Both are pinned to the scheme the theme opens in, so the
+  // served markup is self-consistent before any script runs; the shared toggle
+  // script corrects them only when a stored mode differs.
+  header = header
+    .replace(/(aria-label="Toggle colour scheme, currently )[^"]*(")/, `$1${scheme}$2`)
+    .replace(
+      /(<span data-bs-theme-toggle-label>)[^<]*(<\/span>)/,
+      `$1${scheme.charAt(0).toUpperCase()}${scheme.slice(1)}$2`,
+    );
   if (!dual) {
     header = stripToggle(header);
     // Pin data-bs-theme on the navbar too, not just <html>. Bootswatch gates its

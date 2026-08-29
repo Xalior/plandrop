@@ -1,4 +1,4 @@
-.PHONY: build lint typecheck test check pack clean showcase apache-build apache-up apache-down control-build control-up control-down manual-up manual-down
+.PHONY: build lint typecheck test test-unit test-stack check pack clean showcase apache-build apache-up apache-down control-build control-up control-down manual-up manual-down
 
 build:
 	pnpm run build
@@ -9,8 +9,21 @@ lint:
 typecheck:
 	pnpm run typecheck
 
+# The whole suite: both vitest projects.
 test:
 	pnpm run test
+
+# The `unit` project alone — pure functions and local processes, no Docker,
+# so a single helper's tests come back in seconds. The project split lives in
+# vitest.config.ts.
+test-unit:
+	pnpm run test:unit
+
+# The `stack` project alone — the tests that drive the throwaway Apache +
+# ingress + control containers. Requires Docker. It binds fixed ports under a
+# fixed compose project name, so only one run at a time on a machine.
+test-stack:
+	pnpm run test:stack
 
 check: typecheck lint test
 

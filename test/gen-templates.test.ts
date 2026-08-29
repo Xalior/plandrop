@@ -26,10 +26,11 @@ import {
 const NATIVE_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero', 'vapor'];
 
 /** The hand-authored themes shipped under themes/. */
-const CUSTOM = ['f1terminal', 'r1pcb', 's1notebook'];
+const CUSTOM = ['d3code', 'f1terminal', 'r1pcb', 's1notebook'];
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const skeletonDir = join(repoRoot, 'templates', 'bootstrap5');
+const sharedJsDir = join(repoRoot, 'templates', 'shared', 'js');
 const bootswatchDir = join(repoRoot, 'node_modules', 'bootswatch');
 const customDir = join(repoRoot, 'themes');
 
@@ -101,12 +102,10 @@ describe('template generator', () => {
     }
   });
 
-  it('keeps the toggle (button + script) on the dual-mode bootstrap5 skeleton', () => {
+  it('keeps the toggle (button + script tag) on the dual-mode bootstrap5 skeleton', () => {
     const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8');
-    const footer = readFileSync(join(skeletonDir, 'footer.html'), 'utf8');
     expect(header).toContain('data-bs-theme="light"');
     expect(header).toContain('data-bs-theme-toggle');
-    expect(footer).toContain("getAttribute('data-bs-theme')");
     expect(nativeScheme('bootstrap5')).toBe('light');
     // The skeleton navbar is NOT pinned — it inherits data-bs-theme from <html>
     // so the toggle flips the navbar along with the page.
@@ -121,6 +120,74 @@ describe('template generator', () => {
     expect(header).toContain('src="/.plandrop/shared/js/enhance.js"');
     expect(header).not.toMatch(/href="\.plandrop/);
     expect(header).not.toMatch(/src="\.plandrop/);
+  });
+
+  it('carries the toggle behaviour as one shared file, not a copy per theme', () => {
+    // The behaviour is theme-neutral: the storage key is read from the
+    // document at run time. Inlining it would put an identical copy in every
+    // dual-mode template, so a change would mean editing and re-checking each
+    // one, and a reader opening two themes would download it twice.
+    const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8');
+    const footer = readFileSync(join(skeletonDir, 'footer.html'), 'utf8');
+    expect(header).toContain('src="/.plandrop/shared/js/theme.js"');
+    expect(header).not.toMatch(/<script[^>]*data-bs-theme-toggle[^>]*>\s*\(function/);
+    expect(footer).not.toContain('<script');
+  });
+
+  it('loads the toggle script render-blocking in <head>, ahead of paint', () => {
+    const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8');
+    const headEnd = header.indexOf('</head>');
+    const scriptStart = header.indexOf('<script data-bs-theme-toggle');
+    expect(scriptStart).toBeGreaterThan(-1);
+    expect(scriptStart).toBeLessThan(headEnd);
+    // A deferred or async script runs after the parser reaches <body>, which
+    // is exactly the flash the stored mode has to be applied ahead of.
+    expect(header).not.toMatch(/<script[^>]*\bdata-bs-theme-toggle\b[^>]*\b(?:defer|async)\b/);
+  });
+
+  it('cycles light -> dark -> system and keeps the system scheme live via matchMedia', () => {
+    const script = readFileSync(join(sharedJsDir, 'theme.js'), 'utf8');
+    expect(script).toContain("['light', 'dark', 'system']");
+    // "system" is resolved from the OS preference on load...
+    expect(script).toContain("window.matchMedia('(prefers-color-scheme: dark)')");
+    // ...and tracked for as long as the page stays open, rather than read
+    // once: a "change" listener, not a one-off check.
+    expect(script).toContain("media.addEventListener('change', applyScheme)");
+  });
+
+  it('keys the stored preference to the document\'s own theme, and tolerates no storage', () => {
+    const script = readFileSync(join(sharedJsDir, 'theme.js'), 'utf8');
+    // One shared file serves every theme because the key is built at run time
+    // from data-plandrop-theme, which the generator rewrites to the concrete
+    // theme name — so each theme reads and writes its own key.
+    expect(script).toContain("'plandrop:mode:' + root.getAttribute('data-plandrop-theme')");
+    // A throwing localStorage (private browsing, blocked cookies, …) must not
+    // break the toggle — reading and writing are both guarded.
+    expect(script).toMatch(/try\s*{\s*return window\.localStorage\.getItem\(/);
+    expect(script).toMatch(/try\s*{\s*window\.localStorage\.setItem\(/);
+  });
+
+  it('reflects the active mode on the toggle button, accessibly', () => {
+    const header = readFileSync(join(skeletonDir, 'header.html'), 'utf8');
+    const script = readFileSync(join(sharedJsDir, 'theme.js'), 'utf8');
+    // A screen reader gets the state from the button's own accessible name...
+    expect(header).toContain('aria-label="Toggle colour scheme, currently light"');
+    expect(script).toContain("setAttribute('aria-label', 'Toggle colour scheme, currently ' + mode)");
+    // ...and a sighted reader gets it from the visible label, kept in sync on
+    // every click.
+    expect(header).toContain('data-bs-theme-toggle-label');
+    expect(script).toContain('data-bs-theme-toggle-label');
+  });
+
+  it('finds the toggle button by tag, not by the marker alone', () => {
+    // The script tag carries the same marker so the generator can strip both
+    // it and the button in one pass, and it precedes the button in the
+    // document. A lookup on the bare marker resolves to that <script>: the
+    // colours still change on a click, but the label is written into an
+    // element with no text, so it never moves off its starting value.
+    const script = readFileSync(join(sharedJsDir, 'theme.js'), 'utf8');
+    expect(script).toContain("querySelector('button[data-bs-theme-toggle]')");
+    expect(script).not.toContain("querySelector('[data-bs-theme-toggle]')");
   });
 
   it('rewrites the CSS path to the concrete theme name, leaves shared assets neutral', () => {
@@ -248,12 +315,10 @@ describe('hand-authored themes', () => {
   it('keeps the toggle on a dual-appearance theme and opens in its first scheme', () => {
     generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
     const header = readFileSync(join(outDir, 'f1terminal', 'header.html'), 'utf8');
-    const footer = readFileSync(join(outDir, 'f1terminal', 'footer.html'), 'utf8');
     const spec = readThemeSpec('f1terminal', customDir);
     expect(spec.appearance).toEqual(['dark', 'light']);
     expect(header).toContain(`data-bs-theme="${spec.appearance[0]}"`);
-    expect(header).toContain('data-bs-theme-toggle');
-    expect(footer).toContain("getAttribute('data-bs-theme')");
+    expect(header).toContain('src="/.plandrop/shared/js/theme.js"');
     // The navbar is NOT pinned: it inherits from <html> so the toggle flips the
     // chrome along with the page.
     expect(header).toContain('<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">');
@@ -269,6 +334,37 @@ describe('hand-authored themes', () => {
     expect(header).toContain('src="/.plandrop/shared/js/selfupdate.js"');
     expect(header).not.toMatch(/href="\.plandrop/);
     expect(header).not.toMatch(/src="\.plandrop/);
+  });
+
+  it('gives every dual-mode theme its own storage key, never a shared one', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    // Every dual-mode theme loads the same file. What keys the stored
+    // preference to a theme is data-plandrop-theme, which the generator sets
+    // to the concrete name and the script reads at run time — so bootstrap5
+    // and f1terminal read and write two different localStorage keys while
+    // running one shared copy of the code.
+    const bootstrap5Header = readFileSync(join(skeletonDir, 'header.html'), 'utf8');
+    const f1terminalHeader = readFileSync(join(outDir, 'f1terminal', 'header.html'), 'utf8');
+    expect(bootstrap5Header).toContain('data-plandrop-theme="bootstrap5"');
+    expect(f1terminalHeader).toContain('data-plandrop-theme="f1terminal"');
+    for (const header of [bootstrap5Header, f1terminalHeader]) {
+      expect(header).toContain('src="/.plandrop/shared/js/theme.js"');
+    }
+    const script = readFileSync(join(sharedJsDir, 'theme.js'), 'utf8');
+    expect(script).toContain("'plandrop:mode:' + root.getAttribute('data-plandrop-theme')");
+  });
+
+  it('strips the toggle from a single-appearance hand-authored theme, cleanly', () => {
+    generateAll({ skeletonDir, bootswatchDir, customDir, outDir });
+    const spec = readThemeSpec('s1notebook', customDir);
+    expect(spec.appearance).toEqual(['light']);
+    const header = readFileSync(join(outDir, 's1notebook', 'header.html'), 'utf8');
+    const footer = readFileSync(join(outDir, 's1notebook', 'footer.html'), 'utf8');
+    expect(header).not.toContain('<button');
+    expect(header).not.toContain('data-bs-theme-toggle');
+    expect(header).not.toContain('data-bs-theme-mode');
+    expect(footer).not.toContain('<script');
+    expect(footer).not.toContain('data-bs-theme-toggle');
   });
 
   it('credits the theme author in place of the Bootswatch attribution', () => {

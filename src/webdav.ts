@@ -8,6 +8,9 @@ import { hostBaseUri } from './endpoint';
  */
 export class WrongTenantError extends Error {}
 
+/** Thrown when a remote path named for deletion does not exist on the host. */
+export class RemoteNotFoundError extends Error {}
+
 /**
  * A redirect that would take a request off the origin the client addressed.
  * It names both origins because the cause is always a misconfigured front
@@ -15,10 +18,39 @@ export class WrongTenantError extends Error {}
  * connection to an internal address nobody typed.
  */
 export class OffEndpointRedirectError extends Error {
-  constructor(from: string, to: string) {
+  /**
+   * The full address the host tried to send the request to. The message names
+   * only the origins, because that is where the misconfiguration is, but the
+   * path is what tells a caller whether the redirect was Apache pointing a
+   * directory at its trailing-slash form.
+   */
+  readonly to: string;
+
+  constructor(from: URL, to: URL) {
     super(
-      `refusing to follow a redirect off ${from} to ${to}: the host advertises an origin the client was not pointed at — check the front proxy's forwarded host/proto/port and Apache's ServerName/UseCanonicalName`,
+      `refusing to follow a redirect off ${from.origin} to ${to.origin}: the host advertises an origin the client was not pointed at — check the front proxy's forwarded host/proto/port and Apache's ServerName/UseCanonicalName`,
     );
+    this.to = to.toString();
+  }
+}
+
+/**
+ * Whether a failed request was Apache redirecting a directory to its
+ * trailing-slash form (mod_dir's DirectorySlash), rather than a genuine
+ * misdirection. Apache issues this for directories only, so it identifies one
+ * without the request having to arrive: the redirect is refused when the host
+ * advertises an origin the client was not pointed at, which happens whenever
+ * the stack sits behind a proxy on a different port, and refusing it is right.
+ * The redirect still says what the path is.
+ */
+function isDirectorySlashRedirect(error: unknown, remotePath: string): boolean {
+  if (!(error instanceof OffEndpointRedirectError)) {
+    return false;
+  }
+  try {
+    return new URL(error.to).pathname === `${remotePath.replace(/\/$/, '')}/`;
+  } catch {
+    return false;
   }
 }
 
@@ -39,6 +71,48 @@ export async function putFile(
   try {
     await client.putFileContents(remotePath, data, { overwrite: true });
   } catch (error) {
+    throw mapError(error);
+  }
+}
+
+/**
+ * Whether `remotePath` is a directory on the host. A delete refuses a
+ * directory outright — WebDAV DELETE on a collection removes everything
+ * inside it, which would take out more than the one path named — so the
+ * command needs to know the type before it deletes anything. A path absent
+ * from the host surfaces here as RemoteNotFoundError rather than a bare 404,
+ * since "not there" and "there but a directory" both need to stop the delete
+ * before it runs, each with its own message.
+ */
+export async function isRemoteDirectory(client: WebDAVClient, remotePath: string): Promise<boolean> {
+  let stat;
+  try {
+    stat = await client.stat(remotePath);
+  } catch (error) {
+    if (statusOf(error) === 404) {
+      throw new RemoteNotFoundError(`no such file on the host: ${remotePath}`);
+    }
+    if (isDirectorySlashRedirect(error, remotePath)) {
+      return true;
+    }
+    throw mapError(error);
+  }
+  const info = 'data' in stat ? stat.data : stat;
+  return info.type === 'directory';
+}
+
+/**
+ * DELETE one remote file, mapping a 401 to WrongTenantError and a 404 to
+ * RemoteNotFoundError — deleting a path that is not there is reported as a
+ * clear error rather than the silent success an unmapped DELETE would read as.
+ */
+export async function deleteFile(client: WebDAVClient, remotePath: string): Promise<void> {
+  try {
+    await client.deleteFile(remotePath);
+  } catch (error) {
+    if (statusOf(error) === 404) {
+      throw new RemoteNotFoundError(`no such file on the host: ${remotePath}`);
+    }
     throw mapError(error);
   }
 }
@@ -114,7 +188,7 @@ export async function sameOriginFetch(
     const from = new URL(target);
     const next = new URL(location, target);
     if (next.origin !== from.origin) {
-      throw new OffEndpointRedirectError(from.origin, next.origin);
+      throw new OffEndpointRedirectError(from, next);
     }
     target = next.toString();
   }

@@ -130,6 +130,12 @@ domain you point at it.
 | View logs | `docker compose logs -f` |
 | Stop | `docker compose down` (data in `data/` is kept) |
 
+> **Doubled log lines:** apache's vhost uses `[PT]` (pass-through) rewrite rules in several
+> places, for example to serve the shared `.plandrop/` files at any path depth. A `[PT]` rewrite sends the request
+> through Apache's URL-to-file mapping a second time, so any line logged for that request —
+> including an error — is written twice. Two identical log lines for one request is expected
+> here; it does not mean the request was made twice or that something is retrying.
+
 Back up the `data/` tree to preserve hosted content and credentials.
 
 ## Verifying the stack (without the proxy)
