@@ -1,0 +1,9 @@
+{
+  "label": "Fanny's Second Terminal",
+  "appearance": ["dark", "light"],
+  "credit": {
+    "name": "plandrop",
+    "url": "https://plandrop.dev/",
+    "license": "LGPL-3.0-only"
+  }
+}

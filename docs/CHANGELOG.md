@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.1 — WIP
+
+### Added
+
+- **A new theme, Fanny's Second Terminal (`f2terminal`).** A terminal, in both
+  light and dark. Dark is an amber phosphor CRT: warm near-black glass, amber
+  text, a block cursor blinking after a `>` prompt in the navbar, raster lines
+  over the chrome only, and a soft glow on the brand. Light is a thermal
+  printout: near-white paper, neutral-black ink, and burnt-amber accents where
+  a print head would lay down a highlight. One monospace stack runs the whole
+  document, corners are square, panels are flat, and the drawn cursor stills
+  under `prefers-reduced-motion`. The palette is checked against the shared
+  inline-code greens and meets WCAG AA in both appearances. Choose it with
+  `--template f2terminal` or the `template` field in `.plandrop`.
+
 ## 0.8.0 — 2026-08-29
 
 ### Added
