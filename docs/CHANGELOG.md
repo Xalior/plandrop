@@ -4,6 +4,24 @@
 
 ### Added
 
+- **A new theme, R3 PCB (`r3pcb`).** A printed circuit board, in both light
+  and dark. Dark is the fabricated board: green solder mask over copper,
+  silkscreen-white lettering, and the board's metals (copper, ENIG gold,
+  plated silver) as the accents. Light is the artwork the board is made from:
+  pale FR-4 film, dark green-black ink, and the same metals drawn as inks.
+  The board's furniture carries the structure: list markers are vias, rules
+  are traces with an `<hr>` running between two of them, a blockquote is a
+  cross-hatched copper pour, code blocks are IC packages with contact marks
+  along their edges, the navbar brand carries a fiducial, and the strip along
+  the navbar's bottom edge is the board's gold-finger connector. Overpass
+  (self-hosted, SIL Open Font License 1.1) runs the prose, and Overpass Mono
+  is the silkscreen voice, reserved for labelling: table heads, badges, card
+  headers, buttons, and the footer, never prose. The board is static
+  material, so there is no ambient animation and reduced motion needs no
+  carve-out. The palette is checked against the shared inline-code greens and
+  meets WCAG AA in both appearances. Choose it with `--template r3pcb` or the
+  `template` field in `.plandrop`.
+
 - **A new theme, Fanny's Second Terminal (`f2terminal`).** A terminal, in both
   light and dark. Dark is an amber phosphor CRT: warm near-black glass, amber
   text, a block cursor blinking after a `>` prompt in the navbar, raster lines
