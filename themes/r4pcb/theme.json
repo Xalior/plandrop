@@ -1,0 +1,9 @@
+{
+  "label": "R4-PCB · Ceramic Assembly",
+  "appearance": ["light", "dark"],
+  "credit": {
+    "name": "plandrop",
+    "url": "https://plandrop.dev/",
+    "license": "LGPL-3.0-only"
+  }
+}
