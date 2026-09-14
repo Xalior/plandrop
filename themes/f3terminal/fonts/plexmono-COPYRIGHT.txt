@@ -1,0 +1,11 @@
+IBM Plex Mono
+
+Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
+
+Files: plexmono-normal-400.woff2, plexmono-normal-600.woff2,
+       plexmono-normal-700.woff2, plexmono-italic-400.woff2
+
+SIL Open Font License, Version 1.1 — see plexmono-OFL.txt (full text).
+Faces are the Google Fonts "latin" subset, fetched from
+fonts.gstatic.com (IBM Plex Mono v20) on 2026-09-14.
+Upstream: https://github.com/IBM/plex

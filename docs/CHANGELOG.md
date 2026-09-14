@@ -4,6 +4,17 @@
 
 ### Added
 
+- **A new theme, F4 Terminal · Operator Console (`f4terminal`).** An original
+  Bootstrap 5 text-workstation design with warm text and cyan controls on a
+  dark screen, plus a light appearance with ivory surfaces, dark ink, and deep
+  teal controls. A ruled document gutter, inverse heading bars, double-rule
+  windows, hard offset shadows, and self-hosted IBM Plex Mono give the theme
+  its terminal structure. Segmented progress bars retain their animation, with
+  gap colours that keep their labels readable in both appearances. Pages
+  appear immediately, without entrance effects. The Light / Dark / System
+  toggle remembers the reader's preference. Choose it with
+  `--template f4terminal` or the `template` field in `.plandrop`.
+
 - **A new theme, R3 PCB (`r3pcb`).** A printed circuit board, in both light
   and dark. Dark is the fabricated board: green solder mask over copper,
   silkscreen-white lettering, and the board's metals (copper, ENIG gold,
@@ -21,6 +32,35 @@
   carve-out. The palette is checked against the shared inline-code greens and
   meets WCAG AA in both appearances. Choose it with `--template r3pcb` or the
   `template` field in `.plandrop`.
+
+- **A new theme, R4-PCB · Ceramic Assembly (`r4pcb`).** An original Bootstrap 5
+  printed circuit board design with warm ceramic surfaces in light mode and
+  a charcoal-green board in dark mode. Copper routing, mounting holes,
+  connector-style headings, and bundled Barlow Condensed and IBM Plex Mono
+  fonts give the document its assembly-board appearance. Small, staggered
+  electrons travel slowly along individual traces in both modes; they are
+  hidden when reduced motion is requested and when printing. The theme supports
+  the Light / Dark / System toggle and remembers the reader's preference.
+  Choose it with `--template r4pcb` or the `template` field in `.plandrop`.
+
+- **A new theme, Fanny's Third Terminal (`f3terminal`).** A terminal, in both
+  light and dark. Dark is a white-phosphor CRT — the phosphor colour the first
+  terminals shipped with: deep blue-black tube, white-green characters with a
+  faint halo, scanlines over the whole viewport, and IBM 3270 field colours
+  (cyan, green, amber, red) as the accent families. Light is the same session
+  as a printout: warm cream tractor-feed stock with sprocket-hole strips down
+  both page edges, blue-black ink, and printed-listing code blocks. One element
+  binds the two schemes: the navbar is an inverse-video status line — phosphor
+  bar with dark text in dark, ink bar with paper text in light. IBM Plex Mono
+  (self-hosted, SIL Open Font License 1.1) runs everything — prose, chrome,
+  code; the document is the terminal output. Everything is square-cornered,
+  keyboard focus is a dashed rule, shadows are hard offsets, headings carry
+  rule lines the way a listing separates its blocks, and the table header row
+  is inverse video like a 3270 field. There are no looping animations;
+  reduced motion only drops hover transitions. The palette is checked against
+  the shared inline-code greens and meets WCAG AA in both appearances.
+  Choose it with `--template f3terminal` or the `template` field in
+  `.plandrop`.
 
 - **A new theme, Fanny's Second Terminal (`f2terminal`).** A terminal, in both
   light and dark. Dark is an amber phosphor CRT: warm near-black glass, amber
